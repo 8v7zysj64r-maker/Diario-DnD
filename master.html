@@ -103,12 +103,23 @@ body.noini #ini{display:none}
 body.player #top,body.player #showui,body.player .nav,body.player .edit-only{display:none!important}
 body.player #view{pointer-events:none;cursor:none}
 body.player #empty .card{pointer-events:none}
+#ptr{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;display:none;z-index:4}
+#ptr i{position:absolute;left:-15px;top:-15px;width:30px;height:30px;border-radius:50%;border:3px solid #fff;background:radial-gradient(circle,#fff 0 20%,#ffcf6b 24%,#ff8a1f 70%);box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 22px 8px rgba(255,170,50,.85)}
+#ptr .pg{position:absolute;left:-30px;top:-30px;width:60px;height:60px;border-radius:50%;border:4px solid #ffcf6b;animation:pg .9s ease-out forwards}
+@keyframes pg{from{transform:scale(.3);opacity:1}to{transform:scale(3.4);opacity:0}}
+.guide{display:grid;gap:14px}
+.guide h3{color:var(--brass);font-size:1.15rem;margin-bottom:4px}
+.guide p,.guide li{margin:0;color:var(--ink)}
+.guide ul{margin:0;padding-left:20px;display:grid;gap:3px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;align-items:center}
+.keys span{color:var(--mute)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
 kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:.85rem}
 </style>
 </head>
 <body>
 <div id="view">
-  <div id="stage"><img id="map" alt=""><div id="grid"></div><canvas id="fog"></canvas></div>
+  <div id="stage"><img id="map" alt=""><div id="grid"></div><canvas id="fog"></canvas><div id="ptr"><i></i></div></div>
   <div id="empty"><div class="card"><h1>Tavolo del Master</h1><p>Carica una o più mappe: copriranno tutto lo schermo. Poi aggiungi griglia e nebbia.</p><div><button class="btn gold big" id="e-load"></button></div><p class="help">Trascina qui le immagini, incollale con Ctrl+V o scegli più file insieme.</p></div></div>
 </div>
 <div id="ring"></div>
@@ -157,6 +168,8 @@ const ICONS={
  swords:'<g><path d="M9.5 17.5L21 6V3h-3L6.5 14.5"/><path d="M11 19l-6-6"/><path d="M8 16l-4 4"/><path d="M5 21l-2-2"/></g><g transform="translate(24 0) scale(-1 1)"><path d="M9.5 17.5L21 6V3h-3L6.5 14.5"/><path d="M11 19l-6-6"/><path d="M8 16l-4 4"/><path d="M5 21l-2-2"/></g>',
  eyeoff:'<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0112 5c6.4 0 10 7 10 7a17 17 0 01-3 3.8M6.5 6.6C3.700 8.400 2 12 2 12s3.600 7 10 7c1.700 0 3.200-.4 4.500-1.100"/><path d="M9.900 9.900a3 3 0 004.200 4.200"/>',
  check:'<path d="M5 12l5 5 9-10"/>',
+ pin:'<path d="M12 21s-6-5.500-6-10.500a6 6 0 0112 0C18 15.500 12 21 12 21z"/><circle cx="12" cy="10.500" r="2.200"/>',
+ help:'<circle cx="12" cy="12" r="9.500"/><path d="M9.300 9.300a2.800 2.800 0 115 1.700c-.8.900-2.300 1.300-2.300 2.800M12 17.200v.1"/>',
  tv:'<rect x="3" y="4.500" width="18" height="12" rx="2"/><path d="M8 20.500h8M12 16.500v4"/>'
 };
 const ico=k=>{const e=document.createElementNS("http://www.w3.org/2000/svg","svg");e.setAttribute("viewBox","0 0 24 24");e.setAttribute("class","ic");e.setAttribute("aria-hidden","true");e.innerHTML=ICONS[k]||"";return e};
@@ -174,6 +187,10 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ---------- stato ---------- */
 const view=$("#view"),stage=$("#stage"),mapEl=$("#map"),gridEl=$("#grid"),fogC=$("#fog"),fctx=fogC.getContext("2d"),ring=$("#ring");
+const ptrEl=$("#ptr");let pp=null;
+function placePtr(){if(!pp){ptrEl.style.display="none";return}ptrEl.style.display="block";ptrEl.style.transform="translate("+pp[0]+"px,"+pp[1]+"px) scale("+(1/zoom)+")"}
+function setPtr(x,y,ping){pp=[x,y];placePtr();if(ping){const r=h("span",{class:"pg"});ptrEl.append(r);r.addEventListener("animationend",()=>r.remove())}}
+function ptrOff(){pp=null;placePtr()}
 const baseC=document.createElement("canvas"),bctx=baseC.getContext("2d");
 const FOG="#06090b",FOG0="rgba(6,9,11,0)",MAXFOG=2048,MAXIMG=4096;
 let sc=null,iw=0,ih=0,fw=0,fh=0,zoom=1,tx0=0,ty0=0,fitMode="cover",manual=false;
@@ -232,7 +249,7 @@ function saveNow(){
 }
 
 /* ---------- vista: adatta, zoom, sposta ---------- */
-function applyView(){stage.style.transform="translate("+tx0+"px,"+ty0+"px) scale("+zoom+")";sendView()}
+function applyView(){stage.style.transform="translate("+tx0+"px,"+ty0+"px) scale("+zoom+")";placePtr();sendView()}
 let vq=0;
 function sendView(){if(PLAYER||vq||!iw)return;vq=requestAnimationFrame(()=>{vq=0;send({t:"view",x:-tx0/zoom,y:-ty0/zoom,w:view.clientWidth/zoom,h:view.clientHeight/zoom})})}
 async function syncAll(){
@@ -244,7 +261,7 @@ async function syncAll(){
 async function syncFog(){if(PLAYER||!sc)return;const fb=await new Promise(r=>fogC.toBlob(r,"image/png"));send({t:"fog",b:fb})}
 function pFit(){
   if(!iw||!pview)return;const vw=view.clientWidth,vh=view.clientHeight,z=Math.min(vw/pview.w,vh/pview.h);
-  zoom=z;tx0=(vw-pview.w*z)/2-pview.x*z;ty0=(vh-pview.h*z)/2-pview.y*z;stage.style.transform="translate("+tx0+"px,"+ty0+"px) scale("+zoom+")";
+  zoom=z;tx0=(vw-pview.w*z)/2-pview.x*z;ty0=(vh-pview.h*z)/2-pview.y*z;stage.style.transform="translate("+tx0+"px,"+ty0+"px) scale("+zoom+")";placePtr();
 }
 let pview=null;
 function fit(mode){
@@ -302,7 +319,7 @@ const R=()=>brush.d/2;
 function ringShow(e){if(!(tool==="reveal"||tool==="cover")||!sc){ring.style.display="none";return}ring.style.display="block";ring.style.width=brush.d+"px";ring.style.height=brush.d+"px";ring.style.left=e.clientX+"px";ring.style.top=e.clientY+"px";ring.style.borderColor=tool==="cover"?"var(--acc)":"var(--brass)"}
 view.addEventListener("contextmenu",e=>e.preventDefault());
 view.addEventListener("pointerenter",ringShow);
-view.addEventListener("pointerleave",()=>ring.style.display="none");
+view.addEventListener("pointerleave",()=>{ring.style.display="none";if(tool==="point"&&!PLAYER){ptrOff();send({t:"ptr",off:true})}});
 view.addEventListener("pointerdown",e=>{
   if(!sc||PLAYER)return;view.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(ptrs.size===2){gest=null;const[a,b]=[...ptrs.values()];gest={t:"pinch",d:Math.hypot(a.x-b.x,a.y-b.y),z:zoom,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,tx:tx0,ty:ty0};return}
@@ -310,6 +327,7 @@ view.addEventListener("pointerdown",e=>{
   const pan=e.button===1||e.button===2||spaceDown||tool==="pan";
   if(pan){gest={t:"pan",x:e.clientX,y:e.clientY,tx:tx0,ty:ty0};view.style.cursor="grabbing";return}
   const[x,y]=toImg(e.clientX,e.clientY);
+  if(tool==="point"){setPtr(x,y,true);send({t:"ptr",x,y,ping:true});return}
   if(tool==="reveal"||tool==="cover"){
     const s={m:tool==="reveal"?"r":"c",r:R()/zoom,soft:brush.soft,pts:[[x,y]]};gest={t:"draw",s,n:0};applyStroke(fctx,s,null);send({t:"sb",s:{m:s.m,r:s.r,soft:s.soft,pts:[[x,y]]}});
   }else if(tool==="cell"){cellAt(x,y,e.shiftKey)}
@@ -317,6 +335,7 @@ view.addEventListener("pointerdown",e=>{
 });
 view.addEventListener("pointermove",e=>{
   ringShow(e);if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(tool==="point"&&sc&&!PLAYER&&!gest){const[px,py]=toImg(e.clientX,e.clientY);setPtr(px,py);send({t:"ptr",x:px,y:py})}
   if(!gest)return;
   if(gest.t==="pinch"&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),r=view.getBoundingClientRect(),cx=(a.x+b.x)/2-r.left,cy=(a.y+b.y)/2-r.top,z=Math.max(.05,Math.min(10,gest.z*d/gest.d)),px=(gest.cx-r.left-gest.tx)/gest.z,py=(gest.cy-r.top-gest.ty)/gest.z;zoom=z;tx0=cx-px*z;ty0=cy-py*z;manual=true;applyView();return}
   if(gest.t==="pan"){tx0=gest.tx+e.clientX-gest.x;ty0=gest.ty+e.clientY-gest.y;manual=true;applyView()}
@@ -341,8 +360,8 @@ addEventListener("paste",e=>{const t=e.target;if(t&&/^(INPUT|TEXTAREA)$/.test(t.
 
 /* ---------- barra comandi ---------- */
 const topBar=$("#top");
-const TOOLS=[["reveal","eye","Rivela","1"],["cover","cloud","Copri","2"],["cell","cell","Cella","3"],["pan","move","Sposta","4"],["grid","grid","Griglia","5"]];
-function setTool(t){tool=t;drawBars();view.style.cursor=t==="pan"?"grab":t==="grid"?"move":t==="cell"?"cell":"crosshair"}
+const TOOLS=[["reveal","eye","Rivela","1"],["cover","cloud","Copri","2"],["cell","cell","Cella","3"],["pan","move","Sposta","4"],["grid","grid","Griglia","5"],["point","pin","Puntatore","6"]];
+function setTool(t){tool=t;if(t!=="point"){ptrOff();send({t:"ptr",off:true})}drawBars();view.style.cursor=t==="pan"?"grab":t==="grid"?"move":t==="cell"?"cell":"crosshair"}
 function btn(icon,text,fn,extra={}){return h("button",Object.assign({class:"btn",type:"button",onclick:fn},extra),icon?ico(icon):"",text||"")}
 function drawBars(){
   const bar=h("div",{class:"bar"},
@@ -356,6 +375,7 @@ function drawBars(){
     btn("eye","Vista giocatori",()=>setPresent(true),{title:"Nasconde i comandi e rende la nebbia opaca (H)"}),
     btn("tv","Finestra giocatori",openPlayers,{title:"Apre la finestra da portare sulla TV o sul secondo schermo"}),
     btn("expand","Schermo intero",toggleFs,{title:"Schermo intero (F)"}),
+    btn("help","Guida",openHelp,{title:"Istruzioni e comandi (?)"}),
     btn("panel","Iniziativa",()=>{document.body.classList.toggle("noini");lsSet("tavolo-noini",document.body.classList.contains("noini")?"1":"");if(!manual)fit()},{title:"Mostra o nascondi il pannello (I)"}));
   const opt=h("div",{class:"bar opt"});
   if(tool==="reveal"||tool==="cover"){
@@ -366,7 +386,10 @@ function drawBars(){
   }else if(tool==="cell"){
     opt.append(h("span",{class:"msg"},"Tocca una casella per rivelarla (Maiusc: la ricopre). Serve la griglia attiva."),btn("grid",sc&&sc.grid.on?"Griglia attiva":"Attiva griglia",()=>{if(sc){sc.grid.on=true;applyGrid();scheduleSave();drawBars()}}));
   }else if(tool==="pan"){
-    opt.append(h("span",{class:"msg"},"Trascina per spostare, rotella o pizzico per ingrandire"),btn(null,"Riempi lo schermo",()=>fit("cover")),btn(null,"Adatta alla mappa",()=>fit("contain")),btn(null,"100%",()=>{if(!sc)return;const r=view.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1/zoom)}));
+    const zb=f=>()=>{const r=view.getBoundingClientRect();zoomAt(r.width/2,r.height/2,f)};
+    opt.append(h("span",{class:"msg"},"Trascina per spostare, rotella o pizzico per ingrandire: i giocatori seguono"),btn(null,"＋ Ingrandisci",zb(1.3)),btn(null,"－ Riduci",zb(1/1.3)),btn(null,"Riempi lo schermo",()=>fit("cover")),btn(null,"Adatta alla mappa",()=>fit("contain")),btn(null,"100%",()=>{if(!sc)return;const r=view.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1/zoom)}));
+  }else if(tool==="point"){
+    opt.append(h("span",{class:"msg"},"Muovi il mouse sulla mappa: i giocatori vedono il puntatore. Clic = segnale luminoso. Non modifica nulla."));
   }else if(tool==="grid"&&sc){
     const g=sc.grid,L=g.locked;
     const num=(lab,key,min,max,step=1)=>{const r=h("input",{type:"range",min,max,step,value:g[key],"aria-label":lab}),n=h("input",{type:"number",min,max,step,value:Math.round(g[key]*100)/100,"aria-label":lab+" (valore)"});const f=v=>{gridChange({[key]:+v});if(key==="size"){const so=$("#r-ox"),sy=$("#r-oy");if(so){so.max=sc.grid.size;sy.max=sc.grid.size}}r.value=sc.grid[key];n.value=Math.round(sc.grid[key]*100)/100};r.addEventListener("input",()=>f(r.value));n.addEventListener("change",()=>f(n.value));if(key==="ox")r.id="r-ox";if(key==="oy")r.id="r-oy";return h("label",{},lab,r,n)};
@@ -382,6 +405,24 @@ function drawBars(){
 $("#file").addEventListener("change",e=>{const fs=[...e.target.files];e.target.value="";newScenes(fs)});
 $("#e-load").append(ico("image"),"Carica una mappa");$("#e-load").addEventListener("click",()=>$("#file").click());
 
+/* ---------- guida ---------- */
+function openHelp(){
+  const m=$("#modal");m.hidden=false;
+  const K=(k,t)=>[h("kbd",{},k),h("span",{},t)];
+  const keys=[["1","Rivela la nebbia"],["2","Rimetti la nebbia"],["3","Cella (una casella alla volta)"],["4","Sposta e ingrandisci"],["5","Griglia"],["6","Puntatore"],["Ctrl+Z","Annulla sulla nebbia"],["G","Mostra o nascondi la griglia"],["L","Blocca o sblocca la griglia"],["+ / −","Ingrandisci o riduci"],["[ / ]","Pennello più piccolo o più grande"],["N / P","Turno successivo o precedente"],["I","Mostra o nascondi le iniziative"],["H","Vista giocatori (nasconde i comandi)"],["F","Schermo intero"],["Spazio + trascina","Sposta la mappa con qualsiasi strumento"],["?","Apre questa guida"]];
+  m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Guida"},
+    h("div",{style:"display:flex;gap:8px;align-items:center"},h("h2",{style:"flex:1"},"Guida del Tavolo"),btn(null,"Chiudi",()=>{m.hidden=true})),
+    h("div",{class:"guide"},
+      h("div",{class:"cols"},
+        h("div",{},h("h3",{},"1 · Prepara la serata"),h("ul",{},h("li",{},"Carica le mappe con “Carica mappa”, trascinandole sulla pagina o con Ctrl+V. Ne puoi scegliere molte insieme."),h("li",{},"“Scene” le raccoglie tutte: tocca una miniatura per aprirla. Nebbia e griglia restano salvate per ogni mappa."),h("li",{},"Aggiungi eroi, alleati e nemici nel pannello Iniziativa a destra."))),
+        h("div",{},h("h3",{},"2 · Nebbia"),h("ul",{},h("li",{},h("b",{},"Rivela"),": trascina per togliere la nebbia. “Copri” la rimette."),h("li",{},h("b",{},"Cella"),": un tocco rivela una casella (Maiusc la ricopre). Serve la griglia attiva."),h("li",{},"“Rivela tutto” e “Copri tutto” cambiano l’intera mappa. “Annulla” torna indietro di un gesto."))),
+        h("div",{},h("h3",{},"3 · Griglia"),h("ul",{},h("li",{},"Scegli lo strumento Griglia: regola dimensione, colore e posizione, o trascina sulla mappa per allinearla."),h("li",{},"Quando è giusta, premi “Blocca”: così non si sposta per errore."))),
+        h("div",{},h("h3",{},"4 · Iniziative"),h("ul",{},h("li",{},"“Turno successivo” fa avanzare il round."),h("li",{},"L’occhio sul combattente lo nasconde ai giocatori: gli eroi lo vedono solo quando lo riveli."),h("li",{},"Il teschio lo mette fuori combattimento, il cestino lo toglie. “Nuovo scontro” tiene solo gli eroi."))),
+        h("div",{},h("h3",{},"5 · Finestra giocatori"),h("ul",{},h("li",{},"Premi “Finestra giocatori”, trascina la finestra sulla TV e premi F per lo schermo intero."),h("li",{},"Vedono la mappa, la nebbia nera, la griglia e solo le iniziative che hai mostrato. Seguono il tuo zoom."),h("li",{},"Le due finestre devono stare nello stesso browser e nello stesso computer. Consenti i popup."))),
+        h("div",{},h("h3",{},"6 · Puntatore"),h("ul",{},h("li",{},"Con lo strumento Puntatore i giocatori vedono un punto che ti segue. Un clic lancia un segnale luminoso."),h("li",{},"Non modifica nulla sulla mappa.")))),
+      h("div",{},h("h3",{},"Scorciatoie da tastiera"),h("div",{class:"keys"},...keys.flatMap(([k,t])=>K(k,t)))),
+      h("div",{class:"help"},"Mappe, nebbia, griglia e iniziative restano salvate su questo browser. “Vista giocatori” (H) nasconde i comandi sul tuo schermo; per uno schermo separato usa la finestra giocatori."))));
+}
 /* ---------- finestra giocatori ---------- */
 function openPlayers(){
   const w=window.open(location.pathname+"?giocatori","tavolo-giocatori","popup=yes,width=1280,height=720");
@@ -477,8 +518,10 @@ addEventListener("keydown",e=>{
   if(e.key===" "){spaceDown=true;view.style.cursor="grab";e.preventDefault();return}
   if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();undo();return}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
-  const map={"1":"reveal","2":"cover","3":"cell","4":"pan","5":"grid"};
+  const map={"1":"reveal","2":"cover","3":"cell","4":"pan","5":"grid","6":"point"};
   if(map[k]){setTool(map[k]);return}
+  if(k==="?"||(e.key==="/"&&e.shiftKey)){openHelp();return}
+  if(e.key==="Escape"){$("#modal").hidden=true;return}
   if(k==="h")setPresent(!document.body.classList.contains("present"));
   else if(k==="f")toggleFs();
   else if(k==="n"||k==="arrowright"&&tool!=="grid")step(1);
@@ -486,6 +529,8 @@ addEventListener("keydown",e=>{
   else if(k==="i"){document.body.classList.toggle("noini");lsSet("tavolo-noini",document.body.classList.contains("noini")?"1":"");if(!manual)fit()}
   else if(k==="g"&&sc){sc.grid.on=!sc.grid.on;applyGrid();scheduleSave();drawBars()}
   else if(k==="l"&&sc){sc.grid.locked=!sc.grid.locked;scheduleSave();drawBars();toast(sc.grid.locked?"Griglia bloccata":"Griglia sbloccata")}
+  else if(k==="+"||k==="="){const r=view.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1.3)}
+  else if(k==="-"){const r=view.getBoundingClientRect();zoomAt(r.width/2,r.height/2,1/1.3)}
   else if(k==="["){brush.d=Math.max(20,brush.d-10);drawBars()}
   else if(k==="]"){brush.d=Math.min(500,brush.d+10);drawBars()}
   else if(tool==="grid"&&sc&&k.startsWith("arrow")){e.preventDefault();const d=e.shiftKey?10:1;gridChange({ox:sc.grid.ox+(k==="arrowright"?d:k==="arrowleft"?-d:0),oy:sc.grid.oy+(k==="arrowdown"?d:k==="arrowup"?-d:0)});drawBars()}
@@ -521,6 +566,7 @@ if(PLAYER){
     else if(m.t==="grid"){sc.grid=m.g;applyGrid()}
     else if(m.t==="ini"){ini=m.ini;drawIni()}
     else if(m.t==="view"){pview=m;fit()}
+    else if(m.t==="ptr"){if(m.off)ptrOff();else setPtr(m.x,m.y,m.ping)}
   };
   if(BC){BC.onmessage=ev=>{chain=chain.then(()=>pHandle(ev.data)).catch(()=>{})};
     const hello=()=>{if(got)return;try{BC.postMessage({t:"hello"})}catch(e){}};hello();setInterval(hello,1500)}
