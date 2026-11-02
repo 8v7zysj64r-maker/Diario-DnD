@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6e2a38">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Diario D&D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Diario di campagna</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Alegreya+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -95,6 +101,14 @@ main{padding-bottom:110px}
 .empty{color:var(--mute);padding:20px;border:1px dashed var(--line);border-radius:8px}
 .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .bar .grow{flex:1;min-width:140px}
+.cover{display:block;width:100%;height:min(52vw,300px);object-fit:cover;object-position:50% 25%;border-radius:10px;border:1px solid var(--line)}
+[hidden]{display:none!important}
+.vit{position:sticky;top:0;z-index:15;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin:8px 0;display:grid;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.vit .r{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.vit .big{font-weight:700;font-size:1.05rem}
+.vit .btn{padding:2px 10px;min-height:0;font-size:.9rem}
+.vit .vc{display:flex;gap:4px;flex-wrap:wrap}.vit .vc:empty{display:none}
+.vit .chip{font-size:.8rem;padding:1px 8px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -144,7 +158,7 @@ function bon(o){const r=R[o.race]||{},sb=(r.s||{})[o.sub]||{},b={};for(const x o
 
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const okUrl=u=>/^https?:\/\//i.test(u);
-let dlApi=null,ctab=0,act={},tab="pg",sel=null,data={pg:[],nt:[]},timers={},statusEl=null;
+let combat=false,curO=null,curAC=10,vitSync=()=>{},hpAct=()=>{},inspAct=()=>{},favDraw=()=>{},dlApi=null,ctab=0,act={},tab="pg",sel=null,data={pg:[],nt:[]},timers={},statusEl=null;
 
 function loadLocal(){for(const c of["pg","nt"]){try{data[c]=JSON.parse(localStorage.getItem("dnd-"+c)||"[]")}catch(e){data[c]=[]}}}
 function saveLocal(c){try{localStorage.setItem("dnd-"+c,JSON.stringify(data[c]));return true}catch(e){return false}}
@@ -162,6 +176,7 @@ function remove(c,id){
 function say(t){if(statusEl)statusEl.textContent=t}
 function later(c,o){say("Salvataggio…");clearTimeout(timers[o.id]);timers[o.id]=setTimeout(()=>put(c,o),500)}
 
+const COND=[["Accecato","Non vedi e fallisci automaticamente le prove di caratteristica che richiedono la vista. I tiri per colpire contro di te hanno vantaggio, i tuoi tiri per colpire hanno svantaggio.","Malus"],["Affascinato","Non puoi attaccare né bersagliare con capacità o effetti magici dannosi chi ti ha affascinato. Chi ti ha affascinato ha vantaggio a qualsiasi prova di caratteristica per interagire socialmente con te.","Condizione"],["Afferrato","La tua velocità diventa 0 e non puoi beneficiare di bonus alla velocità. Termina se chi ti ha afferrato è incapacitato o se un effetto ti allontana dalla sua portata.","Malus"],["Assordato","Non senti e fallisci automaticamente le prove di caratteristica che richiedono l’udito.","Malus"],["Avvelenato","Svantaggio ai tiri per colpire e alle prove di caratteristica.","Malus"],["Incapacitato","Non puoi effettuare azioni né reazioni.","Malus"],["Invisibile","Sei impossibile da vedere senza magia o sensi speciali (agli effetti del nascondersi sei pesantemente oscurato). I tiri per colpire contro di te hanno svantaggio, i tuoi tiri per colpire hanno vantaggio.","Bonus"],["Paralizzato","Sei incapacitato, non puoi muoverti né parlare. Fallisci automaticamente i tiri salvezza su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio. Ogni attacco che ti colpisce da entro 1,5 m è un colpo critico.","Malus"],["Pietrificato","Sei trasformato in sostanza solida inanimata (peso ×10), non invecchi. Sei incapacitato, non puoi muoverti né parlare e non percepisci l’esterno. I tiri per colpire contro di te hanno vantaggio. Fallisci automaticamente i TS su Forza e Destrezza. Hai resistenza a tutti i danni e sei immune a veleni e malattie (sospesi, non curati).","Malus"],["Privo di sensi","Sei incapacitato, non puoi muoverti né parlare e non percepisci l’esterno. Lasci cadere ciò che impugni e cadi prono. Fallisci automaticamente i TS su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio. Ogni attacco che ti colpisce da entro 1,5 m è un colpo critico.","Malus"],["Prono","Puoi solo strisciare (finché non ti rialzi). Svantaggio ai tuoi tiri per colpire. I tiri per colpire contro di te hanno vantaggio se l’attaccante è entro 1,5 m, altrimenti svantaggio.","Malus"],["Spaventato","Svantaggio alle prove di caratteristica e ai tiri per colpire finché la fonte della paura è in linea di vista. Non puoi avvicinarti volontariamente alla fonte della paura.","Malus"],["Stordito","Sei incapacitato, non puoi muoverti e parli solo a fatica. Fallisci automaticamente i TS su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio.","Malus"],["Trattenuto","La tua velocità diventa 0 e non hai bonus alla velocità. I tiri per colpire contro di te hanno vantaggio, i tuoi tiri per colpire hanno svantaggio. Svantaggio ai TS su Destrezza.","Malus"],["Indebolimento livello 1","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 2","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 3","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 4","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 5","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. (5) Velocità ridotta a 0. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 6","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. (5) Velocità ridotta a 0. (6) Morte. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"]];
 function newChar(){return{id:uid(),name:"Nuovo personaggio",player:"",race:"",sub:"",he:["",""],cls:"",bg:"",lvl:1,hp:10,ac:10,stats:{FOR:10,DES:10,COS:10,INT:10,SAG:10,CAR:10},skills:{},asi:{},used:{},inv:[],coins:0,align:"",arch:"",fs:["",""],res:{},diary:{},spellUrl:"",acb:0,eq:{armor:"",shield:"",w1:"",w2:""},backstory:"",hpc:10,hpt:0,insp:false,conds:[],dnote:"",traits:"",notes:"",links:[],imgs:[]}}
 function newNote(){return{id:uid(),title:"Nuova sessione",body:"",date:new Date().toLocaleDateString("it-IT"),imgs:[]}}
 
@@ -267,7 +282,7 @@ function renderChar(o){
     if(cl[0])items.push("Dadi Vita "+L+"d"+cl[0]);
     const av=2*asiN(o.cls,L)-AB.reduce((a,s)=>a+(+o.asi[s]||0),0);if(o.cls&&av!==0)items.push(av>0?"Punti caratteristica da assegnare: "+av:"Hai assegnato "+(-av)+" punti in più del previsto");
     chips.replaceChildren(...items.map(t=>h("span",{class:"chip",textContent:t})));
-    spells(T,p);gear(T,p);invCalc(T);feats();drawRes();drawTraits();
+    spells(T,p);gear(T,p);invCalc(T);feats();drawRes();drawTraits();applyQ();
   };
   const stats=h("div",{class:"stats"},...AB.map(s=>{
     const inp=h("input",{type:"number",value:o.stats[s],"aria-label":NAMES[s]+" base"});
@@ -358,7 +373,7 @@ function renderChar(o){
     const fsd=FS[o.cls],fl=(fsd&&L>=fsd.lv?[o.fs[0],o.cls==="Guerriero"&&o.arch==="Campione"&&L>=10?o.fs[1]:""]:[]).filter(Boolean);fsUpdate(L);
     let ac=a?a.c+(a.t==="L"?dx:a.t==="M"?Math.min(2,dx):0):10+dx+(o.cls==="Barbaro"?md(T("COS")):o.cls==="Monaco"?md(T("SAG")):0);
     if(o.eq.shield)ac+=2;if(a&&fl.includes("Difesa"))ac+=1;ac+=+o.acb||0;
-    it.push("Classe Armatura "+ac);
+    curAC=ac;it.push("Classe Armatura "+ac);
     if(a&&a.s)it.push("Svantaggio a Furtività");
     if(a&&a.f&&T("FOR")<a.f)it.push("Forza insufficiente: velocità −3 m");
     let n=1;if(["Barbaro","Guerriero","Monaco","Paladino","Ranger"].includes(o.cls)&&L>=5)n=2;
@@ -383,7 +398,7 @@ function renderChar(o){
     if(w1)line(o.eq.w1,w1,false,"pw1");
     if(w2)line(o.eq.w2,w2,!!w1,"pw2");
     rows.push("Colpo senza armi: "+sg(st+p)+" per colpire, danni "+Math.max(1,1+st)+" contundenti");
-    atkEl.replaceChildren(...rows.map(t=>h("div",{class:"chip",textContent:t})));
+    atkEl.replaceChildren(...rows.map(t=>h("div",{class:"chip",textContent:t})));vitSync();
   };
   const archBox=h("div",{style:"display:contents"});
   const drawArch=()=>{const sb=SUB[o.cls];archBox.replaceChildren(...(sb?[sel_(sb.label+" (dal liv. "+sb.lv+")",Object.keys(sb.opts),o.arch,v=>{o.arch=v;calc();later("pg",o)})]:[]))};
@@ -452,24 +467,68 @@ function renderChar(o){
   if(o.hpc===undefined)o.hpc=o.hp;o.hpt=+o.hpt||0;o.conds=o.conds||[];
   const hpField=(lab,key,after)=>{const el=h("input",{type:"number",value:o[key]??0,"aria-label":lab});el.addEventListener("input",()=>{o[key]=+el.value;later("pg",o);if(after)after()});return[h("label",{},lab,el),el]};
   const hpTxt=h("div",{class:"status"});
-  const hpSync=()=>{hpE.value=o.hpc;tE.value=o.hpt;hpTxt.textContent="PF: "+o.hpc+" / "+o.hp+(o.hpt?" (+"+o.hpt+" temporanei)":"")+(o.hpc<=0?" – a 0 PF":"")};
+  const hpSync=()=>{hpE.value=o.hpc;tE.value=o.hpt;hpTxt.textContent="PF: "+o.hpc+" / "+o.hp+(o.hpt?" (+"+o.hpt+" temporanei)":"")+(o.hpc<=0?" – a 0 PF":"");vitSync()};
   const[hpL,hpE]=hpField("PF attuali","hpc",()=>hpSync()),[tL,tE]=hpField("PF temporanei","hpt",()=>hpSync()),[mL,mE]=hpField("PF massimi","hp",()=>hpSync());
   const hpChange=n=>{if(n<0){let d=-n;const a=Math.min(o.hpt,d);o.hpt-=a;d-=a;o.hpc=Math.max(0,o.hpc-d)}else o.hpc=Math.min(o.hp,o.hpc+n);hpSync();later("pg",o)};
   const hpBtns=h("div",{class:"bar"},...[[-5,"Danni −5"],[-1,"Danni −1"],[1,"Cura +1"],[5,"Cura +5"]].map(([n,t])=>h("button",{class:"btn ghost",textContent:t,onclick:()=>hpChange(n)})),h("button",{class:"btn ghost",textContent:"PF al massimo",onclick:()=>{o.hpc=o.hp;hpSync();later("pg",o)}}));
   const inspB=h("button",{class:"btn ghost",onclick:()=>{o.insp=!o.insp;inspDraw();later("pg",o)}});
-  const inspDraw=()=>{inspB.textContent=o.insp?"★ Ispirazione: disponibile":"☆ Ispirazione: non assegnata";inspB.setAttribute("aria-pressed",String(!!o.insp))};
-  inspDraw();hpSync();
+  const inspDraw=()=>{inspB.textContent=o.insp?"★ Ispirazione: disponibile":"☆ Ispirazione: non assegnata";inspB.setAttribute("aria-pressed",String(!!o.insp));vitSync()};
+  curO=o;o.fav=o.fav||{};inspDraw();hpSync();hpAct=hpChange;inspAct=()=>{o.insp=!o.insp;inspDraw();later("pg",o)};
   const condEl=h("div",{class:"list"});
   const drawConds=()=>condEl.replaceChildren(...o.conds.map((c,i)=>{
     const t=h("input",{value:c.t||"",placeholder:"Nome (es. Avvelenato, Benedizione, Maledizione)","aria-label":"Nome"});
     const k=h("select",{"aria-label":"Tipo"},...["Bonus","Malus","Condizione"].map(x=>h("option",{value:x,textContent:x})));k.value=c.k||"Condizione";
     const b=h("textarea",{value:c.b||"",placeholder:"Effetto, durata, note…","aria-label":"Effetto"});
-    const ch=()=>{c.t=t.value;c.k=k.value;c.b=b.value;later("pg",o)};t.addEventListener("input",ch);k.addEventListener("change",ch);b.addEventListener("input",ch);
-    return h("div",{class:"note"},t,k,b,h("div",{class:"bar"},h("span",{style:"margin-left:auto"},confirmBtn("Elimina",()=>{o.conds.splice(i,1);drawConds();put("pg",o)}))))}));
+    const ch=()=>{c.t=t.value;c.k=k.value;c.b=b.value;later("pg",o);vitSync()};t.addEventListener("input",ch);k.addEventListener("change",ch);b.addEventListener("input",ch);
+    return h("div",{class:"note"},t,k,b,h("div",{class:"bar"},h("span",{style:"margin-left:auto"},confirmBtn("Elimina",()=>{o.conds.splice(i,1);drawConds();put("pg",o);vitSync()}))))}));
   drawConds();
+  const condPick=h("select",{"aria-label":"Condizione del manuale"},h("option",{value:"",textContent:"Aggiungi dal manuale…"}),...COND.map(([n])=>h("option",{value:n,textContent:n})));
+  condPick.addEventListener("change",()=>{const x=COND.find(c=>c[0]===condPick.value);if(x){o.conds.unshift({t:x[0],k:x[2]||"Condizione",b:x[1]});drawConds();put("pg",o);vitSync()}condPick.value=""});
+
+  const levelUp=()=>{
+    const L=Math.min(20,Math.max(1,+o.lvl||1));
+    if(!o.cls){openInfo({t:"Sali di livello",m:"",fav:false,b:[["","Scegli prima la classe."]]});return}
+    if(L>=20){openInfo({t:"Sali di livello",m:"",fav:false,b:[["","Il personaggio è già al livello massimo (20)."]]});return}
+    const N=L+1,die=C[o.cls][0],cm=md(Tt("COS")),avg=Math.max(1,Math.floor(die/2)+1+cm),sb=SUB[o.cls];
+    let hpGain=avg,arch=o.arch;const pts={};
+    const nA=asiN(o.cls,N)-asiN(o.cls,L),used=()=>Object.values(pts).reduce((a,b)=>a+b,0);
+    const rollOut=h("span",{class:"status"}),err=h("div",{class:"status",style:"color:var(--acc)"});
+    const hpIn=h("input",{type:"number",value:hpGain,"aria-label":"PF guadagnati"});
+    hpIn.addEventListener("input",()=>{hpGain=+hpIn.value||0});
+    const parts=[
+      h("div",{class:"bar"},h("h2",{class:"grow"},"Sali al livello "+N),h("button",{class:"btn ghost",textContent:"Annulla",onclick:()=>{modal.hidden=true}})),
+      h("div",{class:"status"},o.cls+" · dado vita d"+die+" · modificatore COS "+sg(cm)),
+      h("h3",{},"Punti ferita"),
+      h("div",{class:"bar"},
+        h("button",{class:"btn ghost",textContent:"Valore medio ("+avg+")",onclick:()=>{hpGain=avg;hpIn.value=hpGain;rollOut.textContent=""}}),
+        h("button",{class:"btn ghost",textContent:"Tira 1d"+die,onclick:()=>{const r=1+Math.floor(Math.random()*die);hpGain=Math.max(1,r+cm);hpIn.value=hpGain;rollOut.textContent="Tiro "+r+" "+sg(cm)+" = "+hpGain}})),
+      h("label",{},"PF guadagnati (modificabili)",hpIn),rollOut];
+    if(nA>0){
+      const left=h("div",{class:"status"}),upd=()=>{left.textContent="Aumenti di caratteristica: hai "+2*nA+" punti da distribuire (ne restano "+(2*nA-used())+"). Un punteggio non supera 20."};upd();
+      parts.push(h("h3",{},"Aumento dei punteggi di caratteristica"),left,h("div",{class:"row"},...AB.map(a=>{const i=h("input",{type:"number",min:0,max:2*nA,value:0,"aria-label":NAMES[a]});i.addEventListener("input",()=>{pts[a]=Math.max(0,+i.value||0);upd()});return h("label",{},NAMES[a]+" ("+Tt(a)+")",i)})));
+    }
+    const newBox=h("div",{class:"status"});
+    const drawNew=()=>{const f=(FEAT[o.cls]||[])[N-1],sf=((sb&&sb.opts[arch])||[]).filter(x=>x[0]===N).map(x=>x[1]);const l=[f,...sf].filter(Boolean);newBox.textContent=l.length?l.join("; "):"Nessun nuovo privilegio di classe a questo livello."};
+    if(sb&&!o.arch&&N>=sb.lv)parts.push(h("h3",{},sb.label),sel_(sb.label,Object.keys(sb.opts),"",v=>{arch=v;drawNew()}));
+    drawNew();
+    parts.push(h("h3",{},"Nuovi privilegi"),newBox,h("p",{class:"status"},"Slot incantesimo, bonus di competenza e risorse si aggiornano da soli. Se questo livello dà uno stile di combattimento, sceglilo nella scheda."),err,
+      h("button",{class:"btn",textContent:"Conferma livello "+N,onclick:()=>{
+        if(nA>0&&used()>2*nA){err.textContent="Hai assegnato più di "+2*nA+" punti.";return}
+        if(sb&&!arch&&N>=sb.lv&&!o.arch){err.textContent="Scegli la sottoclasse ("+sb.label+").";return}
+        o.lvl=N;o.hp=(+o.hp||0)+hpGain;o.hpc=(+o.hpc||0)+hpGain;
+        for(const a of AB)if(pts[a])o.asi[a]=(+o.asi[a]||0)+pts[a];
+        o.arch=arch;put("pg",o);modal.hidden=true;render();scrollTo(0,0)}}));
+    modal.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Sali di livello"},...parts));modal.hidden=false;
+  };
+  const qEl=h("input",{type:"search",placeholder:"Cerca tra le abilità…","aria-label":"Cerca tra le abilità"});
+  function applyQ(){try{const q=qEl.value.trim().toLowerCase();for(const el of [...featEl.children,...resEl.children])el.hidden=!!q&&!el.textContent.toLowerCase().includes(q)}catch(e){}}
+  qEl.addEventListener("input",applyQ);
+  const favBox=h("div",{class:"chips"}),favWrap=h("div",{},h("h3",{},"★ Preferiti"),favBox);
+  favDraw=()=>{const f=Object.values(o.fav||{});favWrap.hidden=!f.length;favBox.replaceChildren(...f.map(x=>h("button",{class:"chip fbtn",textContent:x.t,onclick:()=>openInfo(x)})))};favDraw();
+  const mkCombat=()=>h("div",{class:"sheet"},h("h2",{},"Combattimento"),chips,acEl,h("h3",{},"Attacchi"),atkEl,h("h3",{},"Risorse"),resEl,spBox,h("h3",{},"Condizioni attive"),condEl);
   statusEl=h("div",{class:"status"});
   const P0=h("div",{class:"sheet"},
-    h("div",{class:"bar"},h("button",{class:"btn",textContent:"Riposo breve",onclick:()=>doRest("B")}),h("button",{class:"btn",textContent:"Riposo lungo",onclick:()=>doRest("L")}),restNote),
+    h("div",{class:"bar"},h("button",{class:"btn",textContent:"Riposo breve",onclick:()=>doRest("B")}),h("button",{class:"btn",textContent:"Riposo lungo",onclick:()=>doRest("L")}),h("button",{class:"btn ghost",textContent:"⬆ Sali di livello",onclick:levelUp}),restNote),
     gallery(o,"pg",statusEl),
     h("div",{class:"row"},bound("Nome",o,"name","pg"),bound("Giocatore",o,"player","pg"),sel_("Allineamento",AL,o.align,v=>{o.align=v;later("pg",o)})),
     raceBox,
@@ -481,23 +540,30 @@ function renderChar(o){
     h("h3",{},"Tratti"),traitsEl,
     h("h3",{},"Stile di combattimento"),fsBox,
     h("h3",{},"Attacchi"),h("p",{class:"status"},"Armi e armature si scelgono nella scheda Inventario."),atkEl,
-    h("h3",{},"Condizioni, bonus e malus"),h("p",{class:"status"},"Annota effetti attivi sul personaggio: condizioni, benedizioni, maledizioni, bonus o malus temporanei."),condEl,h("button",{class:"btn ghost",textContent:"+ Aggiungi condizione",onclick:()=>{o.conds.unshift({t:"",k:"Condizione",b:""});drawConds();put("pg",o)}}),
+    h("h3",{},"Condizioni, bonus e malus"),h("p",{class:"status"},"Annota effetti attivi sul personaggio: condizioni, benedizioni, maledizioni, bonus o malus temporanei."),condEl,h("div",{class:"bar"},condPick,h("button",{class:"btn ghost",textContent:"+ Voce libera",onclick:()=>{o.conds.unshift({t:"",k:"Condizione",b:""});drawConds();put("pg",o);vitSync()}})),
     ...(o.backstory?[bound("Backstory (nota precedente)",o,"backstory","pg",{area:1})]:[]),
     bound("Altre note sulle capacità",o,"traits","pg",{area:1}),
     h("h3",{},"Link di approfondimento"),links,
     h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"Aggiungi link",onclick:()=>{o.links.push({t:"",u:""});drawLinks()}})));
   const P1=h("div",{class:"sheet"},h("h2",{},"Diario dell’avventuriero"),bound("Note libere",o,"dnote","pg",{area:1}),diaryEl);
-  const P2=h("div",{class:"sheet"},h("h2",{},"Abilità di classe"),h("p",{class:"status"},"Tocca il nome di un’abilità per leggerne la descrizione. Le risorse si ricaricano con i pulsanti di riposo nella scheda."),resEl,spBox,featBox);
+  const P2=h("div",{class:"sheet"},h("h2",{},"Abilità di classe"),h("p",{class:"status"},"Tocca il nome di un’abilità per leggerne la descrizione. Le risorse si ricaricano con i pulsanti di riposo nella scheda."),h("div",{class:"row"},qEl),favWrap,resEl,spBox,featBox);
   const P3=h("div",{class:"sheet"},h("h2",{},"Equipaggiamento"),eqBox,acEl.cloneNode(false),h("p",{class:"status"},"Gli oggetti equipaggiati sono già contati nel peso: non inserirli anche nello zaino."),h("h2",{},"Zaino"),invBox);
   act.pdf=()=>buildPdf(o,{chips,ui,sk,spBox,spc,lim,acEl,atkEl,featEl,cur:()=>cur});act.json=()=>exportJson(o);
-  calc();return[P0,P1,P2,P3][ctab];
+  calc();return combat?mkCombat():[P0,P1,P2,P3][ctab];
 }
 
 const modal=h("div",{class:"modal",hidden:true});
 modal.addEventListener("click",e=>{if(e.target===modal)modal.hidden=true});
 document.body.append(modal);
 function openInfo(i){
-  modal.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":i.t},h("div",{class:"bar"},h("h2",{class:"grow"},i.t),h("button",{class:"btn ghost",textContent:"Chiudi",onclick:()=>{modal.hidden=true}})),h("div",{class:"status"},i.m||""),...(i.b||[]).map(([l,t])=>h("p",{},l?h("b",{},l+": "):"",t))));
+  let star=null;
+  if(curO&&i.t&&i.fav!==false&&i.m!==undefined){
+    const on=()=>!!(curO.fav&&curO.fav[i.t]);
+    star=h("button",{class:"btn ghost","aria-label":"Preferiti"});
+    const dr=()=>{star.textContent=on()?"★":"☆";star.setAttribute("aria-pressed",String(on()))};dr();
+    star.addEventListener("click",()=>{curO.fav=curO.fav||{};if(on())delete curO.fav[i.t];else curO.fav[i.t]={t:i.t,m:i.m,b:i.b};put("pg",curO);dr();favDraw()});
+  }
+  modal.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":i.t},h("div",{class:"bar"},h("h2",{class:"grow"},i.t),...(star?[star]:[]),h("button",{class:"btn ghost",textContent:"Chiudi",onclick:()=>{modal.hidden=true}})),h("div",{class:"status"},i.m||""),...(i.b||[]).map(([l,t])=>h("p",{},l?h("b",{},l+": "):"",t))));
   modal.hidden=false;
 }
 function featInfo(n,src,lv){
@@ -509,7 +575,7 @@ function featInfo(n,src,lv){
 }
 function subB(x,a){const k=(a||"")+"|"+x[1];const d=DET[k+"@"+x[0]]||DET[k];if(d){const r=d.map(y=>y.slice());if(r[0]&&r[0][0]==="")return r;return[["",x[2]],...r]}return[["",x[2]],...(x[3]||[])]}
 function home(){
-  return h("div",{class:"list"},h("h2",{},"I miei personaggi"),
+  return h("div",{class:"list"},h("img",{class:"cover",src:"copertina.jpg",alt:"",onerror:e=>{e.target.hidden=true}}),h("h2",{},"I miei personaggi"),
     h("div",{class:"bar"},h("button",{class:"btn",textContent:"+ Nuovo personaggio",onclick:()=>{const c=newChar();put("pg",c);sel=c.id;ctab=0;render()}}),h("button",{class:"btn ghost",textContent:"Importa da file",onclick:()=>importInp.click()})),
     ...(data.pg.length?data.pg.map(c=>h("div",{class:"rowc"},
       h("button",{class:"item",onclick:()=>{sel=c.id;ctab=0;render();scrollTo(0,0)}},
@@ -522,11 +588,17 @@ function render(){
   const o=data.pg.find(c=>c.id===sel);
   if(!o){sel=null;nav.hidden=true;app.replaceChildren(home());return}
   nav.hidden=false;
-  nav.replaceChildren(...[["🧙","Scheda"],["📖","Diario"],["✨","Abilità"],["🎒","Inventario"]].map(([i,l],k)=>h("button",{"aria-current":ctab===k,onclick:()=>{ctab=k;render();scrollTo(0,0)}},h("span",{class:"ni"},i),l)));
+  nav.replaceChildren(...[["🧙","Scheda"],["📖","Diario"],["✨","Abilità"],["🎒","Inventario"]].map(([i,l],k)=>h("button",{"aria-current":ctab===k&&!combat,onclick:()=>{ctab=k;combat=false;render();scrollTo(0,0)}},h("span",{class:"ni"},i),l)));
   const panel=renderChar(o);
-  app.replaceChildren(h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"‹ Personaggi",onclick:()=>{sel=null;render()}}),h("h2",{class:"grow"},o.name||"Senza nome"),h("button",{class:"btn ghost",textContent:"Scarica PDF",onclick:()=>act.pdf()}),h("button",{class:"btn ghost",textContent:"Salva file",onclick:()=>act.json()})),statusEl,panel);
+  const vh=h("span",{class:"big"}),va=h("span",{class:"big"}),vc=h("div",{class:"vc"});
+  const vi=h("button",{class:"btn ghost","aria-label":"Ispirazione",onclick:()=>inspAct()});
+  vitSync=()=>{vh.textContent="❤ "+(o.hpc??o.hp)+" / "+o.hp+(o.hpt?" (+"+o.hpt+")":"");va.textContent="🛡 CA "+curAC;vi.textContent=o.insp?"★ Ispirazione":"☆";vi.setAttribute("aria-pressed",String(!!o.insp));vc.replaceChildren(...(o.conds||[]).filter(c=>c.t).map(c=>h("span",{class:"chip",textContent:c.t})))};
+  const vit=h("div",{class:"vit"},h("div",{class:"r"},vh,va,vi),h("div",{class:"r"},...[[-5,"−5"],[-1,"−1"],[1,"+1"],[5,"+5"]].map(([n,t])=>h("button",{class:"btn ghost","aria-label":(n<0?"Danni ":"Cura ")+Math.abs(n),textContent:t,onclick:()=>hpAct(n)}))),vc);
+  vitSync();
+  app.replaceChildren(h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"‹ Personaggi",onclick:()=>{sel=null;render()}}),h("h2",{class:"grow"},o.name||"Senza nome"),h("button",{class:"btn ghost",textContent:"Scarica PDF",onclick:()=>act.pdf()}),h("button",{class:"btn ghost",textContent:"Salva file",onclick:()=>act.json()}),h("button",{class:"btn"+(combat?"":" ghost"),textContent:combat?"Esci dal combattimento":"⚔ Combattimento",onclick:()=>{combat=!combat;render();scrollTo(0,0)}})),statusEl,vit,panel);
 }
 loadLocal();render();
+try{if("serviceWorker" in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}
 (async()=>{try{if(window.claude)dlApi=await claude.use("downloads")}catch(e){}})();
 </script>
 </body>
