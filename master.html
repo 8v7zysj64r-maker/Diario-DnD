@@ -56,11 +56,22 @@ body.present #showui{display:inline-flex}
 /* iniziative */
 #ini{position:fixed;right:0;top:0;bottom:0;width:var(--pw);background:var(--panel);border-left:2px solid var(--brass);z-index:12;display:flex;flex-direction:column;box-shadow:-6px 0 24px rgba(0,0,0,.45)}
 body.noini #ini{display:none}
-#ini header{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
-#ini h2{font-size:1.5rem;flex:1;color:var(--brass);letter-spacing:.02em}
+#ini2{position:fixed;left:0;top:0;bottom:0;width:var(--pw);background:var(--panel);border-right:2px solid var(--brass);z-index:12;display:none;flex-direction:column;box-shadow:6px 0 24px rgba(0,0,0,.45)}
+body.side-l #view{left:var(--pw);right:0}
+body.side-b #view{left:var(--pw);right:var(--pw)}
+body.side-l #ini{right:auto;left:0;border-left:0;border-right:2px solid var(--brass);box-shadow:6px 0 24px rgba(0,0,0,.45)}
+body.side-b #ini2{display:flex}
+#sides{display:none;position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:30;gap:4px;background:rgba(20,28,28,.9);border:1px solid var(--line);border-radius:10px;padding:4px;opacity:.22;transition:opacity .2s}
+#sides:hover,#sides:focus-within{opacity:1}
+body.player #sides{display:flex}
+body.player.side-l #sides{left:calc(50% + var(--pw)/2)}
+body.player.side-r #sides{left:calc(50% - var(--pw)/2)}
+#sides .btn{padding:6px 9px}
+#ini header,#ini2 header{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+#ini h2,#ini2 h2{font-size:1.5rem;flex:1;color:var(--brass);letter-spacing:.02em}
 .round{font-family:Alegreya,serif;font-size:1.15rem;background:var(--bg);border:1px solid var(--brass);border-radius:999px;padding:2px 12px}
 .round b{font-size:1.4rem;color:var(--brass)}
-#list{list-style:none;margin:0;padding:8px;overflow:auto;flex:1;display:grid;gap:6px;align-content:start}
+#list,#ini2 ol{list-style:none;margin:0;padding:8px;overflow:auto;flex:1;display:grid;gap:6px;align-content:start}
 .row{display:grid;grid-template-columns:54px 1fr;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-left:6px solid var(--c,#888);border-radius:10px;padding:5px 8px;transition:transform .15s}
 .row .n{width:100%;height:auto;aspect-ratio:1;border-radius:50%;text-align:center;font-family:Alegreya,serif;font-weight:700;font-size:1.45rem;background:var(--bg);border:2px solid var(--c,#888);color:var(--ink);padding:0}
 .row .nm{background:none;border:0;font-family:Alegreya,serif;font-size:1.35rem;font-weight:700;min-width:0;width:100%;padding:2px 0}
@@ -85,7 +96,8 @@ body.noini #ini{display:none}
 #add .chk input{width:auto}
 .row.cur{background:linear-gradient(90deg,rgba(208,178,90,.28),var(--panel2));border-color:var(--brass);border-left-color:var(--brass);box-shadow:0 0 0 1px var(--brass),0 0 18px rgba(208,178,90,.35);transform:scale(1.025)}
 .row.cur .nm{color:var(--brass);font-size:1.5rem}
-.row.dead{opacity:.45}.row.dead .nm{text-decoration:line-through}
+.row.dead{opacity:.5;filter:grayscale(1)}
+.nmw{display:flex;align-items:center;gap:6px;min-width:0}.nmw .nm{flex:1}.nmw .ic{width:1.5em;height:1.5em;color:var(--mute)}
 .nav{display:grid;grid-template-columns:auto 1fr;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
 #add{display:grid;grid-template-columns:1fr 54px 90px;gap:6px;padding:10px 12px;border-top:1px solid var(--line)}
 #add input,#add select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0;width:100%}
@@ -114,6 +126,16 @@ body.player #empty .card{pointer-events:none}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;align-items:center}
 .keys span{color:var(--mute)}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.stats{grid-column:1/3;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.stats .ic{width:1.05em;height:1.05em;color:var(--mute)}
+.stats input.st{width:46px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 4px;text-align:center;font-size:.95rem;-moz-appearance:textfield;appearance:textfield}
+.stats input.st::-webkit-inner-spin-button,#add input::-webkit-inner-spin-button{display:none}
+.stats .sl{color:var(--mute)}
+.stats .btn{padding:3px 9px;font-weight:700}
+.stats .dm{display:flex;gap:5px;margin-left:auto}
+.hb{grid-column:1/3;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.hb i{display:block;height:100%;transition:width .2s}
+#add .two{grid-column:1/4;display:flex;gap:6px}
 kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:.85rem}
 </style>
 </head>
@@ -133,6 +155,7 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
     <select id="a-type" aria-label="Tipo"><option value="pg">Eroe</option><option value="ne">Nemico</option><option value="al">Alleato</option></select>
     <input id="a-qty" type="number" min="1" max="20" value="1" aria-label="Quantità" title="Quantità">
     <input id="a-init" type="number" step="any" placeholder="Init." aria-label="Iniziativa" title="Iniziativa">
+    <div class="two"><input id="a-hp" type="number" min="0" placeholder="PF" aria-label="Punti ferita" title="Punti ferita"><input id="a-ac" type="number" min="0" placeholder="CA" aria-label="Classe armatura" title="Classe armatura"></div>
     <label class="chk"><input id="a-hide" type="checkbox"><span>Nascosto ai giocatori</span></label>
     <button class="btn gold" type="submit" id="a-btn"></button>
   </form>
@@ -140,6 +163,8 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
 </aside>
 <button class="btn" id="showui" aria-label="Mostra i comandi"></button>
 <div id="toast" role="status"></div>
+<aside id="ini2" aria-hidden="true"></aside>
+<div id="sides" role="group" aria-label="Dove mostrare le iniziative"></div>
 <div class="modal" id="modal" hidden></div>
 <input type="file" id="file" accept="image/*" multiple hidden>
 <div id="drop"><div>Rilascia qui le mappe per caricarle</div></div>
@@ -170,6 +195,11 @@ const ICONS={
  check:'<path d="M5 12l5 5 9-10"/>',
  pin:'<path d="M12 21s-6-5.500-6-10.500a6 6 0 0112 0C18 15.500 12 21 12 21z"/><circle cx="12" cy="10.500" r="2.200"/>',
  help:'<circle cx="12" cy="12" r="9.500"/><path d="M9.300 9.300a2.800 2.800 0 115 1.700c-.8.900-2.300 1.300-2.300 2.800M12 17.200v.1"/>',
+ heart:'<path d="M12 20.500S4.500 16 4.500 10.200A4 4 0 0112 8a4 4 0 017.500 2.200C19.500 16 12 20.500 12 20.500z"/>',
+ shield:'<path d="M12 3l7 3v6c0 4.500-3 7.500-7 9-4-1.500-7-4.500-7-9V6z"/>',
+ sidel:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+ sider:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
+ sideb:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M16 4v16"/>',
  tv:'<rect x="3" y="4.500" width="18" height="12" rx="2"/><path d="M8 20.500h8M12 16.500v4"/>'
 };
 const ico=k=>{const e=document.createElementNS("http://www.w3.org/2000/svg","svg");e.setAttribute("viewBox","0 0 24 24");e.setAttribute("class","ic");e.setAttribute("aria-hidden","true");e.innerHTML=ICONS[k]||"";return e};
@@ -417,8 +447,8 @@ function openHelp(){
         h("div",{},h("h3",{},"1 · Prepara la serata"),h("ul",{},h("li",{},"Carica le mappe con “Carica mappa”, trascinandole sulla pagina o con Ctrl+V. Ne puoi scegliere molte insieme."),h("li",{},"“Scene” le raccoglie tutte: tocca una miniatura per aprirla. Nebbia e griglia restano salvate per ogni mappa."),h("li",{},"Aggiungi eroi, alleati e nemici nel pannello Iniziativa a destra."))),
         h("div",{},h("h3",{},"2 · Nebbia"),h("ul",{},h("li",{},h("b",{},"Rivela"),": trascina per togliere la nebbia. “Copri” la rimette."),h("li",{},h("b",{},"Cella"),": un tocco rivela una casella (Maiusc la ricopre). Serve la griglia attiva."),h("li",{},"“Rivela tutto” e “Copri tutto” cambiano l’intera mappa. “Annulla” torna indietro di un gesto."))),
         h("div",{},h("h3",{},"3 · Griglia"),h("ul",{},h("li",{},"Scegli lo strumento Griglia: regola dimensione, colore e posizione, o trascina sulla mappa per allinearla."),h("li",{},"Quando è giusta, premi “Blocca”: così non si sposta per errore."))),
-        h("div",{},h("h3",{},"4 · Iniziative"),h("ul",{},h("li",{},"“Turno successivo” fa avanzare il round."),h("li",{},"L’occhio sul combattente lo nasconde ai giocatori: gli eroi lo vedono solo quando lo riveli."),h("li",{},"Il teschio lo mette fuori combattimento, il cestino lo toglie. “Nuovo scontro” tiene solo gli eroi."))),
-        h("div",{},h("h3",{},"5 · Finestra giocatori"),h("ul",{},h("li",{},"Premi “Finestra giocatori”, trascina la finestra sulla TV e premi F per lo schermo intero."),h("li",{},"Vedono la mappa, la nebbia nera, la griglia e solo le iniziative che hai mostrato. Seguono il tuo zoom."),h("li",{},"Le due finestre devono stare nello stesso browser e nello stesso computer. Consenti i popup."))),
+        h("div",{},h("h3",{},"4 · Iniziative"),h("ul",{},h("li",{},"“Turno successivo” fa avanzare il round."),h("li",{},h("b",{},"PF e CA"),": scrivili quando aggiungi un combattente, o sulla sua scheda. Per un colpo scrivi il numero accanto a ± e tocca − (danno) o + (cura). Solo tu li vedi: non arrivano mai alla finestra giocatori né alla vista giocatori."),h("li",{},"L’occhio sul combattente lo nasconde ai giocatori: gli eroi lo vedono solo quando lo riveli."),h("li",{},"Il teschio lo mette fuori combattimento, il cestino lo toglie. “Nuovo scontro” tiene solo gli eroi."))),
+        h("div",{},h("h3",{},"5 · Finestra giocatori"),h("ul",{},h("li",{},"Premi “Finestra giocatori”, trascina la finestra sulla TV e premi F per lo schermo intero."),h("li",{},"Vedono la mappa, la nebbia nera, la griglia e solo le iniziative che hai mostrato. Seguono il tuo zoom."),h("li",{},"In alto nella loro finestra c’è un piccolo selettore (tenue finché non lo sfiori): possono mettere le iniziative a sinistra, a destra o su entrambi i lati."),h("li",{},"Le due finestre devono stare nello stesso browser e nello stesso computer. Consenti i popup."))),
         h("div",{},h("h3",{},"6 · Puntatore"),h("ul",{},h("li",{},"Con lo strumento Puntatore i giocatori vedono un punto che ti segue. Un clic lancia un segnale luminoso."),h("li",{},"Non modifica nulla sulla mappa.")))),
       h("div",{},h("h3",{},"Scorciatoie da tastiera"),h("div",{class:"keys"},...keys.flatMap(([k,t])=>K(k,t)))),
       h("div",{class:"help"},"Mappe, nebbia, griglia e iniziative restano salvate su questo browser. “Vista giocatori” (H) nasconde i comandi sul tuo schermo; per uno schermo separato usa la finestra giocatori."))));
@@ -462,9 +492,25 @@ $("#modal").addEventListener("pointerdown",e=>{if(e.target===$("#modal"))$("#mod
 /* ---------- iniziative ---------- */
 const TYPES={pg:["Eroe","var(--pg)"],ne:["Nemico","var(--ne)"],al:["Alleato","var(--al)"]};
 let ini=(()=>{try{const o=JSON.parse(lsGet("tavolo-ini")||"null");if(o&&Array.isArray(o.list))return o}catch(e){}return{list:[],turn:null,round:1}})();
-const sendIni=()=>{const vis=ini.list.filter(c=>!c.hide);send({t:"ini",ini:{list:vis,turn:vis.some(c=>c.id===ini.turn)?ini.turn:null,round:ini.round}})};
+const sendIni=()=>{const vis=ini.list.filter(c=>!c.hide).map(c=>({id:c.id,name:c.name,init:c.init,type:c.type,dead:c.dead,hide:false}));send({t:"ini",ini:{list:vis,turn:vis.some(c=>c.id===ini.turn)?ini.turn:null,round:ini.round}})};
 const saveIni=()=>{lsSet("tavolo-ini",JSON.stringify(ini));sendIni()};
 const sorted=()=>ini.list.map((c,i)=>[c,i]).sort((a,b)=>(b[0].init-a[0].init)||(a[1]-b[1])).map(x=>x[0]);
+function hpDead(c){
+  if(c.hp===0&&!c.dead){c.dead=true;c.z=true}
+  else if(c.hp>0&&c.dead&&c.z){c.dead=false;c.z=false}
+}
+function statsRows(c){
+  const num=(v,cls,label,fn)=>{const i=h("input",{class:"st "+cls,type:"number",step:1,value:v===undefined?"":v,placeholder:"–","aria-label":label});i.addEventListener("change",()=>{fn(i.value===""?undefined:Math.max(0,parseFloat(i.value)||0));hpDead(c);saveIni();drawIni()});return i};
+  const d=h("input",{class:"st",type:"number",min:0,placeholder:"±","aria-label":"Valore di danni o cure",title:"Scrivi un numero e poi tocca − (danno) o + (cura)"});
+  const apply=sg=>()=>{const n=Math.abs(parseFloat(d.value));if(!n){d.focus();return}if(c.hp===undefined){toast("Scrivi prima i PF di "+c.name);return}
+    let v=c.hp+sg*n;v=Math.max(0,v);if(c.mx!==undefined)v=Math.min(c.mx,v);c.hp=v;hpDead(c);saveIni();drawIni();if(v===0)toast(c.name+" è a 0 PF: fuori combattimento")};
+  const minus=h("button",{class:"btn",type:"button","aria-label":"Danno",title:"Danno"},"−"),plus=h("button",{class:"btn",type:"button","aria-label":"Cura",title:"Cura"},"+");
+  minus.addEventListener("click",apply(-1));plus.addEventListener("click",apply(1));
+  d.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();apply(-1)()}});
+  const out=[h("div",{class:"stats"},ico("heart"),num(c.hp,"hp","PF attuali di "+c.name,v=>{c.hp=v;if(v!==undefined&&c.mx===undefined)c.mx=v}),h("span",{class:"sl"},"/"),num(c.mx,"mx","PF massimi di "+c.name,v=>c.mx=v),ico("shield"),num(c.ac,"ac","CA di "+c.name,v=>c.ac=v),h("span",{class:"dm"},d,minus,plus))];
+  if(c.hp!==undefined&&c.mx>0){const p=Math.max(0,Math.min(1,c.hp/c.mx));out.push(h("div",{class:"hb"},h("i",{style:"width:"+Math.round(p*100)+"%;background:"+(p>.5?"var(--pg)":p>.25?"var(--brass)":"var(--ne)")})))}
+  return out;
+}
 function drawIni(){
   const pres=document.body.classList.contains("present"),L=sorted(),ol=$("#list");$("#rd").textContent=ini.round;
   const show=pres?L.filter(c=>!c.hide):L;
@@ -483,11 +529,12 @@ function drawIni(){
     if(!pres){
       const eye=h("button",{class:"btn "+(c.hide?"gold":"ghost"),type:"button",title:c.hide?"Mostra ai giocatori":"Nascondi ai giocatori","aria-label":c.hide?"Mostra ai giocatori":"Nascondi ai giocatori"},ico(c.hide?"eyeoff":"eye"));
       eye.addEventListener("click",()=>{c.hide=!c.hide;saveIni();drawIni();toast(c.hide?c.name+" è nascosto ai giocatori":c.name+" ora è visibile ai giocatori")});
-      const dead=h("button",{class:"btn ghost",type:"button",title:c.dead?"Rimetti in gioco":"Fuori combattimento","aria-label":"Fuori combattimento"},ico("skull"));dead.addEventListener("click",()=>{c.dead=!c.dead;saveIni();drawIni()});
+      const dead=h("button",{class:"btn ghost",type:"button",title:c.dead?"Rimetti in gioco":"Fuori combattimento","aria-label":"Fuori combattimento"},ico("skull"));dead.addEventListener("click",()=>{c.dead=!c.dead;c.z=false;saveIni();drawIni()});
       const rm=h("button",{class:"btn ghost",type:"button","aria-label":"Rimuovi"},ico("trash"));rm.addEventListener("click",()=>{if(ini.turn===c.id)ini.turn=null;ini.list=ini.list.filter(x=>x!==c);saveIni();drawIni()});
       sub.append(h("div",{class:"acts"},eye,dead,rm));
     }
-    return h("li",{class:"row"+(cur?" cur":"")+(c.dead?" dead":"")+(c.hide&&!pres?" hide":""),style:"--c:"+t[1]},n,nm,sub)}));
+    const extra=pres?[]:statsRows(c);
+    return h("li",{class:"row"+(cur?" cur":"")+(c.dead?" dead":"")+(c.hide&&!pres?" hide":""),style:"--c:"+t[1]},n,c.dead?h("div",{class:"nmw"},nm,ico("skull")):nm,sub,...extra)}));
   const cu=ol.querySelector(".cur");if(cu)cu.scrollIntoView({block:"nearest",behavior:"smooth"});
 }
 function step(dir){
@@ -502,12 +549,13 @@ $("#a-btn").append("Aggiungi");
 const hideDef=()=>{$("#a-hide").checked=$("#a-type").value==="ne"};$("#a-type").addEventListener("change",hideDef);
 $("#add").addEventListener("submit",e=>{
   e.preventDefault();const name=$("#a-name").value.trim()||TYPES[$("#a-type").value][0],q=Math.max(1,Math.min(20,parseInt($("#a-qty").value)||1)),init=parseFloat($("#a-init").value);
+  const hp0=parseFloat($("#a-hp").value),ac0=parseFloat($("#a-ac").value);
   if(isNaN(init)){toast("Scrivi l’iniziativa");$("#a-init").focus();return}
-  for(let i=1;i<=q;i++)ini.list.push({id:uid(),name:q>1?name+" "+i:name,init,type:$("#a-type").value,dead:false,hide:$("#a-hide").checked});
-  saveIni();drawIni();$("#a-name").value="";$("#a-init").value="";$("#a-qty").value=1;$("#a-name").focus();
+  for(let i=1;i<=q;i++)ini.list.push({id:uid(),name:q>1?name+" "+i:name,init,type:$("#a-type").value,dead:false,hide:$("#a-hide").checked,hp:isNaN(hp0)?undefined:hp0,mx:isNaN(hp0)?undefined:hp0,ac:isNaN(ac0)?undefined:ac0});
+  saveIni();drawIni();$("#a-name").value="";$("#a-init").value="";$("#a-hp").value="";$("#a-ac").value="";$("#a-qty").value=1;$("#a-name").focus();
 });
 $("#newfight").append(ico("swords"),"Nuovo scontro");$("#hideini").append(ico("panel"),"Nascondi");
-$("#newfight").addEventListener("click",()=>{ini.turn=null;ini.round=1;ini.list=ini.list.filter(c=>c.type==="pg").map(c=>Object.assign(c,{dead:false}));saveIni();drawIni();toast("Scontro azzerato: restano gli eroi")});
+$("#newfight").addEventListener("click",()=>{ini.turn=null;ini.round=1;ini.list=ini.list.filter(c=>c.type==="pg").map(c=>Object.assign(c,{dead:false,z:false}));saveIni();drawIni();toast("Scontro azzerato: restano gli eroi")});
 $("#hideini").addEventListener("click",()=>{document.body.classList.add("noini");lsSet("tavolo-noini","1");if(!manual)fit();drawBars()});
 
 /* ---------- tastiera ---------- */
@@ -570,6 +618,15 @@ if(PLAYER){
   };
   if(BC){BC.onmessage=ev=>{chain=chain.then(()=>pHandle(ev.data)).catch(()=>{})};
     const hello=()=>{if(got)return;try{BC.postMessage({t:"hello"})}catch(e){}};hello();setInterval(hello,1500)}
+  const SIDES=[["l","sidel","Iniziative a sinistra"],["r","sider","Iniziative a destra"],["b","sideb","Iniziative su entrambi i lati"]];
+  let side="r";try{const v=localStorage.getItem("tavolo-lato");if(v&&"lrb".includes(v))side=v}catch(e){}
+  const mirror=()=>{if(side!=="b")return;const c=$("#ini").cloneNode(true);c.querySelectorAll("[id]").forEach(e=>e.removeAttribute("id"));$("#ini2").replaceChildren(...c.children)};
+  {const _d=drawIni;drawIni=function(){_d();mirror()}}
+  const setSide=v=>{side=v;try{localStorage.setItem("tavolo-lato",v)}catch(e){}
+    document.body.classList.remove("side-l","side-r","side-b");document.body.classList.add("side-"+v);
+    $("#sides").replaceChildren(...SIDES.map(([k,ic,t])=>{const b=h("button",{class:"btn",type:"button",title:t,"aria-label":t,"aria-pressed":String(k===v)},ico(ic));b.addEventListener("click",()=>setSide(k));return b}));
+    drawIni();fit()};
+  setSide(side);
   ini={list:[],turn:null,round:1};drawIni();
 }else{
 if(BC)BC.onmessage=ev=>{if(ev.data&&ev.data.t==="hello")syncAll()};
