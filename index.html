@@ -45,6 +45,10 @@ label{display:grid;gap:3px;color:var(--mute);font-size:.9rem}
 input,textarea,select{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:7px 9px;width:100%;color:var(--ink)}
 textarea{min-height:110px;resize:vertical;line-height:1.5}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.ritr{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ritr .pic{width:104px;height:104px;border-radius:50%;border:3px solid var(--brass);overflow:hidden;display:grid;place-items:center;background:var(--panel);cursor:pointer;padding:0;color:var(--brass);box-shadow:0 0 0 3px var(--panel),0 0 0 4px color-mix(in srgb,var(--brass) 55%,transparent)}
+.ritr .pic img{width:100%;height:100%;object-fit:cover;display:block}
+.ritr .pic .ic{width:48px;height:48px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
 .stat{border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;display:grid;gap:2px}
 .stat input{text-align:center;font-family:Alegreya,serif;font-weight:700}
@@ -264,6 +268,21 @@ async function shrink(file){
   cv.getContext("2d").drawImage(bm,0,0,cv.width,cv.height);
   return{d:cv.toDataURL("image/jpeg",.75),w:cv.width,h:cv.height};
 }
+async function shrinkSq(file){
+  const bm=await createImageBitmap(file),m=Math.min(bm.width,bm.height),N=Math.min(360,m);
+  const cv=document.createElement("canvas");cv.width=N;cv.height=N;
+  cv.getContext("2d").drawImage(bm,(bm.width-m)/2,(bm.height-m)/4>0?Math.max(0,(bm.height-m)/4):0,m,m,0,0,N,N);
+  return cv.toDataURL("image/jpeg",.82);
+}
+function portraitBox(o,st){
+  const inp=h("input",{type:"file",accept:"image/*",hidden:true}),box=h("div",{class:"ritr"});
+  const draw=()=>{
+    const pic=h("button",{class:"pic",type:"button","aria-label":"Scegli il ritratto di "+(o.name||"questo personaggio"),title:"Tocca per scegliere il ritratto",onclick:()=>inp.click()},o.ritr?h("img",{src:o.ritr,alt:"Ritratto"}):ico("helm"));
+    box.replaceChildren(pic,h("div",{},h("div",{class:"status"},o.ritr?"Ritratto dell’eroe. Compare nel Tavolo del Master.":"Aggiungi il volto del tuo eroe: comparirà nel Tavolo del Master."),h("div",{class:"bar"},h("button",{class:"btn ghost",type:"button",textContent:o.ritr?"Cambia ritratto":"Scegli ritratto",onclick:()=>inp.click()}),o.ritr?confirmBtn("Togli",()=>{delete o.ritr;draw();put("pg",o)}):"")));
+  };
+  inp.addEventListener("change",async()=>{const f=inp.files[0];inp.value="";if(!f)return;try{o.ritr=await shrinkSq(f);draw();put("pg",o)}catch(e){st.textContent="Immagine non caricata"}});
+  draw();return h("div",{},box,inp);
+}
 function gallery(o,c,st,root){
   const box=h("div",{class:"gal"});
   const draw=()=>box.replaceChildren(...o.imgs.map((m,i)=>h("figure",{},h("img",{src:m.d,alt:"Immagine "+(i+1)}),
@@ -435,7 +454,7 @@ function renderChar(o){
     const fsd=FS[o.cls],fl=(fsd&&L>=fsd.lv?[o.fs[0],o.cls==="Guerriero"&&o.arch==="Campione"&&L>=10?o.fs[1]:""]:[]).filter(Boolean);fsUpdate(L);
     let ac=a?a.c+(a.t==="L"?dx:a.t==="M"?Math.min(2,dx):0):10+dx+(o.cls==="Barbaro"?md(T("COS")):o.cls==="Monaco"?md(T("SAG")):0);
     if(o.eq.shield)ac+=2;if(a&&fl.includes("Difesa"))ac+=1;ac+=+o.acb||0;
-    curAC=ac;it.push("Classe Armatura "+ac);
+    curAC=ac;if(o.acv!==ac){o.acv=ac;later("pg",o)}it.push("Classe Armatura "+ac);
     if(a&&a.s)it.push("Svantaggio a Furtività");
     if(a&&a.f&&T("FOR")<a.f)it.push("Forza insufficiente: velocità −3 m");
     let n=1;if(["Barbaro","Guerriero","Monaco","Paladino","Ranger"].includes(o.cls)&&L>=5)n=2;
@@ -591,6 +610,7 @@ function renderChar(o){
   statusEl=h("div",{class:"status"});
   const P0=h("div",{class:"sheet"},
     h("div",{class:"bar"},h("button",{class:"btn",textContent:"Riposo breve",onclick:()=>doRest("B")}),h("button",{class:"btn",textContent:"Riposo lungo",onclick:()=>doRest("L")}),h("button",{class:"btn ghost",textContent:"⬆ Sali di livello",onclick:levelUp}),restNote),
+    portraitBox(o,statusEl),
     gallery(o,"pg",statusEl),
     h("div",{class:"row"},bound("Nome",o,"name","pg"),bound("Giocatore",o,"player","pg"),sel_("Allineamento",AL,o.align,v=>{o.align=v;later("pg",o)})),
     raceBox,

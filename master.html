@@ -72,10 +72,10 @@ body.player.side-r #sides{left:calc(50% - var(--pw)/2)}
 .round{font-family:Alegreya,serif;font-size:1.15rem;background:var(--bg);border:1px solid var(--brass);border-radius:999px;padding:2px 12px}
 .round b{font-size:1.4rem;color:var(--brass)}
 #list,#ini2 ol{list-style:none;margin:0;padding:8px;overflow:auto;flex:1;display:grid;gap:6px;align-content:start}
-.row{display:grid;grid-template-columns:54px 1fr;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-left:6px solid var(--c,#888);border-radius:10px;padding:5px 8px;transition:transform .15s}
+.row{display:grid;grid-template-columns:54px minmax(0,1fr);min-width:0;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-left:6px solid var(--c,#888);border-radius:10px;padding:5px 8px;transition:transform .15s}
 .row .n{width:100%;height:auto;aspect-ratio:1;border-radius:50%;text-align:center;font-family:Alegreya,serif;font-weight:700;font-size:1.45rem;background:var(--bg);border:2px solid var(--c,#888);color:var(--ink);padding:0}
 .row .nm{background:none;border:0;font-family:Alegreya,serif;font-size:1.35rem;font-weight:700;min-width:0;width:100%;padding:2px 0}
-.row .sub{grid-column:2;display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:0}
+.row .sub{grid-column:2;flex-wrap:wrap;display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:0}
 .row .sub:empty{display:none}
 .row .acts{display:flex;gap:4px;margin-left:auto}
 .row .acts .btn{padding:3px 6px}
@@ -136,12 +136,66 @@ body.player #empty .card{pointer-events:none}
 .hb{grid-column:1/3;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
 .hb i{display:block;height:100%;transition:width .2s}
 #add .two{grid-column:1/4;display:flex;gap:6px}
+.av{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--c,#888);flex:none;background:var(--bg);display:block}
+.row.cur .av{width:46px;height:46px;border-color:var(--brass)}
+.avb{padding:0;border:0;background:none;display:block;border-radius:50%;cursor:pointer;flex:none}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.pcard{display:grid;gap:4px;justify-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 6px 8px;position:relative}
+.pcard.on{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
+.pcard .pimg{width:84px;height:84px;border-radius:50%;object-fit:cover;border:2px solid var(--brass);cursor:pointer;background:var(--bg);padding:0}
+.pcard .nm2{font-size:.9rem;text-align:center;word-break:break-word}
+.pcard .x{position:absolute;right:3px;top:3px;padding:2px 5px}
+.lrow{display:grid;grid-template-columns:52px 1fr auto;gap:8px;align-items:start;padding:6px 8px;border-bottom:1px solid var(--line)}
+.lrow time{color:var(--mute);font-variant-numeric:tabular-nums}
+.lrow.nota{background:rgba(208,178,90,.1)}
+.lrow.nota span:before{content:"Nota · ";color:var(--brass);font-weight:700}
+.lrow.mappa span{color:var(--al)}.lrow.pf span{color:var(--ne)}.lrow.scontro span{color:var(--brass)}
+.lday{font-family:Alegreya,serif;color:var(--brass);font-size:1.1rem;padding:10px 8px 2px;text-transform:capitalize}
+.llist{max-height:48vh;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--bg);-webkit-user-select:text;user-select:text}
+.lform{display:flex;gap:6px}.lform input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;-webkit-user-select:text;user-select:text}
+#act{position:absolute;inset:0;z-index:20;display:none;pointer-events:none;overflow:hidden}
+#act.on{display:block}
+#act .shade{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(5,8,10,.42),rgba(5,8,10,.9));opacity:0;transition:opacity .7s}
+#act.in .shade{opacity:1}
+#act .cast{position:absolute;left:0;right:0;bottom:27%;display:flex;justify-content:center;align-items:flex-end;gap:2vw;padding:0 3vw}
+#act .fig{flex:0 1 230px;max-width:21%;min-width:70px;aspect-ratio:3/4;border:3px solid var(--brass);border-radius:999px 999px 14px 14px;overflow:hidden;position:relative;background:#101616;box-shadow:0 14px 44px rgba(0,0,0,.75),0 0 0 4px rgba(0,0,0,.5);opacity:0;transform:translateY(70px) scale(.94);transition:filter .45s,box-shadow .45s}
+#act.in .fig{animation:figin .85s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--i)*.2s + .3s)}
+#act .fig img{width:100%;height:100%;object-fit:cover;display:block;animation:breath 6s ease-in-out infinite alternate}
+#act .fig .pl{position:absolute;left:0;right:0;bottom:0;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,.9));padding:26px 6px 9px;font-family:Alegreya,Georgia,serif;font-weight:700;font-size:clamp(14px,1.7vw,24px);color:var(--brass)}
+#act .fig.talk{box-shadow:0 14px 44px rgba(0,0,0,.75),0 0 44px 8px rgba(208,178,90,.6);filter:brightness(1.08)}
+#act .fig.dim{filter:brightness(.42) saturate(.55)}
+#act .cap{position:absolute;left:50%;bottom:4.5%;width:min(90%,1150px);transform:translate(-50%,16px);background:rgba(12,18,18,.94);border:2px solid var(--brass);border-radius:16px;padding:14px 26px 20px;box-shadow:0 10px 50px rgba(0,0,0,.7);opacity:0;transition:opacity .45s,transform .45s}
+#act .cap.on{opacity:1;transform:translate(-50%,0)}
+#act .who{font-family:Alegreya,Georgia,serif;color:var(--brass);font-weight:700;font-size:clamp(16px,1.9vw,28px);margin-bottom:2px;letter-spacing:.03em}
+#act .cap p{margin:0;font-family:Alegreya,Georgia,serif;font-size:clamp(20px,2.8vw,44px);line-height:1.3;min-height:1.3em;color:var(--ink)}
+#act .cap p.typing:after{content:"▍";color:var(--brass);margin-left:2px;animation:bl 1s steps(1) infinite}
+@keyframes figin{to{opacity:1;transform:none}}
+@keyframes breath{from{transform:scale(1)}to{transform:scale(1.06)}}
+@keyframes bl{50%{opacity:0}}
+#stagebar{position:fixed;left:calc((100vw - var(--pw))/2);transform:translateX(-50%);bottom:14px;z-index:45;width:min(880px,calc(100vw - var(--pw) - 28px));background:rgba(14,20,20,.97);border:2px solid var(--brass);border-radius:14px;padding:10px 12px;display:grid;gap:8px;box-shadow:0 10px 40px rgba(0,0,0,.7)}
+body.noini #stagebar{left:50%;width:min(880px,calc(100vw - 28px))}
+#stagebar[hidden],body.player #stagebar{display:none!important}
+#stagebar .pv{color:var(--ink);font-family:Alegreya,serif;font-size:1.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stagebar .row2{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#stagebar input{flex:1;min-width:160px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;-webkit-user-select:text;user-select:text}
+.scn{display:grid;grid-template-columns:200px 1fr;gap:14px}
+@media(max-width:700px){.scn{grid-template-columns:1fr}}
+.scn .lst{display:grid;gap:6px;align-content:start}
+.scn .lst .btn{justify-content:flex-start;white-space:normal;text-align:left}
+.scn .ed{display:grid;gap:8px;align-content:start}
+.scn textarea,.scn .ed input.t{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;-webkit-user-select:text;user-select:text;min-height:0}
+.scn textarea{min-height:160px;font-size:1rem;resize:vertical}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:grid;gap:2px;justify-items:center;background:var(--panel2);border:2px solid var(--line);border-radius:12px;padding:6px;cursor:pointer;width:84px;font-size:.8rem}
+.chip img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+.chip[aria-pressed=true]{border-color:var(--brass);background:rgba(208,178,90,.15)}
 kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:.85rem}
 </style>
 </head>
 <body>
 <div id="view">
   <div id="stage"><img id="map" alt=""><div id="grid"></div><canvas id="fog"></canvas><div id="ptr"><i></i></div></div>
+  <div id="act" aria-live="polite"><div class="shade"></div><div class="cast"></div><div class="cap"><div class="who"></div><p></p></div></div>
   <div id="empty"><div class="card"><h1>Tavolo del Master</h1><p>Carica una o più mappe: copriranno tutto lo schermo. Poi aggiungi griglia e nebbia.</p><div><button class="btn gold big" id="e-load"></button></div><p class="help">Trascina qui le immagini, incollale con Ctrl+V o scegli più file insieme.</p></div></div>
 </div>
 <div id="ring"></div>
@@ -159,12 +213,15 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
     <label class="chk"><input id="a-hide" type="checkbox"><span>Nascosto ai giocatori</span></label>
     <button class="btn gold" type="submit" id="a-btn"></button>
   </form>
+  <div class="nav edit-only" style="grid-template-columns:1fr;padding-bottom:0"><button class="btn ghost" id="impro"></button></div>
+  <input type="file" id="impf" accept=".json,application/json" hidden>
   <div class="nav edit-only" style="grid-template-columns:1fr 1fr"><button class="btn ghost" id="newfight"></button><button class="btn ghost" id="hideini"></button></div>
 </aside>
 <button class="btn" id="showui" aria-label="Mostra i comandi"></button>
 <div id="toast" role="status"></div>
 <aside id="ini2" aria-hidden="true"></aside>
 <div id="sides" role="group" aria-label="Dove mostrare le iniziative"></div>
+<div id="stagebar" hidden></div>
 <div class="modal" id="modal" hidden></div>
 <input type="file" id="file" accept="image/*" multiple hidden>
 <div id="drop"><div>Rilascia qui le mappe per caricarle</div></div>
@@ -200,6 +257,9 @@ const ICONS={
  sidel:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
  sider:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
  sideb:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M16 4v16"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.400 3.600-7 8-7s8 2.600 8 7"/>',
+ book:'<path d="M12 6.500C10 5 7 4.500 4 4.500v14c3 0 6 .5 8 2 2-1.500 5-2 8-2v-14c-3 0-6 .5-8 2z"/><path d="M12 6.500v14"/>',
+ film:'<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M6 8l3-4M11 8l3-4M16 8l3-4"/>',
  tv:'<rect x="3" y="4.500" width="18" height="12" rx="2"/><path d="M8 20.500h8M12 16.500v4"/>'
 };
 const ico=k=>{const e=document.createElementNS("http://www.w3.org/2000/svg","svg");e.setAttribute("viewBox","0 0 24 24");e.setAttribute("class","ic");e.setAttribute("aria-hidden","true");e.innerHTML=ICONS[k]||"";return e};
@@ -252,7 +312,7 @@ async function newScenes(files){
       await dbPut(o);if(!first)first=o;n++;
     }catch(e){bad++}
   }
-  if(first)await openScene(first);
+  if(first){await openScene(first);logEv("Nuova mappa caricata: "+first.name+(n>1?" (e altre "+(n-1)+")":""),"mappa")}
   toast(n?(n===1?"Mappa caricata: "+first.name:n+" mappe caricate: le trovi tutte in “Scene”")+(bad?" ("+bad+" non leggibili)":""):"Immagine non leggibile: prova con JPG, PNG o WebP",4000);
 }
 const newScene=f=>newScenes([f]);
@@ -283,7 +343,7 @@ function applyView(){stage.style.transform="translate("+tx0+"px,"+ty0+"px) scale
 let vq=0;
 function sendView(){if(PLAYER||vq||!iw)return;vq=requestAnimationFrame(()=>{vq=0;send({t:"view",x:-tx0/zoom,y:-ty0/zoom,w:view.clientWidth/zoom,h:view.clientHeight/zoom})})}
 async function syncAll(){
-  if(PLAYER)return;
+  if(PLAYER)return;sendStage();
   if(!sc){send({t:"empty"});sendIni();return}
   const fb=await new Promise(r=>fogC.toBlob(r,"image/png"));
   send({t:"scene",img:sc.img,fog:fb,grid:sc.grid});sendIni();sendView();
@@ -405,6 +465,8 @@ function drawBars(){
     btn("eye","Vista giocatori",()=>setPresent(true),{title:"Nasconde i comandi e rende la nebbia opaca (H)"}),
     btn("tv","Finestra giocatori",openPlayers,{title:"Apre la finestra da portare sulla TV o sul secondo schermo"}),
     btn("expand","Schermo intero",toggleFs,{title:"Schermo intero (F)"}),
+    btn("film","Palcoscenico",openStage,{title:"Palcoscenico: mostra ai giocatori volti e parole (S)"}),
+    btn("book","Diario di sessione",openLog,{title:"Registro della serata (D)"}),
     btn("help","Guida",openHelp,{title:"Istruzioni e comandi (?)"}),
     btn("panel","Iniziativa",()=>{document.body.classList.toggle("noini");lsSet("tavolo-noini",document.body.classList.contains("noini")?"1":"");if(!manual)fit()},{title:"Mostra o nascondi il pannello (I)"}));
   const opt=h("div",{class:"bar opt"});
@@ -439,7 +501,7 @@ $("#e-load").append(ico("image"),"Carica una mappa");$("#e-load").addEventListen
 function openHelp(){
   const m=$("#modal");m.hidden=false;
   const K=(k,t)=>[h("kbd",{},k),h("span",{},t)];
-  const keys=[["1","Rivela la nebbia"],["2","Rimetti la nebbia"],["3","Cella (una casella alla volta)"],["4","Sposta e ingrandisci"],["5","Griglia"],["6","Puntatore"],["Ctrl+Z","Annulla sulla nebbia"],["G","Mostra o nascondi la griglia"],["L","Blocca o sblocca la griglia"],["+ / −","Ingrandisci o riduci"],["[ / ]","Pennello più piccolo o più grande"],["N / P","Turno successivo o precedente"],["I","Mostra o nascondi le iniziative"],["H","Vista giocatori (nasconde i comandi)"],["F","Schermo intero"],["Spazio + trascina","Sposta la mappa con qualsiasi strumento"],["?","Apre questa guida"]];
+  const keys=[["1","Rivela la nebbia"],["2","Rimetti la nebbia"],["3","Cella (una casella alla volta)"],["4","Sposta e ingrandisci"],["5","Griglia"],["6","Puntatore"],["Ctrl+Z","Annulla sulla nebbia"],["G","Mostra o nascondi la griglia"],["L","Blocca o sblocca la griglia"],["+ / −","Ingrandisci o riduci"],["[ / ]","Pennello più piccolo o più grande"],["N / P","Turno successivo o precedente"],["D","Diario di sessione"],["S","Palcoscenico"],["I","Mostra o nascondi le iniziative"],["H","Vista giocatori (nasconde i comandi)"],["F","Schermo intero"],["Spazio + trascina","Sposta la mappa con qualsiasi strumento"],["?","Apre questa guida"]];
   m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Guida"},
     h("div",{style:"display:flex;gap:8px;align-items:center"},h("h2",{style:"flex:1"},"Guida del Tavolo"),btn(null,"Chiudi",()=>{m.hidden=true})),
     h("div",{class:"guide"},
@@ -449,7 +511,10 @@ function openHelp(){
         h("div",{},h("h3",{},"3 · Griglia"),h("ul",{},h("li",{},"Scegli lo strumento Griglia: regola dimensione, colore e posizione, o trascina sulla mappa per allinearla."),h("li",{},"Quando è giusta, premi “Blocca”: così non si sposta per errore."))),
         h("div",{},h("h3",{},"4 · Iniziative"),h("ul",{},h("li",{},"“Turno successivo” fa avanzare il round."),h("li",{},h("b",{},"PF e CA"),": scrivili quando aggiungi un combattente, o sulla sua scheda. Per un colpo scrivi il numero accanto a ± e tocca − (danno) o + (cura). Solo tu li vedi: non arrivano mai alla finestra giocatori né alla vista giocatori."),h("li",{},"L’occhio sul combattente lo nasconde ai giocatori: gli eroi lo vedono solo quando lo riveli."),h("li",{},"Il teschio lo mette fuori combattimento, il cestino lo toglie. “Nuovo scontro” tiene solo gli eroi."))),
         h("div",{},h("h3",{},"5 · Finestra giocatori"),h("ul",{},h("li",{},"Premi “Finestra giocatori”, trascina la finestra sulla TV e premi F per lo schermo intero."),h("li",{},"Vedono la mappa, la nebbia nera, la griglia e solo le iniziative che hai mostrato. Seguono il tuo zoom."),h("li",{},"In alto nella loro finestra c’è un piccolo selettore (tenue finché non lo sfiori): possono mettere le iniziative a sinistra, a destra o su entrambi i lati."),h("li",{},"Le due finestre devono stare nello stesso browser e nello stesso computer. Consenti i popup."))),
-        h("div",{},h("h3",{},"6 · Puntatore"),h("ul",{},h("li",{},"Con lo strumento Puntatore i giocatori vedono un punto che ti segue. Un clic lancia un segnale luminoso."),h("li",{},"Non modifica nulla sulla mappa.")))),
+        h("div",{},h("h3",{},"6 · Puntatore"),h("ul",{},h("li",{},"Con lo strumento Puntatore i giocatori vedono un punto che ti segue. Un clic lancia un segnale luminoso."),h("li",{},"Non modifica nulla sulla mappa."))),
+        h("div",{},h("h3",{},"7 · Ritratti e compagnia"),h("ul",{},h("li",{},"Nel diario, nella scheda dell’eroe, scegli il ritratto. Poi nel diario premi “Salva la compagnia” e qui “Importa la compagnia dal diario”: arrivano nome, PF, CA e volto."),h("li",{},"Scrivi tu l’iniziativa di ciascuno. Se importi di nuovo, gli eroi già presenti si aggiornano."),h("li",{},"L’icona della persona su un combattente ne sceglie il volto, anche per i nemici. I volti restano sul tuo browser."))),
+        h("div",{},h("h3",{},"8 · Diario di sessione"),h("ul",{},h("li",{},"Si scrive da solo: mappe aperte, inizio dello scontro, round, danni, cure, chi cade, chi appare."),h("li",{},"Aggiungi tu le note importanti. A fine serata “Copia il testo” o “Scarica .txt” e dallo a Claude per il riassunto animato."))),
+        h("div",{},h("h3",{},"9 · Palcoscenico"),h("ul",{},h("li",{},"Prepara una scena: titolo, chi appare e le battute, una per riga. “Nome: frase” fa parlare quel personaggio e abbassa la luce agli altri."),h("li",{},"“Mostra ai giocatori”: sulla loro finestra entrano i volti e le parole si scrivono a macchina."),h("li",{},"Dalla barra in basso vai Avanti o Indietro, oppure scrivi una frase in diretta. “Chiudi scena” torna alla mappa.")))),
       h("div",{},h("h3",{},"Scorciatoie da tastiera"),h("div",{class:"keys"},...keys.flatMap(([k,t])=>K(k,t)))),
       h("div",{class:"help"},"Mappe, nebbia, griglia e iniziative restano salvate su questo browser. “Vista giocatori” (H) nasconde i comandi sul tuo schermo; per uno schermo separato usa la finestra giocatori."))));
 }
@@ -481,7 +546,7 @@ async function openScenes(){
         let armed=false;const del=h("button",{class:"btn ghost",type:"button","aria-label":"Elimina la mappa"},ico("trash"));
         del.addEventListener("click",async()=>{if(!armed){armed=true;del.replaceChildren(ico("trash"),"Sicuro?");setTimeout(()=>{armed=false;del.replaceChildren(ico("trash"))},2500);return}await dbDel(o.id);if(sc&&sc.id===o.id){sc=null;iw=0;mapEl.removeAttribute("src");$("#empty").style.display="grid";gridEl.style.display="none";fctx.clearRect(0,0,fogC.width,fogC.height);lsSet("tavolo-scene","");drawBars();send({t:"empty"})}draw()});
         let thEl;if(o.th){const u=URL.createObjectURL(o.th);thUrls.push(u);thEl=h("img",{src:u,alt:""})}else thEl=ico("image");
-        const open=async()=>{const f=await dbGet(o.id);m.hidden=true;await openScene(f)};
+        const open=async()=>{const f=await dbGet(o.id);m.hidden=true;await openScene(f);logEv("Si passa alla mappa: "+o.name,"mappa")};
         return h("div",{class:"scard"+(cur?" cur":"")},h("button",{class:"th",type:"button","aria-label":"Apri "+o.name,onclick:open},thEl),nm,h("div",{class:"acts"},btn(null,cur?"Aperta":"Apri",open,{class:"btn"+(cur?" gold":"")}),del))
       })):h("div",{class:"vide"},"Nessuna mappa salvata: carica la prima.")));
   };
@@ -490,9 +555,111 @@ async function openScenes(){
 $("#modal").addEventListener("pointerdown",e=>{if(e.target===$("#modal"))$("#modal").hidden=true});
 
 /* ---------- iniziative ---------- */
+let LOG=(()=>{try{const a=JSON.parse(lsGet("tavolo-log")||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}})();
+const saveLog=()=>lsSet("tavolo-log",JSON.stringify(LOG));
+const logEv=(x,k)=>{LOG.push({t:Date.now(),k:k||"",x});if(LOG.length>800)LOG.splice(0,LOG.length-800);saveLog()};
+const fT=t=>new Date(t).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}),fD=t=>new Date(t).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+function logText(){
+  let out="DIARIO DI SESSIONE – Tavolo del Master\n",day="";
+  for(const e of LOG){const d=fD(e.t);if(d!==day){day=d;out+="\n== "+d+" ==\n"}out+=fT(e.t)+"  "+(e.k==="nota"?"NOTA: ":"")+e.x+"\n"}
+  return out;
+}
+function openLog(){
+  const m=$("#modal");m.hidden=false;
+  const draw=()=>{
+    const list=h("div",{class:"llist"});let day="";
+    if(!LOG.length)list.append(h("div",{class:"vide"},"Ancora vuoto. Mappe aperte, round, danni e nemici rivelati si scrivono qui da soli."));
+    LOG.forEach((e,i)=>{const d=fD(e.t);if(d!==day){day=d;list.append(h("div",{class:"lday"},d))}
+      const x=h("button",{class:"btn ghost",type:"button","aria-label":"Togli questa riga",style:"padding:1px 6px"},ico("trash"));x.addEventListener("click",()=>{LOG.splice(i,1);saveLog();draw()});
+      list.append(h("div",{class:"lrow "+(e.k||"")},h("time",{},fT(e.t)),h("span",{},e.x),x))});
+    const inp=h("input",{placeholder:"Aggiungi una nota (es. “Il gruppo ha liberato il prigioniero”)","aria-label":"Nuova nota"});
+    const add=()=>{const v=inp.value.trim();if(!v)return;logEv(v,"nota");draw();setTimeout(()=>{const l=$(".llist");if(l)l.scrollTop=l.scrollHeight},0)};
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();add()}});
+    let armed=false;const clr=btn("trash","Azzera il diario",()=>{if(!armed){armed=true;clr.lastChild.textContent="Sicuro? Tocca ancora";setTimeout(()=>{armed=false;clr.lastChild.textContent="Azzera il diario"},2600);return}LOG=[];saveLog();draw()});
+    const copy=btn(null,"Copia il testo",async()=>{const t=logText();try{await navigator.clipboard.writeText(t);toast("Testo copiato: incollalo dove vuoi",2500)}catch(e){const ta=h("textarea",{value:t,style:"position:fixed;opacity:0"});document.body.append(ta);ta.select();try{document.execCommand("copy");toast("Testo copiato",2500)}catch(e2){toast("Copia non riuscita: usa “Scarica”",3000)}ta.remove()}});
+    const dl=btn(null,"Scarica .txt",()=>{const d=new Date(),n="diario-sessione-"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+".txt",u=URL.createObjectURL(new Blob([logText()],{type:"text/plain;charset=utf-8"})),a=h("a",{href:u,download:n});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)});
+    m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Diario di sessione"},
+      h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"},h("h2",{style:"flex:1"},"Diario di sessione"),btn(null,"Chiudi",()=>{m.hidden=true})),
+      h("div",{class:"help"},"Il Tavolo segna da solo mappe, round, danni, nemici che appaiono. Aggiungi tu le note importanti. A fine serata copia o scarica il testo e dallo a Claude per il riassunto animato."),
+      list,h("div",{class:"lform"},inp,btn("plus","Aggiungi",add)),
+      h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},copy,dl,clr)));
+    const l=$(".llist");if(l)l.scrollTop=l.scrollHeight;
+  };
+  draw();
+}
+let SC=(()=>{try{const a=JSON.parse(lsGet("tavolo-palco")||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}})();
+const saveSC=()=>lsSet("tavolo-palco",JSON.stringify(SC));
+let STG={on:false,title:"",ports:[],lines:[],i:-1};
+const parseLine=l=>{const m=/^([^:]{1,28}):\s*(.+)$/.exec(l);return m?{who:m[1].trim(),text:m[2].trim()}:{who:"",text:l}};
+function sendStage(){if(PLAYER||!STG.on)return;send({t:"stage",on:true,title:STG.title,ports:STG.ports});if(STG.i>=0&&STG.lines[STG.i])send(Object.assign({t:"stageline"},parseLine(STG.lines[STG.i])))}
+function drawStageBar(){
+  const bar=$("#stagebar");if(!STG.on){bar.hidden=true;bar.replaceChildren();return}
+  bar.hidden=false;const n=STG.lines.length,cur=STG.lines[STG.i]||"",live=h("input",{placeholder:"Scrivi una frase in diretta e premi Invio","aria-label":"Frase in diretta"});
+  const go=d=>()=>showLine(STG.i+d),sendLive=()=>{const v=live.value.trim();if(!v)return;STG.lines.push(v);showLine(STG.lines.length-1)};
+  live.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();sendLive()}});
+  const prev=btn("prev","Indietro",go(-1));prev.disabled=STG.i<=0;const next=btn("next","Avanti",go(1),{class:"btn gold"});next.disabled=STG.i>=n-1;
+  bar.replaceChildren(h("div",{class:"row2"},h("span",{class:"tag"},"Scena in corso · "+STG.title+(n?" ("+(STG.i+1)+"/"+n+")":"")),h("span",{style:"flex:1"}),btn(null,"Chiudi scena",endStage)),
+    h("div",{class:"pv"},cur||"Nessuna frase ancora: scrivila qui sotto."),
+    h("div",{class:"row2"},prev,next,live,btn("film","Invia",sendLive)));
+}
+function showLine(i){
+  if(!STG.on||!STG.lines.length)return;STG.i=Math.max(0,Math.min(STG.lines.length-1,i));
+  send(Object.assign({t:"stageline"},parseLine(STG.lines[STG.i])));drawStageBar();
+}
+function startStage(sc){
+  const lines=String(sc.text||"").split("\n").map(x=>x.trim()).filter(Boolean);
+  STG={on:true,title:sc.title||"Scena",ports:(sc.ids||[]).map(id=>PORT.find(p=>p.id===id)).filter(Boolean).map(p=>({name:p.name,img:p.img})),lines,i:-1};
+  logEv("Scena: "+STG.title,"scena");send({t:"stage",on:true,title:STG.title,ports:STG.ports});
+  if(lines.length)showLine(0);else drawStageBar();
+}
+function endStage(){STG={on:false,title:"",ports:[],lines:[],i:-1};send({t:"stage",off:true});drawStageBar()}
+function openStage(){
+  const m=$("#modal");m.hidden=false;let cur=SC[0]||null,draft=null;
+  const draw=()=>{
+    const e=cur||draft||(draft={id:uid(),title:"",ids:[],text:""});
+    const lst=h("div",{class:"lst"},...SC.map(x=>btn(null,x.title||"Senza titolo",()=>{cur=x;draft=null;draw()},{class:"btn"+(cur===x?" gold":"")})),btn("plus","Nuova scena",()=>{cur=null;draft={id:uid(),title:"",ids:[],text:""};draw()}));
+    const title=h("input",{class:"t",placeholder:"Titolo della scena (es. L’arrivo alla locanda)","aria-label":"Titolo",value:e.title});title.addEventListener("input",()=>e.title=title.value);
+    const ta=h("textarea",{placeholder:"Una riga per ogni battuta.\nCon “Nome: frase” parla quel personaggio e gli altri si abbassano di luce.\n\nNarratore: La porta si apre con un cigolio.\nThorin: Restate dietro di me.\nUna riga senza nome è una descrizione.","aria-label":"Testo della scena"});ta.value=e.text;ta.addEventListener("input",()=>e.text=ta.value);
+    const chips=PORT.length?h("div",{class:"chips"},...PORT.map(p=>{const on=e.ids.includes(p.id),c=h("button",{class:"chip",type:"button","aria-pressed":String(on)},h("img",{src:p.img,alt:""}),p.name);c.addEventListener("click",()=>{e.ids=e.ids.includes(p.id)?e.ids.filter(x=>x!==p.id):[...e.ids,p.id];c.setAttribute("aria-pressed",String(e.ids.includes(p.id)))});return c})):h("div",{class:"help"},"Nessun ritratto salvato: dal pannello Iniziativa tocca l’icona della persona su un combattente per caricare un volto, oppure importa la compagnia dal diario.");
+    const save=()=>{if(!e.title.trim())e.title="Scena senza titolo";if(!SC.includes(e))SC.push(e);cur=e;draft=null;saveSC()};
+    const ed=h("div",{class:"ed"},h("label",{class:"help"},"Titolo"),title,h("div",{class:"help"},"Chi appare in scena (tocca per scegliere, l’ordine è quello in cui li tocchi)"),chips,h("div",{class:"help"},"Cosa si dice"),ta,
+      h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},btn("film","Mostra ai giocatori",()=>{save();m.hidden=true;startStage(e)},{class:"btn gold"}),btn("check","Salva",()=>{save();toast("Scena salvata");draw()}),SC.includes(e)?btn("trash","Elimina",()=>{SC=SC.filter(x=>x!==e);saveSC();cur=SC[0]||null;draft=null;draw()}):""));
+    m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Palcoscenico"},
+      h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"},h("h2",{style:"flex:1"},"Palcoscenico"),btn(null,"Chiudi",()=>{m.hidden=true})),
+      h("div",{class:"help"},"Sullo schermo dei giocatori entrano i volti dei personaggi e le tue parole si scrivono a macchina. Prepara le scene prima, oppure aprine una vuota e scrivi frasi in diretta dalla barra in basso."),
+      h("div",{class:"scn"},lst,ed)));
+  };
+  draw();
+}
+let PORT=(()=>{try{const a=JSON.parse(lsGet("tavolo-ritr")||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}})();
+const savePort=()=>lsSet("tavolo-ritr",JSON.stringify(PORT));
+const portImg=c=>c.img||((PORT.find(p=>p.id===c.pid)||{}).img)||"";
+async function cropSq(src,N=320){
+  const bm=await createImageBitmap(src instanceof Blob?src:await (await fetch(src)).blob()),m=Math.min(bm.width,bm.height),sy=Math.max(0,(bm.height-m)/4),c=document.createElement("canvas");
+  c.width=c.height=Math.min(N,m);c.getContext("2d").drawImage(bm,(bm.width-m)/2,sy,m,m,0,0,c.width,c.height);return c.toDataURL("image/jpeg",.82);
+}
+function openPortraits(c){
+  const m=$("#modal");m.hidden=false;const file=h("input",{type:"file",accept:"image/*",hidden:true});
+  const draw=()=>{
+    m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Ritratto di "+c.name},
+      h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"},h("h2",{style:"flex:1"},"Ritratto di "+c.name),btn("image","Carica un volto",()=>file.click(),{class:"btn gold"}),btn(null,"Chiudi",()=>{m.hidden=true})),
+      h("div",{class:"help"},"Scegli un volto dalla tua galleria oppure caricane uno nuovo (viene ritagliato a cerchio). I volti restano salvati su questo browser e servono anche per le scene."),
+      PORT.length?h("div",{class:"pgrid"},...PORT.map(p=>{
+        let armed=false;const x=h("button",{class:"btn ghost x",type:"button","aria-label":"Elimina il ritratto di "+p.name},ico("trash"));
+        x.addEventListener("click",()=>{if(!armed){armed=true;x.replaceChildren(ico("trash"),"?");setTimeout(()=>{armed=false;x.replaceChildren(ico("trash"))},2200);return}
+          PORT=PORT.filter(q=>q!==p);for(const k of ini.list)if(k.pid===p.id)delete k.pid;savePort();saveIni();drawIni();draw()});
+        return h("div",{class:"pcard"+(c.pid===p.id?" on":"")},x,h("button",{class:"pimg",type:"button","aria-label":"Usa il volto di "+p.name,onclick:()=>{c.pid=p.id;saveIni();drawIni();m.hidden=true}},h("img",{class:"pimg",src:p.img,alt:p.name,style:"border:0"})),h("div",{class:"nm2"},p.name))
+      })):h("div",{class:"vide"},"Nessun volto ancora: caricane uno."),
+      c.pid?h("div",{},btn(null,"Togli il ritratto a "+c.name,()=>{delete c.pid;saveIni();drawIni();m.hidden=true})):""));
+  };
+  file.onchange=async()=>{const f=file.files[0];file.value="";if(!f)return;
+    try{const img=await cropSq(f);let p=PORT.find(q=>q.name.toLowerCase()===c.name.toLowerCase());if(p)p.img=img;else{p={id:uid(),name:c.name,img};PORT.push(p)}c.pid=p.id;savePort();saveIni();drawIni();m.hidden=true}
+    catch(e){toast("Immagine non leggibile",3000)}};
+  draw();
+}
 const TYPES={pg:["Eroe","var(--pg)"],ne:["Nemico","var(--ne)"],al:["Alleato","var(--al)"]};
 let ini=(()=>{try{const o=JSON.parse(lsGet("tavolo-ini")||"null");if(o&&Array.isArray(o.list))return o}catch(e){}return{list:[],turn:null,round:1}})();
-const sendIni=()=>{const vis=ini.list.filter(c=>!c.hide).map(c=>({id:c.id,name:c.name,init:c.init,type:c.type,dead:c.dead,hide:false}));send({t:"ini",ini:{list:vis,turn:vis.some(c=>c.id===ini.turn)?ini.turn:null,round:ini.round}})};
+const sendIni=()=>{const vis=ini.list.filter(c=>!c.hide).map(c=>({id:c.id,name:c.name,init:c.init,type:c.type,dead:c.dead,hide:false,img:portImg(c)}));send({t:"ini",ini:{list:vis,turn:vis.some(c=>c.id===ini.turn)?ini.turn:null,round:ini.round}})};
 const saveIni=()=>{lsSet("tavolo-ini",JSON.stringify(ini));sendIni()};
 const sorted=()=>ini.list.map((c,i)=>[c,i]).sort((a,b)=>(b[0].init-a[0].init)||(a[1]-b[1])).map(x=>x[0]);
 function hpDead(c){
@@ -503,7 +670,8 @@ function statsRows(c){
   const num=(v,cls,label,fn)=>{const i=h("input",{class:"st "+cls,type:"number",step:1,value:v===undefined?"":v,placeholder:"–","aria-label":label});i.addEventListener("change",()=>{fn(i.value===""?undefined:Math.max(0,parseFloat(i.value)||0));hpDead(c);saveIni();drawIni()});return i};
   const d=h("input",{class:"st",type:"number",min:0,placeholder:"±","aria-label":"Valore di danni o cure",title:"Scrivi un numero e poi tocca − (danno) o + (cura)"});
   const apply=sg=>()=>{const n=Math.abs(parseFloat(d.value));if(!n){d.focus();return}if(c.hp===undefined){toast("Scrivi prima i PF di "+c.name);return}
-    let v=c.hp+sg*n;v=Math.max(0,v);if(c.mx!==undefined)v=Math.min(c.mx,v);c.hp=v;hpDead(c);saveIni();drawIni();if(v===0)toast(c.name+" è a 0 PF: fuori combattimento")};
+    let v=c.hp+sg*n;v=Math.max(0,v);if(c.mx!==undefined)v=Math.min(c.mx,v);{const d0=v-c.hp;if(d0<0)logEv(c.name+" subisce "+(-d0)+" danni"+(c.mx!==undefined?" ("+v+"/"+c.mx+" PF)":""),"pf");else if(d0>0)logEv(c.name+" recupera "+d0+" PF","pf");if(v===0&&c.hp>0)logEv(c.name+" cade a 0 PF","pf")}
+    c.hp=v;hpDead(c);saveIni();drawIni();if(v===0)toast(c.name+" è a 0 PF: fuori combattimento")};
   const minus=h("button",{class:"btn",type:"button","aria-label":"Danno",title:"Danno"},"−"),plus=h("button",{class:"btn",type:"button","aria-label":"Cura",title:"Cura"},"+");
   minus.addEventListener("click",apply(-1));plus.addEventListener("click",apply(1));
   d.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();apply(-1)()}});
@@ -528,19 +696,24 @@ function drawIni(){
     const sub=h("div",{class:"sub"},...tags);
     if(!pres){
       const eye=h("button",{class:"btn "+(c.hide?"gold":"ghost"),type:"button",title:c.hide?"Mostra ai giocatori":"Nascondi ai giocatori","aria-label":c.hide?"Mostra ai giocatori":"Nascondi ai giocatori"},ico(c.hide?"eyeoff":"eye"));
-      eye.addEventListener("click",()=>{c.hide=!c.hide;saveIni();drawIni();toast(c.hide?c.name+" è nascosto ai giocatori":c.name+" ora è visibile ai giocatori")});
-      const dead=h("button",{class:"btn ghost",type:"button",title:c.dead?"Rimetti in gioco":"Fuori combattimento","aria-label":"Fuori combattimento"},ico("skull"));dead.addEventListener("click",()=>{c.dead=!c.dead;c.z=false;saveIni();drawIni()});
+      eye.addEventListener("click",()=>{c.hide=!c.hide;if(!c.hide)logEv(c.name+" si rivela ai giocatori","scena");saveIni();drawIni();toast(c.hide?c.name+" è nascosto ai giocatori":c.name+" ora è visibile ai giocatori")});
+      const dead=h("button",{class:"btn ghost",type:"button",title:c.dead?"Rimetti in gioco":"Fuori combattimento","aria-label":"Fuori combattimento"},ico("skull"));dead.addEventListener("click",()=>{c.dead=!c.dead;c.z=false;logEv(c.name+(c.dead?" è fuori combattimento":" torna in piedi"),"pf");saveIni();drawIni()});
       const rm=h("button",{class:"btn ghost",type:"button","aria-label":"Rimuovi"},ico("trash"));rm.addEventListener("click",()=>{if(ini.turn===c.id)ini.turn=null;ini.list=ini.list.filter(x=>x!==c);saveIni();drawIni()});
-      sub.append(h("div",{class:"acts"},eye,dead,rm));
+      const pb=h("button",{class:"btn ghost",type:"button","aria-label":"Ritratto di "+c.name,title:"Scegli il ritratto"},ico("user"));pb.addEventListener("click",()=>openPortraits(c));
+      sub.append(h("div",{class:"acts"},pb,eye,dead,rm));
     }
     const extra=pres?[]:statsRows(c);
-    return h("li",{class:"row"+(cur?" cur":"")+(c.dead?" dead":"")+(c.hide&&!pres?" hide":""),style:"--c:"+t[1]},n,c.dead?h("div",{class:"nmw"},nm,ico("skull")):nm,sub,...extra)}));
+    const im=portImg(c),av=im?(pres?h("img",{class:"av",src:im,alt:""}):h("button",{class:"avb",type:"button","aria-label":"Cambia il ritratto di "+c.name,onclick:()=>openPortraits(c)},h("img",{class:"av",src:im,alt:""}))):null;
+    const cell=(av||c.dead)?h("div",{class:"nmw"},...[av,nm,c.dead?ico("skull"):null].filter(Boolean)):nm;
+    return h("li",{class:"row"+(cur?" cur":"")+(c.dead?" dead":"")+(c.hide&&!pres?" hide":""),style:"--c:"+t[1]},n,cell,sub,...extra)}));
   const cu=ol.querySelector(".cur");if(cu)cu.scrollIntoView({block:"nearest",behavior:"smooth"});
 }
 function step(dir){
   const L=sorted();if(!L.length)return;const alive=L.filter(c=>!c.dead);if(!alive.length){toast("Tutti fuori combattimento");return}
+  const t0=ini.turn,r0=ini.round;
   if(ini.turn==null||!L.some(c=>c.id===ini.turn)){ini.turn=alive[dir>0?0:alive.length-1].id}
   else{let i=L.findIndex(c=>c.id===ini.turn),w=0;do{i+=dir;if(i>=L.length){i=0;w=1}if(i<0){i=L.length-1;w=-1}}while(L[i].dead);ini.turn=L[i].id;if(w>0)ini.round++;if(w<0&&ini.round>1)ini.round--}
+  if(t0==null||!L.some(c=>c.id===t0))logEv("Lo scontro ha inizio","scontro");if(ini.round!==r0)logEv("Round "+ini.round,"scontro");
   saveIni();drawIni();
 }
 $("#next").append("Turno successivo ",ico("next"));$("#prev").append(ico("prev"));
@@ -552,10 +725,30 @@ $("#add").addEventListener("submit",e=>{
   const hp0=parseFloat($("#a-hp").value),ac0=parseFloat($("#a-ac").value);
   if(isNaN(init)){toast("Scrivi l’iniziativa");$("#a-init").focus();return}
   for(let i=1;i<=q;i++)ini.list.push({id:uid(),name:q>1?name+" "+i:name,init,type:$("#a-type").value,dead:false,hide:$("#a-hide").checked,hp:isNaN(hp0)?undefined:hp0,mx:isNaN(hp0)?undefined:hp0,ac:isNaN(ac0)?undefined:ac0});
+  logEv("Entra in scena: "+name+(q>1?" ×"+q:"")+" ("+TYPES[$("#a-type").value][0].toLowerCase()+($("#a-hide").checked?", ancora nascosto":"")+")","scena");
   saveIni();drawIni();$("#a-name").value="";$("#a-init").value="";$("#a-hp").value="";$("#a-ac").value="";$("#a-qty").value=1;$("#a-name").focus();
 });
+$("#impro").append(ico("user"),"Importa la compagnia dal diario");$("#impro").addEventListener("click",()=>$("#impf").click());
+$("#impf").addEventListener("change",async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{
+    const o=JSON.parse(await f.text()),arr=Array.isArray(o.pg)?o.pg:(o&&o.stats?[o]:[]);if(!arr.length)throw 0;
+    let n=0,noac=0;
+    for(const ch of arr){
+      if(!ch||!ch.stats)continue;const name=String(ch.name||"Eroe").trim()||"Eroe";
+      const mx=+ch.hp||undefined,hp=ch.hpc!==undefined&&ch.hpc!==null?+ch.hpc:mx,ac=+ch.acv||undefined;if(!ac)noac++;
+      let pid;const src=ch.ritr||(ch.imgs&&ch.imgs[0]&&ch.imgs[0].d);
+      if(src){try{const img=await cropSq(src);let p=PORT.find(x=>x.name.toLowerCase()===name.toLowerCase());if(p)p.img=img;else{p={id:uid(),name,img};PORT.push(p)}pid=p.id}catch(err){}}
+      let c=ini.list.find(x=>x.type==="pg"&&x.name.toLowerCase()===name.toLowerCase());
+      if(!c){c={id:uid(),name,init:0,type:"pg",dead:false,hide:false};ini.list.push(c)}
+      c.mx=mx;c.hp=hp;if(ac)c.ac=ac;if(pid)c.pid=pid;hpDead(c);n++;
+    }
+    if(!n)throw 0;logEv("Compagnia importata: "+n+(n===1?" eroe":" eroi"),"scena");savePort();saveIni();drawIni();
+    toast(n+(n===1?" eroe importato":" eroi importati")+": scrivi l’iniziativa di ciascuno."+(noac?" Per la CA apri e richiudi la scheda nel diario e salva di nuovo.":""),6500);
+  }catch(err){toast("File non valido: scegli il backup “Salva la compagnia” del diario",4500)}
+});
 $("#newfight").append(ico("swords"),"Nuovo scontro");$("#hideini").append(ico("panel"),"Nascondi");
-$("#newfight").addEventListener("click",()=>{ini.turn=null;ini.round=1;ini.list=ini.list.filter(c=>c.type==="pg").map(c=>Object.assign(c,{dead:false,z:false}));saveIni();drawIni();toast("Scontro azzerato: restano gli eroi")});
+$("#newfight").addEventListener("click",()=>{logEv("Fine dello scontro","scontro");ini.turn=null;ini.round=1;ini.list=ini.list.filter(c=>c.type==="pg").map(c=>Object.assign(c,{dead:false,z:false}));saveIni();drawIni();toast("Scontro azzerato: restano gli eroi")});
 $("#hideini").addEventListener("click",()=>{document.body.classList.add("noini");lsSet("tavolo-noini","1");if(!manual)fit();drawBars()});
 
 /* ---------- tastiera ---------- */
@@ -570,6 +763,8 @@ addEventListener("keydown",e=>{
   if(map[k]){setTool(map[k]);return}
   if(k==="?"||(e.key==="/"&&e.shiftKey)){openHelp();return}
   if(e.key==="Escape"){$("#modal").hidden=true;return}
+  if(k==="d"){openLog();return}
+  if(k==="s"){openStage();return}
   if(k==="h")setPresent(!document.body.classList.contains("present"));
   else if(k==="f")toggleFs();
   else if(k==="n"||k==="arrowright"&&tool!=="grid")step(1);
@@ -601,11 +796,29 @@ if(PLAYER){
     if(!ok){fctx.fillStyle=FOG;fctx.fillRect(0,0,fw,fh)}
     sc={grid:m.grid};applyGrid();$("#empty").style.display="none";fit();
   };
+  let twT=0,actT=0;
+  const act=$("#act"),cast=$("#act .cast"),cap=$("#act .cap"),who=$("#act .who"),pp2=$("#act .cap p");
+  const stageOn=m=>{
+    clearTimeout(actT);clearInterval(twT);
+    if(m.off){act.classList.remove("in");cap.classList.remove("on");actT=setTimeout(()=>{act.classList.remove("on");cast.replaceChildren()},800);return}
+    cast.replaceChildren(...(m.ports||[]).map((p,i)=>{const f=h("div",{class:"fig",style:"--i:"+i,"data-n":p.name.toLowerCase()},h("img",{src:p.img,alt:p.name}),h("div",{class:"pl"},p.name));return f}));
+    who.textContent="";pp2.textContent="";cap.classList.remove("on");act.classList.add("on");requestAnimationFrame(()=>requestAnimationFrame(()=>act.classList.add("in")));
+  };
+  const typeLine=(w,text)=>{
+    if(!act.classList.contains("on"))return;clearInterval(twT);
+    who.textContent=w||"";who.style.display=w?"":"none";pp2.textContent="";cap.classList.add("on");
+    const key=(w||"").toLowerCase(),figs=[...cast.children],hit=f=>key&&(f.dataset.n===key||f.dataset.n.split(" ")[0]===key.split(" ")[0]),any=figs.some(hit);
+    figs.forEach(f=>{f.classList.toggle("talk",!!hit(f));f.classList.toggle("dim",any&&!hit(f))});
+    let i=0;pp2.classList.add("typing");const d=Math.max(14,Math.min(45,2300/Math.max(1,text.length)));
+    twT=setInterval(()=>{i++;pp2.textContent=text.slice(0,i);if(i>=text.length){clearInterval(twT);pp2.classList.remove("typing")}},d);
+  };
   let cur=null;
   const pHandle=async m=>{
     if(!m||!m.t)return;
     if(m.t==="scene"){got=true;await pScene(m)}
     else if(m.t==="empty"){got=true;sc=null;iw=0;mapEl.removeAttribute("src");gridEl.style.display="none";fctx.clearRect(0,0,fogC.width,fogC.height);$("#empty").style.display="grid"}
+    else if(m.t==="stage"){stageOn(m)}
+    else if(m.t==="stageline"){typeLine(m.who,m.text)}
     else if(!sc&&m.t!=="ini"&&m.t!=="view")return;
     else if(m.t==="fog"){const bm=await createImageBitmap(m.b);fctx.save();fctx.globalCompositeOperation="source-over";fctx.clearRect(0,0,fw,fh);fctx.drawImage(bm,0,0,fw,fh);fctx.restore()}
     else if(m.t==="sb"){cur=m.s;applyStroke(fctx,cur,null)}
