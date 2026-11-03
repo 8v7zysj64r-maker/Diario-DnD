@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cronista della sessione</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0f0f;--panel:#141c1c;--panel2:#1b2626;--ink:#e6e9df;--mute:#97a49f;--line:#33443f;--brass:#d0b25a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 "Alegreya Sans",system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:14px 14px 40px;display:grid;gap:12px}
+h1{margin:0;font-size:1.5rem;color:var(--brass)}
+.sub{color:var(--mute);font-size:.95rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip,.btn{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:7px 13px;color:var(--ink);cursor:pointer;font:inherit}
+.btn{border-radius:8px}
+.chip[aria-pressed=true]{background:var(--brass);color:#1a1405;border-color:var(--brass);font-weight:700}
+.btn.gold{background:var(--brass);color:#1a1405;border-color:var(--brass);font-weight:700}
+.btn:hover,.chip:hover{border-color:var(--brass)}
+input,textarea{width:100%;background:#0f1616;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}
+textarea{min-height:84px;resize:vertical}
+label{display:grid;gap:4px;color:var(--mute);font-size:.92rem}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.list{display:grid;gap:6px;max-height:55vh;overflow:auto}
+.e{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:start;border-bottom:1px solid var(--line);padding:6px 0}
+.e time{color:var(--mute);font-variant-numeric:tabular-nums}
+.tag{font-size:.8rem;border:1px solid var(--brass);color:var(--brass);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.e .x{word-break:break-word}.e b{color:var(--brass)}
+.e button{background:none;border:0;color:var(--mute);cursor:pointer;font-size:1.1rem}
+.ok{color:#6fcf9f;font-size:.85rem}.no{color:var(--mute);font-size:.85rem}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+</style></head><body><main>
+<div><h1>Cronista della sessione</h1><div class="sub">Segna le cose importanti mentre si gioca: battute, momenti epici, tiri, luoghi, PNG. A fine serata copi il testo e lo mandi a Claude.</div></div>
+<div class="card">
+  <div class="chips" id="types" role="group" aria-label="Tipo di annotazione"></div>
+  <div class="row"><label style="flex:1;min-width:200px">Chi
+    <input id="who" list="whos" placeholder="Dre, Orchideo, Master…" autocomplete="off"></label>
+    <datalist id="whos"></datalist></div>
+  <label>Cosa è successo
+    <textarea id="txt" placeholder="La battuta, il momento, il luogo…"></textarea></label>
+  <div class="row"><button class="btn gold" id="add" type="button">Aggiungi (Ctrl+Invio)</button><span id="link" class="no"></span></div>
+</div>
+<div class="card">
+  <div class="row"><b id="cnt">Registro</b><span style="flex:1"></span>
+    <button class="btn" id="copy" type="button">Copia il testo</button>
+    <button class="btn" id="dl" type="button">Scarica .txt</button>
+    <button class="btn" id="clr" type="button">Azzera</button></div>
+  <div class="list" id="list"></div>
+</div>
+</main>
+<script>
+"use strict";
+const KEY="tavolo-cronaca",TYPES=["Battuta","Momento epico","Tiro","Luogo","PNG","Scoperta","Regola","Fuori gioco"],HERO=["Dre","Orchideo","Myrith","Rowen","Freya","Vesna","Master"];
+let LOG=[],kind=TYPES[0],BC=null;
+const QS=new URLSearchParams(location.search);let CODE=QS.get("c")||"";
+try{if(CODE)localStorage.setItem("tavolo-cron-c",CODE);else CODE=localStorage.getItem("tavolo-cron-c")||""}catch(e){}
+const BASE=()=>{try{return localStorage.getItem("tavolo-ntfy")||"https://ntfy.sh"}catch(e){return"https://ntfy.sh"}};
+try{LOG=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){}
+try{BC=new BroadcastChannel("tavolo-master")}catch(e){}
+const $=s=>document.querySelector(s);
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(LOG))}catch(e){}};
+const pad=n=>String(n).padStart(2,"0"),fT=t=>{const d=new Date(t);return pad(d.getHours())+":"+pad(d.getMinutes())},fD=t=>new Date(t).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+const line=e=>e.k+(e.w?" "+e.w:"")+": "+e.x;
+function drawTypes(){const b=$("#types");b.replaceChildren(...TYPES.map(t=>{const c=document.createElement("button");c.type="button";c.className="chip";c.textContent=t;c.setAttribute("aria-pressed",t===kind);c.onclick=()=>{kind=t;drawTypes();$("#txt").focus()};return c}))}
+function drawWho(){const s=new Set(HERO);LOG.forEach(e=>e.w&&s.add(e.w));$("#whos").replaceChildren(...[...s].map(v=>{const o=document.createElement("option");o.value=v;return o}))}
+function draw(){
+  $("#cnt").textContent="Registro ("+LOG.length+")";
+  const l=$("#list");l.replaceChildren();
+  if(!LOG.length){const d=document.createElement("div");d.className="sub";d.textContent="Ancora vuoto.";l.append(d);return}
+  LOG.forEach((e,i)=>{const r=document.createElement("div");r.className="e";
+    const tm=document.createElement("time");tm.textContent=fT(e.t);
+    const tg=document.createElement("span");tg.className="tag";tg.textContent=e.k;
+    const x=document.createElement("div");x.className="x";if(e.w){const b=document.createElement("b");b.textContent=e.w+": ";x.append(b)}x.append(e.x);if(CODE&&!e.s){const w=document.createElement("span");w.className="no";w.textContent=" ⏳";x.append(w)}
+    const del=document.createElement("button");del.type="button";del.textContent="✕";del.title="Togli questa riga";del.setAttribute("aria-label","Togli questa riga");del.onclick=()=>{LOG.splice(i,1);save();draw()};
+    r.append(tm,tg,x,del);l.append(r)});
+  l.scrollTop=l.scrollHeight}
+function fullText(){let out="CRONACA DI SESSIONE\n",day="";for(const e of LOG){const d=fD(e.t);if(d!==day){day=d;out+="\n== "+d+" ==\n"}out+=fT(e.t)+"  "+line(e)+"\n"}return out}
+let pend=null,busy=false;
+function stat(ok){const l=$("#link");if(!CODE){l.className="no";l.textContent="Non collegato al Tavolo: salva solo su questo dispositivo";return}l.className=ok?"ok":"no";l.textContent=ok?"✓ Collegato al Tavolo":"Senza rete: le righe partono appena torna"}
+async function flush(){if(!CODE||busy)return;busy=true;let ok=true;try{for(const e of LOG){if(!e.s){const r=await fetch(BASE()+"/dnd-"+CODE,{method:"POST",body:line(e)});if(!r.ok)throw 0;e.s=1;save()}}}catch(err){ok=false}busy=false;stat(ok);draw()}
+setInterval(flush,10000);
+function add(){
+  const x=$("#txt").value.trim();if(!x){$("#txt").focus();return}
+  const e={t:Date.now(),k:kind,w:$("#who").value.trim(),x};LOG.push(e);save();draw();drawWho();$("#txt").value="";$("#txt").focus();
+  if(CODE){flush();return}
+  if(BC){pend=e.t;try{BC.postMessage({t:"cron",id:e.t,x:line(e)})}catch(err){}setTimeout(()=>{if(pend===e.t)$("#link").textContent="Solo qui (il Tavolo non è in ascolto)";pend=null},900)}
+}
+if(BC)BC.onmessage=ev=>{const d=ev.data;if(d&&d.t==="cron-ok"&&d.id===pend){pend=null;$("#link").className="ok";$("#link").textContent="✓ Inviata al Tavolo";setTimeout(()=>{$("#link").textContent="";$("#link").className="no"},2500)}};
+$("#add").onclick=add;
+$("#txt").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();add()}});
+$("#copy").onclick=async()=>{try{await navigator.clipboard.writeText(fullText());$("#copy").textContent="Copiato ✓"}catch(e){const t=document.createElement("textarea");t.value=fullText();document.body.append(t);t.select();document.execCommand("copy");t.remove();$("#copy").textContent="Copiato ✓"}setTimeout(()=>$("#copy").textContent="Copia il testo",1800)};
+$("#dl").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([fullText()],{type:"text/plain;charset=utf-8"}));a.download="cronaca-sessione.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)};
+let armed=false;$("#clr").onclick=()=>{if(!armed){armed=true;$("#clr").textContent="Sicuro? Tocca ancora";setTimeout(()=>{armed=false;$("#clr").textContent="Azzera"},2600);return}LOG=[];save();draw();armed=false;$("#clr").textContent="Azzera"};
+drawTypes();drawWho();draw();stat(true);flush();
+</script></body></html>

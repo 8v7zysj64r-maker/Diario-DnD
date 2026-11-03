@@ -238,6 +238,7 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
 const $=(s,r=document)=>r.querySelector(s);
 const h=(t,p={},...k)=>{const e=document.createElement(t);for(const[a,v]of Object.entries(p)){if(a.startsWith("on"))e.addEventListener(a.slice(2),v);else if(a==="kids")e.append(...v);else if(a in e)e[a]=v;else e.setAttribute(a,v)}e.append(...k);return e};
 const ICONS={
+ pen:'<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',
  image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 9"/>',
  eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
  cloud:'<path d="M7 18a4 4 0 010-8 5.5 5.5 0 0110.6 1.3A3.4 3.4 0 0117 18z"/>',
@@ -507,6 +508,7 @@ function drawBars(){
     btn("tv","Finestra giocatori",openPlayers,{title:"Apre la finestra da portare sulla TV o sul secondo schermo"}),
     btn("expand","Schermo intero",toggleFs,{title:"Schermo intero (F)"}),
     btn("film","Palcoscenico",openStage,{title:"Palcoscenico: mostra ai giocatori volti e parole (S)"}),
+    btn("pen","Cronista",openCron,{title:"Collega la pagina dove un giocatore segna battute e momenti salienti, anche da un altro dispositivo"}),
     btn("book","Diario di sessione",openLog,{title:"Registro della serata (D)"}),
     btn("help","Guida",openHelp,{title:"Istruzioni e comandi (?)"}),
     btn("panel","Iniziativa",()=>{document.body.classList.toggle("noini");lsSet("tavolo-noini",document.body.classList.contains("noini")?"1":"");if(!manual)fit()},{title:"Mostra o nascondi il pannello (I)"}));
@@ -598,7 +600,7 @@ $("#modal").addEventListener("pointerdown",e=>{if(e.target===$("#modal"))$("#mod
 /* ---------- iniziative ---------- */
 let LOG=(()=>{try{const a=JSON.parse(lsGet("tavolo-log")||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}})();
 const saveLog=()=>lsSet("tavolo-log",JSON.stringify(LOG));
-const logEv=(x,k)=>{LOG.push({t:Date.now(),k:k||"",x});if(LOG.length>800)LOG.splice(0,LOG.length-800);saveLog()};
+const logEv=(x,k)=>{LOG.push({t:Date.now(),k:k||"",x});if(LOG.length>3000)LOG.splice(0,LOG.length-3000);saveLog()};
 const fT=t=>new Date(t).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}),fD=t=>new Date(t).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 function logText(){
   let out="DIARIO DI SESSIONE – Tavolo del Master\n",day="";
@@ -791,6 +793,7 @@ function step(dir){
   if(ini.turn==null||!L.some(c=>c.id===ini.turn)){ini.turn=alive[dir>0?0:alive.length-1].id}
   else{let i=L.findIndex(c=>c.id===ini.turn),w=0;do{i+=dir;if(i>=L.length){i=0;w=1}if(i<0){i=L.length-1;w=-1}}while(L[i].dead);ini.turn=L[i].id;if(w>0)ini.round++;if(w<0&&ini.round>1)ini.round--}
   if(t0==null||!L.some(c=>c.id===t0))logEv("Lo scontro ha inizio","scontro");if(ini.round!==r0)logEv("Round "+ini.round,"scontro");
+  if(ini.turn!==t0){const cc=ini.list.find(c=>c.id===ini.turn);if(cc)logEv("Tocca a "+cc.name,"turno")}
   saveIni();drawIni();
 }
 $("#next").append("Turno successivo ",ico("next"));$("#prev").append(ico("prev"));
@@ -810,7 +813,7 @@ $("#impf").addEventListener("change",async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
   try{
     const o=JSON.parse(await f.text()),arr=Array.isArray(o.pg)?o.pg:(o&&o.stats?[o]:[]);if(!arr.length)throw 0;
-    let n=0,noac=0;
+    let n=0,noac=0,nq=0;
     for(const ch of arr){
       if(!ch||!ch.stats)continue;const name=String(ch.name||"Eroe").trim()||"Eroe";
       const mx=+ch.hp||undefined,hp=ch.hpc!==undefined&&ch.hpc!==null?+ch.hpc:mx,ac=+ch.acv||undefined;if(!ac)noac++;
@@ -820,9 +823,10 @@ $("#impf").addEventListener("change",async e=>{
       let c=ini.list.find(x=>x.type==="pg"&&x.name.toLowerCase()===name.toLowerCase());
       if(!c){c={id:uid(),name,init:0,type:"pg",dead:false,hide:false};ini.list.push(c)}
       c.mx=mx;c.hp=hp;if(ac)c.ac=ac;if(pid)c.pid=pid;hpDead(c);n++;
+      for(const q of((ch.diary&&ch.diary.battute)||[])){const tx=((q.t?q.t+": ":"")+String(q.b||"").trim()).trim();if(!tx||tx===":")continue;const line="Battuta "+name+": "+tx;if(!LOG.some(e=>e.x===line)){logEv(line,"nota");nq++}}
     }
     if(!n)throw 0;logEv("Compagnia importata: "+n+(n===1?" eroe":" eroi"),"scena");savePort();saveIni();drawIni();
-    toast(n+(n===1?" eroe importato":" eroi importati")+": scrivi l’iniziativa di ciascuno."+(noac?" Per la CA apri e richiudi la scheda nel diario e salva di nuovo.":""),6500);
+    toast(n+(n===1?" eroe importato":" eroi importati")+(nq?" e "+nq+(nq===1?" battuta aggiunta":" battute aggiunte")+" al diario":"")+": scrivi l’iniziativa di ciascuno."+(noac?" Per la CA apri e richiudi la scheda nel diario e salva di nuovo.":""),6500);
   }catch(err){toast("File non valido: scegli il backup “Salva la compagnia” del diario",4500)}
 });
 $("#newfight").append(ico("swords"),"Nuovo scontro");$("#hideini").append(ico("panel"),"Nascondi");
@@ -920,7 +924,44 @@ if(PLAYER){
   setSide(side);
   ini={list:[],turn:null,round:1};drawIni();
 }else{
-if(BC)BC.onmessage=ev=>{if(ev.data&&ev.data.t==="hello")syncAll()};
+/* ---------- cronista a distanza (ntfy.sh: canale pubblico, nome segreto) ---------- */
+const ntfyBase=()=>{try{return localStorage.getItem("tavolo-ntfy")||"https://ntfy.sh"}catch(e){return"https://ntfy.sh"}};
+const cronGet=()=>{try{return localStorage.getItem("tavolo-cron-code")||""}catch(e){return""}};
+function cronNew(){const A="abcdefghjkmnpqrstuvwxyz23456789",r=crypto.getRandomValues(new Uint8Array(12));const c=Array.from(r,b=>A[b%A.length]).join("");try{localStorage.setItem("tavolo-cron-code",c);localStorage.removeItem("tavolo-cron-last")}catch(e){}return c}
+let cronES=null,cronOK=false;
+function startCron(){
+  if(PLAYER)return;const code=cronGet();if(cronES){cronES.close();cronES=null}cronOK=false;if(!code||typeof EventSource==="undefined")return;
+  let last="";try{last=localStorage.getItem("tavolo-cron-last")||""}catch(e){}
+  try{cronES=new EventSource(ntfyBase()+"/dnd-"+code+"/sse?since="+encodeURIComponent(last||"12h"))}catch(e){return}
+  cronES.onopen=()=>{cronOK=true;const s=$("#cronstat");if(s)s.textContent="In ascolto ✓"};
+  cronES.onerror=()=>{cronOK=false;const s=$("#cronstat");if(s)s.textContent="Connessione assente: riprovo da solo"};
+  cronES.onmessage=ev=>{try{const d=JSON.parse(ev.data);if(d.event!=="message"||!d.message)return;logEv(String(d.message).slice(0,600),"nota");try{localStorage.setItem("tavolo-cron-last",d.id)}catch(e){}toast("Cronista: "+String(d.message).slice(0,80),2200)}catch(e){}};
+}
+function openCron(){
+  const m=$("#modal");m.hidden=false;
+  const draw=()=>{
+    const code=cronGet(),link=code?location.origin+location.pathname.replace(/[^\/]*$/,"")+"cronista.html?c="+code:"";
+    const inp=h("input",{value:link,readOnly:true,"aria-label":"Link del cronista",style:"width:100%"});
+    const body=code?[
+      h("div",{class:"help"},"Manda questo link al giocatore che fa il cronista (anche da un altro telefono o computer). Dal link vede solo la pagina per scrivere gli appunti: niente del Tavolo. Ogni riga che scrive arriva nel tuo diario di sessione."),
+      inp,
+      h("div",{id:"cronstat",class:"help",style:"margin:6px 0"},cronOK?"In ascolto ✓":"Connessione in corso…"),
+      h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},
+        btn(null,"Copia il link",async()=>{try{await navigator.clipboard.writeText(link);toast("Link copiato",2000)}catch(e){inp.select();document.execCommand("copy");toast("Link copiato",2000)}}),
+        btn(null,"Apri qui",()=>{window.open(link,"tavolo-cronista","popup=yes,width=520,height=760")||toast("Il browser ha bloccato la finestra",4000)}),
+        btn(null,"Nuovo codice",()=>{if(confirm("Il vecchio link smetterà di funzionare. Procedo?")){cronNew();startCron();draw()}})),
+      h("div",{class:"help",style:"margin-top:8px"},"Il collegamento passa da un canale pubblico: chi conosce il link può scrivere o leggere gli appunti, quindi non condividerlo fuori dal gruppo. Se non ti serve più, “Nuovo codice” lo invalida.")
+    ]:[
+      h("div",{class:"help"},"Il cronista è un giocatore che segna battute e momenti importanti dal suo dispositivo. Attivando il collegamento ottieni un link da mandargli: le sue righe arrivano nel tuo diario di sessione in tempo reale."),
+      btn("plus","Attiva il collegamento",()=>{cronNew();startCron();draw()})];
+    m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Cronista"},
+      h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"},h("h2",{style:"flex:1"},"Cronista a distanza"),btn(null,"Chiudi",()=>{m.hidden=true})),...body));
+  };
+  draw();
+}
+window.openCron=openCron;
+if(BC)BC.onmessage=ev=>{const d=ev.data;if(!d)return;if(d.t==="hello")syncAll();else if(d.t==="cron"&&d.x){logEv(d.x,"nota");try{BC.postMessage({t:"cron-ok",id:d.id})}catch(e){}}};
+startCron();
 if(lsGet("tavolo-noini"))document.body.classList.add("noini");
 (async()=>{
   drawBars();drawIni();$("#showui").title="Mostra i comandi (H)";
