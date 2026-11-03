@@ -136,8 +136,16 @@ body.player #empty .card{pointer-events:none}
 .hb{grid-column:1/3;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
 .hb i{display:block;height:100%;transition:width .2s}
 #add .two{grid-column:1/4;display:flex;gap:6px}
+.av.icn{display:grid;place-items:center;color:var(--c,#888);background:var(--bg);width:42px;height:42px;border-radius:50%;border:2px solid var(--c,#888);box-sizing:border-box}
+.nmw .av.icn .ic,.av.icn .ic{width:26px;height:26px;stroke-width:1.6;color:inherit}
+.row.cur .av.icn{color:var(--brass)}
+.row.cur .nmw .av.icn .ic{width:30px;height:30px}
+.icgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.icb{align-content:center;display:grid;gap:2px;justify-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 4px 6px;cursor:pointer;font-size:.82rem;color:var(--ink)}
+.icb .ic{width:32px;height:32px;color:var(--brass)}
+.icb[aria-pressed=true]{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
 .av{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--c,#888);flex:none;background:var(--bg);display:block}
-.row.cur .av{width:46px;height:46px;border-color:var(--brass)}
+.row.cur .av{width:50px;height:50px;border-color:var(--brass)}
 .avb{padding:0;border:0;background:none;display:block;border-radius:50%;cursor:pointer;flex:none}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
 .pcard{display:grid;gap:4px;justify-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 6px 8px;position:relative}
@@ -260,6 +268,39 @@ const ICONS={
  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.400 3.600-7 8-7s8 2.600 8 7"/>',
  book:'<path d="M12 6.500C10 5 7 4.500 4 4.500v14c3 0 6 .5 8 2 2-1.500 5-2 8-2v-14c-3 0-6 .5-8 2z"/><path d="M12 6.500v14"/>',
  film:'<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M6 8l3-4M11 8l3-4M16 8l3-4"/>',
+ m_goblin:'<path d="M5.5 11.5L1.5 7.5l5 .8C7.5 5.500 9.500 4.500 12 4.500s4.500 1 5.500 3.800l5-.8-4 4c0 4.500-2.500 7.500-6.500 7.500s-6.500-3-6.500-7.500z"/><path d="M9 15.500c2 1.200 4 1.200 6 0M10 15.800v1.700M14 15.800v1.700"/><circle cx="9.3" cy="11" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.7" cy="11" r="0.9" fill="currentColor" stroke="none"/>',
+ m_hobgoblin:'<path d="M5.500 11V9a6.500 6.500 0 0113 0v2M4 11h16M12 2.500v3M12 11v3.500"/><path d="M7 11v3.500c0 3 2.200 5 5 5s5-2 5-5V11"/><path d="M9.500 17.500h5"/><circle cx="9.5" cy="12.7" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.5" cy="12.7" r="0.9" fill="currentColor" stroke="none"/>',
+ m_orco:'<path d="M5 9c0-3 3-5 7-5s7 2 7 5v4c0 3.500-3 6.500-7 6.500S5 16.500 5 13z"/><path d="M8 9.500l3 1.300M16 9.500l-3 1.300M8.500 17l-1.300-3.800M15.500 17l1.300-3.800M9.500 17.800h5M5 10l-2.500-1.500M19 10l2.500-1.500"/><circle cx="9.5" cy="12.3" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.5" cy="12.3" r="0.9" fill="currentColor" stroke="none"/>',
+ m_umano:'<circle cx="12" cy="8" r="3.800"/><path d="M4.500 20.500c0-4 3.400-6.500 7.500-6.500s7.500 2.500 7.500 6.500"/>',
+ m_elfo:'<path d="M7 9c0-3 2-5 5-5s5 2 5 5v3c0 3.500-2.200 6.500-5 6.500S7 15.500 7 12z"/><path d="M7 10.500L2 6.500l5.500 1.300M17 10.500l5-4-5.500 1.300M7.500 8.500c2.500 0 6-1 9-3.500M10.500 15.500h3"/><circle cx="9.7" cy="11.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.3" cy="11.5" r="0.9" fill="currentColor" stroke="none"/>',
+ m_nano:'<path d="M6 9.500a6 6 0 0112 0V11H6z"/><path d="M7 11v3.500c0 4 2 6.500 5 6.500s5-2.500 5-6.500V11M12 11.500v2.500M10 17.500h4M9.500 20l.5-2.500M14.500 20l-.5-2.500"/><circle cx="9.8" cy="12.8" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.2" cy="12.8" r="0.9" fill="currentColor" stroke="none"/>',
+ m_demone:'<path d="M6.500 8C4.500 7 3.500 5 4 2.500c2 .5 3.500 1.500 4.200 3.200M17.500 8c2-1 3-3 2.500-5.500-2 .5-3.500 1.500-4.200 3.200"/><path d="M6 9.500c0-1.500 2.500-3 6-3s6 1.500 6 3v3.500c0 4-2.500 6.500-6 6.500s-6-2.500-6-6.500zM8.500 11l2.500 1M15.500 11l-2.500 1M9.500 16c1.500 1 3.500 1 5 0"/>',
+ m_drago:'<path d="M21.500 13.500l-3.200-1.200-.8-3.300-3-1.800L9 3.500l1 4C6.500 8.500 3.500 11 3 15.500l1.500 1.500H10l2.500 3h4.500l-.8-3 5.300-.8z"/><path d="M17 17.500l-.5-1.600-1.200 1.200-1.200-1.200-1 1.400M18.300 12.300l-.6-1.500"/><circle cx="13.200" cy="10.800" r=".9" fill="currentColor" stroke="none"/><path d="M5 11.500L3 8"/>',
+ m_teschio:'<path d="M12 3.500c-4.500 0-7.500 3-7.500 7 0 2.300 1 4 2.500 5v3.500h10V15.500c1.500-1 2.500-2.700 2.500-5 0-4-3-7-7.500-7z"/><path d="M8 20.500v-2.500M12 20.500v-2.500M16 20.500v-2.500"/><circle cx="9" cy="11" r="1.600"/><circle cx="15" cy="11" r="1.600"/><path d="M12 13.500l-1 2h2z"/>',
+ m_zombie:'<path d="M6 10a6 6 0 0112 0v4c0 3-2.500 5-6 5s-6-2-6-5z"/><path d="M8.500 9.500l2 2m0-2l-2 2M13.500 9.500l2 2m0-2l-2 2M8.500 15.500h7M10 14.500v2M12 14.500v2M14 14.500v2"/>',
+ m_fantasma:'<path d="M5.500 20V10a6.500 6.500 0 0113 0v10l-2.200-2-2.150 2-2.150-2-2.150 2-2.150-2z"/><circle cx="9.5" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><path d="M12 13.800v.1"/>',
+ m_vampiro:'<path d="M6 10c0-3.500 2.500-6 6-6s6 2.500 6 6v3c0 3.500-2.500 6-6 6s-6-2.500-6-6z"/><path d="M6.500 8.500L12 11l5.500-2.500M9.500 15h5M10.300 15l.5 2.200.5-2.200M12.700 15l.5 2.200.5-2.200M3 21l4-3.500M21 21l-4-3.500"/><circle cx="9.5" cy="12.5" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.5" cy="12.5" r="0.9" fill="currentColor" stroke="none"/>',
+ m_lupo:'<path d="M4 4l3.500 3.500h9L20 4v9c0 3.500-3.500 7-8 7s-8-3.500-8-7z"/><path d="M10 14.500h4l-2 2.500zM12 17v2"/><circle cx="9" cy="11" r="0.9" fill="currentColor" stroke="none"/><circle cx="15" cy="11" r="0.9" fill="currentColor" stroke="none"/>',
+ m_ragno:'<ellipse cx="12" cy="14" rx="3.200" ry="4"/><circle cx="12" cy="8.500" r="1.800"/><path d="M9 12L4 9 2.500 5M9 14l-6 1.500L2 19M9.500 16L6 20.500M15 12l5-3 1.500-4M15 14l6 1.500 1 3.500M14.500 16l3.500 4.500"/>',
+ m_ratto:'<path d="M4 16c0-3.500 3-6 7-6h3.500c2.500 0 4.500 1.500 4.500 4 0 2-1.500 3.500-3.500 3.500H7c-1.700 0-3-.5-3-1.500z"/><circle cx="14.500" cy="8.500" r="2.200"/><path d="M4 16c-1.500 0-2.500-1-2.500-2.500S2.500 11 3.500 10.500"/><circle cx="17" cy="13" r="0.9" fill="currentColor" stroke="none"/><circle cx="20.5" cy="14.5" r="0.8" fill="currentColor" stroke="none"/>',
+ m_serpente:'<path d="M6 20.500c-3 0-3-4 .5-4H15c3.500 0 3.500-4.500 0-4.500H9.500C6 12 6.500 7.500 10 7.500h3"/><path d="M13 7.500l2.500-3.500 3 1.500-.5 3z"/><circle cx="16.5" cy="6.2" r="0.8" fill="currentColor" stroke="none"/>',
+ m_pipistrello:'<path d="M12 7l1.500 2h-3zM2 9c3-1 6-.5 8 2.500l2 3.500 2-3.500c2-3 5-3.500 8-2.500-1 1.500-1 3-2.500 4.500C16 17 14.500 17 12 20 9.500 17 8 17 4.500 13.500 3 12 3 10.500 2 9z"/>',
+ m_orso:'<circle cx="12" cy="13" r="7"/><circle cx="5.500" cy="6.500" r="2.200"/><circle cx="18.500" cy="6.500" r="2.200"/><ellipse cx="12" cy="15.500" rx="3" ry="2.200"/><circle cx="9" cy="11" r="0.9" fill="currentColor" stroke="none"/><circle cx="15" cy="11" r="0.9" fill="currentColor" stroke="none"/><circle cx="12" cy="14.8" r="1" fill="currentColor" stroke="none"/>',
+ m_zampa:'<path d="M12 20c-3 0-5.500-2-5.500-4.500S9 12 12 12s5.500 1 5.500 3.500S15 20 12 20z"/><circle cx="5" cy="11" r="1.800"/><circle cx="9" cy="6.500" r="1.800"/><circle cx="15" cy="6.500" r="1.800"/><circle cx="19" cy="11" r="1.800"/>',
+ m_gigante:'<path d="M4 20.500l7-7"/><ellipse cx="15.500" cy="8.500" rx="5.500" ry="3.800" transform="rotate(-45 15.500 8.500)"/><path d="M11.500 5l-1.500-1.200M19.500 12.500l1.200 1.500M20 7.500l1.800-.5M11 12l-1.800.3"/>',
+ m_melma:'<path d="M12 3c3 4.500 6.500 7.500 6.500 11.500a6.500 6.500 0 01-13 0C5.500 10.500 9 7.500 12 3z"/><circle cx="10" cy="14" r="0.9" fill="currentColor" stroke="none"/><circle cx="14" cy="14" r="0.9" fill="currentColor" stroke="none"/><path d="M10 17c1 .8 3 .8 4 0"/>',
+ m_fiamma:'<path d="M12 3c1 4 5 5.500 5 10.500a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 2.500 1.500 2.500C10.500 9.500 11 6 12 3z"/><path d="M12 20a2.500 2.500 0 01-2.500-2.500c0-1.500 1.500-2 2.500-3.500 1 1.500 2.500 2 2.500 3.500A2.500 2.500 0 0112 20z"/>',
+ m_golem:'<rect x="5" y="5" width="14" height="14.500" rx="2.500"/><path d="M12 2.500V5M8.500 10h2M13.500 10h2M8.500 15h7M10.500 13.500v3M13.500 13.500v3"/>',
+ m_occhio:'<circle cx="12" cy="13.500" r="6.500"/><circle cx="12" cy="13.500" r="2.800"/><path d="M12 7V3.500M6.800 9.500L4 6.500M17.200 9.500L20 6.500"/><circle cx="12" cy="3" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="20" cy="6" r="1.1" fill="currentColor" stroke="none"/>',
+ m_forziere:'<path d="M4 10V8.500A3.500 3.500 0 017.500 5h9A3.500 3.500 0 0120 8.500V10"/><rect x="3" y="10" width="18" height="10" rx="1.500"/><path d="M3 14h18M12 12.500v3"/>',
+ m_uccello:'<ellipse cx="11.500" cy="13" rx="6.500" ry="4.300" transform="rotate(-12 11.500 13)"/><circle cx="17.500" cy="8" r="2.800"/><path d="M20 8l2.500 1-2.500 1M5.500 14l-3.500 2.500M10 17.500v3M13.500 17.800l.5 2.700M8.500 12.500c1.500 1.200 3.500 1.200 5.200 0"/><circle cx="17.800" cy="7.600" r=".8" fill="currentColor" stroke="none"/>',
+ m_foglia:'<path d="M5 19c0-8 5-14 15-14 0 10-6 15-13 14"/><path d="M5 19l9-9"/>',
+ m_insetto:'<ellipse cx="12" cy="14" rx="4.500" ry="6"/><circle cx="12" cy="6.500" r="2"/><path d="M12 8v12M7.500 11L4 9.500M7.500 14.500h-4M8 18l-3 2M16.500 11L20 9.500M16.500 14.500h4M16 18l3 2M10.500 5L9 2.500M13.500 5L15 2.500"/>',
+ m_cappuccio:'<path d="M4.500 21V12a7.500 7.500 0 0115 0v9"/><path d="M8 12.500a4 4 0 018 0v2.500a4 4 0 01-8 0z"/><path d="M8.500 12.500h7"/><circle cx="10.3" cy="13.7" r="0.8" fill="currentColor" stroke="none"/><circle cx="13.7" cy="13.7" r="0.8" fill="currentColor" stroke="none"/>',
+ m_mago:'<path d="M12 2.500L7 16h10z"/><path d="M3.500 18c0-1 4-2 8.500-2s8.500 1 8.500 2-4 2.500-8.500 2.500S3.500 19 3.500 18z"/><path d="M10 11l2-1.500 2 1.500"/>',
+ m_scudo:'<path d="M12 3l7 3v6c0 4.500-3 7.500-7 9-4-1.500-7-4.500-7-9V6z"/><path d="M12 7v10M8.500 11h7"/>',
+ m_mostro:'<path d="M4 8c2-3 5-4 8-4s6 1 8 4v6c0 4-3.500 6.500-8 6.500S4 18 4 14z"/><path d="M7.500 10.500l3 1.200M16.500 10.500l-3 1.200M7.500 15.500L9 17.500l1.500-2 1.500 2 1.500-2 1.500 2 1.500-2"/>',
+ m_kobold:'<path d="M8.500 6.500L7 2.500M15.500 6.500L17 2.500"/><path d="M5.500 11c0-3.500 3-5.500 6.500-5.500s6.500 2 6.500 5.500v2c0 4-2.800 6.500-6.500 6.500S5.500 17 5.500 13z"/><path d="M5.500 11L3 9M18.500 11L21 9M8 11.500l2.500.5M16 11.500l-2.500.5M9 17.500h6M10.500 17.500v1.300M13.500 17.500v1.300"/><circle cx="10.5" cy="14.8" r=".9" fill="currentColor" stroke="none"/><circle cx="13.5" cy="14.8" r=".9" fill="currentColor" stroke="none"/>',
  tv:'<rect x="3" y="4.500" width="18" height="12" rx="2"/><path d="M8 20.500h8M12 16.500v4"/>'
 };
 const ico=k=>{const e=document.createElementNS("http://www.w3.org/2000/svg","svg");e.setAttribute("viewBox","0 0 24 24");e.setAttribute("class","ic");e.setAttribute("aria-hidden","true");e.innerHTML=ICONS[k]||"";return e};
@@ -512,7 +553,7 @@ function openHelp(){
         h("div",{},h("h3",{},"4 · Iniziative"),h("ul",{},h("li",{},"“Turno successivo” fa avanzare il round."),h("li",{},h("b",{},"PF e CA"),": scrivili quando aggiungi un combattente, o sulla sua scheda. Per un colpo scrivi il numero accanto a ± e tocca − (danno) o + (cura). Solo tu li vedi: non arrivano mai alla finestra giocatori né alla vista giocatori."),h("li",{},"L’occhio sul combattente lo nasconde ai giocatori: gli eroi lo vedono solo quando lo riveli."),h("li",{},"Il teschio lo mette fuori combattimento, il cestino lo toglie. “Nuovo scontro” tiene solo gli eroi."))),
         h("div",{},h("h3",{},"5 · Finestra giocatori"),h("ul",{},h("li",{},"Premi “Finestra giocatori”, trascina la finestra sulla TV e premi F per lo schermo intero."),h("li",{},"Vedono la mappa, la nebbia nera, la griglia e solo le iniziative che hai mostrato. Seguono il tuo zoom."),h("li",{},"In alto nella loro finestra c’è un piccolo selettore (tenue finché non lo sfiori): possono mettere le iniziative a sinistra, a destra o su entrambi i lati."),h("li",{},"Le due finestre devono stare nello stesso browser e nello stesso computer. Consenti i popup."))),
         h("div",{},h("h3",{},"6 · Puntatore"),h("ul",{},h("li",{},"Con lo strumento Puntatore i giocatori vedono un punto che ti segue. Un clic lancia un segnale luminoso."),h("li",{},"Non modifica nulla sulla mappa."))),
-        h("div",{},h("h3",{},"7 · Ritratti e compagnia"),h("ul",{},h("li",{},"Nel diario, nella scheda dell’eroe, scegli il ritratto. Poi nel diario premi “Salva la compagnia” e qui “Importa la compagnia dal diario”: arrivano nome, PF, CA e volto."),h("li",{},"Scrivi tu l’iniziativa di ciascuno. Se importi di nuovo, gli eroi già presenti si aggiornano."),h("li",{},"L’icona della persona su un combattente ne sceglie il volto, anche per i nemici. I volti restano sul tuo browser."))),
+        h("div",{},h("h3",{},"7 · Ritratti e compagnia"),h("ul",{},h("li",{},"Nel diario, nella scheda dell’eroe, scegli il ritratto. Poi nel diario premi “Salva la compagnia” e qui “Importa la compagnia dal diario”: arrivano nome, PF, CA e volto."),h("li",{},"Scrivi tu l’iniziativa di ciascuno. Se importi di nuovo, gli eroi già presenti si aggiornano."),h("li",{},"Chi non ha un volto prende un’icona dal nome (goblin, hobgoblin, drago, lupo, scheletro…). Tocca l’avatar o l’icona della persona per cambiarla o caricare un volto. I volti restano sul tuo browser."))),
         h("div",{},h("h3",{},"8 · Diario di sessione"),h("ul",{},h("li",{},"Si scrive da solo: mappe aperte, inizio dello scontro, round, danni, cure, chi cade, chi appare."),h("li",{},"Aggiungi tu le note importanti. A fine serata “Copia il testo” o “Scarica .txt” e dallo a Claude per il riassunto animato."))),
         h("div",{},h("h3",{},"9 · Palcoscenico"),h("ul",{},h("li",{},"Prepara una scena: titolo, chi appare e le battute, una per riga. “Nome: frase” fa parlare quel personaggio e abbassa la luce agli altri."),h("li",{},"“Mostra ai giocatori”: sulla loro finestra entrano i volti e le parole si scrivono a macchina."),h("li",{},"Dalla barra in basso vai Avanti o Indietro, oppure scrivi una frase in diretta. “Chiudi scena” torna alla mappa.")))),
       h("div",{},h("h3",{},"Scorciatoie da tastiera"),h("div",{class:"keys"},...keys.flatMap(([k,t])=>K(k,t)))),
@@ -635,6 +676,38 @@ const SEED=[{"id":"seed-dre","name":"Dre","img":"data:image/jpeg;base64,/9j/4AAQ
 let PORT=(()=>{const raw=lsGet("tavolo-ritr");if(raw===null)return SEED.map(x=>Object.assign({},x));try{const a=JSON.parse(raw);return Array.isArray(a)?a:[]}catch(e){return[]}})();
 if(!PLAYER&&lsGet("tavolo-ritr")===null)lsSet("tavolo-ritr",JSON.stringify(PORT));
 const savePort=()=>lsSet("tavolo-ritr",JSON.stringify(PORT));
+
+const MONL={"goblin": "Goblin", "hobgoblin": "Hobgoblin", "orco": "Orco", "umano": "Umano", "elfo": "Elfo", "nano": "Nano", "demone": "Demone", "drago": "Drago", "kobold": "Coboldo", "teschio": "Scheletro", "zombie": "Zombie", "fantasma": "Spettro", "vampiro": "Vampiro", "lupo": "Lupo", "ragno": "Ragno", "ratto": "Ratto", "serpente": "Serpente", "pipistrello": "Pipistrello", "orso": "Orso", "zampa": "Bestia", "gigante": "Bruto", "melma": "Melma", "fiamma": "Fuoco", "golem": "Golem", "occhio": "Beholder", "forziere": "Forziere", "uccello": "Uccello", "foglia": "Pianta", "insetto": "Insetto", "cappuccio": "Furfante", "mago": "Mago", "scudo": "Soldato", "mostro": "Mostro"};
+const MATCH=[
+ [/hob.?goblin/,"hobgoblin"],[/goblin|goblinoid/,"goblin"],[/bugbear|\borc|orchett|mezzorc|half.?orc|uruk/,"orco"],
+ [/kobold|cobold/,"kobold"],
+ [/dragonborn|dragonid|drag|viverna|wyvern|drake|wyrm/,"drago"],
+ [/tiefling|diavol|demon|imp\b|quasit|balor|succub|incub|fiend|devil|cornuto|hellhound/,"demone"],
+ [/vampir/,"vampiro"],[/lich|scheletr|skelet|ossa|bones/,"teschio"],[/zombi|ghoul|ghast|mummi|wight|non.?mort|undead/,"zombie"],
+ [/fantasm|spettr|ghost|spirit|wraith|banshee|ombra|shadow|specter/,"fantasma"],
+ [/lupo|lupi|wolf|worg|cane|mastino|dog|sciacall|jackal|iena|hyena|mannaro|werewolf/,"lupo"],
+ [/ragn|spider|aracnid/,"ragno"],[/ratt|topo|rat\b|rats|swarm|sciame/,"ratto"],
+ [/serpent|snake|naga|basilisc|lucertol|lizard|rettil|coccodrill|crocodile|vipera|viper|idra|hydra|medusa|yuan/,"serpente"],
+ [/pipistrell|\bbat|stirge|vespertil/,"pipistrello"],[/\borso|\borsi|bear/,"orso"],
+ [/leone|lion|tigre|tiger|pantera|panther|gatto|cat\b|manticor|cinghial|boar|cavall|horse|cervo|stag|toro|bull|bestia|beast|lince/,"zampa"],
+ [/ogre|troll|gigante|giant|ettin|ciclop|cyclops|bruto|brute|golia/,"gigante"],
+ [/melma|ooze|slime|gelatin|pudding|blob|cubo gelatin|acqua|water|ghiacci|\bice\b|frost/,"melma"],
+ [/elementale|elemental|fuoco|fire|fiamm|flame|salamandr|magmin|efreet|lava/,"fiamma"],
+ [/golem|costrutt|construct|armatura animata|animated|gargoyl|gargoil|statua|statue|automa/,"golem"],
+ [/beholder|osservator|occhio|\beye\b|contemplator|spettatore/,"occhio"],[/mimic|forzier|chest|tesoro/,"forziere"],
+ [/uccell|bird|aquila|eagle|hawk|falc|gufo|owl|corv|raven|crow|arpia|harpy|grifon|griffon|roc\b|avvoltoio|vulture/,"uccello"],
+ [/pianta|plant|treant|fungo|fungh|myconid|vite\b|vine|albero|tree|arbusto|shambling|blight/,"foglia"],
+ [/insett|insect|formica|\bant\b|scarab|vespa|wasp|centopied|centipede|scorpion|verme|worm|ankheg|carrion|mosca|fly\b|ape\b|\bbee/,"insetto"],
+ [/bandit|brigant|ladr|thief|assassin|rogue|furfant|cultist|sicari|spia|spy|pirat|corsar|predon/,"cappuccio"],
+ [/mago|maga|wizard|mage\b|stregon|sorcerer|warlock|strega|hag\b|druid|stregh|necromant|incantator|veggente|chierico oscuro|witch/,"mago"],
+ [/guardia|guard|soldat|soldier|cavalier|knight|guerrier|warrior|capitano|captain|veterano|veteran|gladiator|paladin|sentinell/,"scudo"],
+ [/\belf|\belfo|\belfa|\belfi|drow|eladrin|fey\b|fata|fairy|pixie|sprite|folletto/,"elfo"],
+ [/\bnano\b|\bnana\b|dwarf|duergar|\bnani\b/,"nano"],
+ [/uman|umana|human|popolan|commoner|mercant|nobil|noble|oste|locandier|contadin|villico|cittadin|sacerdot|priest|monaco|monk|bardo|bard\b|ranger|chierico|cleric/,"umano"]
+];
+const nrm=t=>String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[0-9]+\s*$/,"").trim();
+function autoIcon(c){const n=nrm(c.name);for(const[r,k]of MATCH)if(r.test(n))return k;return c.type==="ne"?"mostro":c.type==="al"?"scudo":"umano"}
+const iconKey=c=>c.icon||(c.ico&&MONL[c.ico]?c.ico:autoIcon(c));
 const portImg=c=>c.img||((PORT.find(p=>p.id===c.pid)||{}).img)||"";
 async function cropSq(src,N=320){
   const bm=await createImageBitmap(src instanceof Blob?src:await (await fetch(src)).blob()),m=Math.min(bm.width,bm.height),sy=Math.max(0,(bm.height-m)/4),c=document.createElement("canvas");
@@ -643,15 +716,17 @@ async function cropSq(src,N=320){
 function openPortraits(c){
   const m=$("#modal");m.hidden=false;const file=h("input",{type:"file",accept:"image/*",hidden:true});
   const draw=()=>{
-    m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Ritratto di "+c.name},
-      h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"},h("h2",{style:"flex:1"},"Ritratto di "+c.name),btn("image","Carica un volto",()=>file.click(),{class:"btn gold"}),btn(null,"Chiudi",()=>{m.hidden=true})),
+    m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Aspetto di "+c.name},
+      h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"},h("h2",{style:"flex:1"},"Aspetto di "+c.name),btn("image","Carica un volto",()=>file.click(),{class:"btn gold"}),btn(null,"Chiudi",()=>{m.hidden=true})),
       h("div",{class:"help"},"Scegli un volto dalla tua galleria oppure caricane uno nuovo (viene ritagliato a cerchio). I volti restano salvati su questo browser e servono anche per le scene."),
       PORT.length?h("div",{class:"pgrid"},...PORT.map(p=>{
         let armed=false;const x=h("button",{class:"btn ghost x",type:"button","aria-label":"Elimina il ritratto di "+p.name},ico("trash"));
         x.addEventListener("click",()=>{if(!armed){armed=true;x.replaceChildren(ico("trash"),"?");setTimeout(()=>{armed=false;x.replaceChildren(ico("trash"))},2200);return}
           PORT=PORT.filter(q=>q!==p);for(const k of ini.list)if(k.pid===p.id)delete k.pid;savePort();saveIni();drawIni();draw()});
-        return h("div",{class:"pcard"+(c.pid===p.id?" on":"")},x,h("button",{class:"pimg",type:"button","aria-label":"Usa il volto di "+p.name,onclick:()=>{c.pid=p.id;saveIni();drawIni();m.hidden=true}},h("img",{class:"pimg",src:p.img,alt:p.name,style:"border:0"})),h("div",{class:"nm2"},p.name))
+        return h("div",{class:"pcard"+(c.pid===p.id?" on":"")},x,h("button",{class:"pimg",type:"button","aria-label":"Usa il volto di "+p.name,onclick:()=>{c.pid=p.id;saveIni();drawIni();m.hidden=true}},h("img",{class:"pimg",src:p.img,alt:p.name,style:"border:0;width:100%;height:100%;border-radius:50%;display:block"})),h("div",{class:"nm2"},p.name))
       })):h("div",{class:"vide"},"Nessun volto ancora: caricane uno."),
+      h("div",{class:"help"},"Oppure scegli un’icona (di solito la trova da solo dal nome: goblin, drago, lupo…)"),
+      h("div",{class:"icgrid"},btn(null,"Automatica",()=>{delete c.pid;delete c.ico;saveIni();drawIni();m.hidden=true},{class:"icb","aria-pressed":String(!c.pid&&!c.ico)}),...Object.keys(MONL).map(k=>btn("m_"+k,MONL[k],()=>{delete c.pid;c.ico=k;saveIni();drawIni();m.hidden=true},{class:"icb","aria-pressed":String(!c.pid&&c.ico===k)}))),
       c.pid?h("div",{},btn(null,"Togli il ritratto a "+c.name,()=>{delete c.pid;saveIni();drawIni();m.hidden=true})):""));
   };
   file.onchange=async()=>{const f=file.files[0];file.value="";if(!f)return;
@@ -661,7 +736,7 @@ function openPortraits(c){
 }
 const TYPES={pg:["Eroe","var(--pg)"],ne:["Nemico","var(--ne)"],al:["Alleato","var(--al)"]};
 let ini=(()=>{try{const o=JSON.parse(lsGet("tavolo-ini")||"null");if(o&&Array.isArray(o.list))return o}catch(e){}return{list:[],turn:null,round:1}})();
-const sendIni=()=>{const vis=ini.list.filter(c=>!c.hide).map(c=>({id:c.id,name:c.name,init:c.init,type:c.type,dead:c.dead,hide:false,img:portImg(c)}));send({t:"ini",ini:{list:vis,turn:vis.some(c=>c.id===ini.turn)?ini.turn:null,round:ini.round}})};
+const sendIni=()=>{const vis=ini.list.filter(c=>!c.hide).map(c=>({id:c.id,name:c.name,init:c.init,type:c.type,dead:c.dead,hide:false,img:portImg(c),icon:iconKey(c)}));send({t:"ini",ini:{list:vis,turn:vis.some(c=>c.id===ini.turn)?ini.turn:null,round:ini.round}})};
 const saveIni=()=>{lsSet("tavolo-ini",JSON.stringify(ini));sendIni()};
 const sorted=()=>ini.list.map((c,i)=>[c,i]).sort((a,b)=>(b[0].init-a[0].init)||(a[1]-b[1])).map(x=>x[0]);
 function hpDead(c){
@@ -705,8 +780,8 @@ function drawIni(){
       sub.append(h("div",{class:"acts"},pb,eye,dead,rm));
     }
     const extra=pres?[]:statsRows(c);
-    const im=portImg(c),av=im?(pres?h("img",{class:"av",src:im,alt:""}):h("button",{class:"avb",type:"button","aria-label":"Cambia il ritratto di "+c.name,onclick:()=>openPortraits(c)},h("img",{class:"av",src:im,alt:""}))):null;
-    const cell=(av||c.dead)?h("div",{class:"nmw"},...[av,nm,c.dead?ico("skull"):null].filter(Boolean)):nm;
+    const im=portImg(c),ik=iconKey(c),avEl=im?h("img",{class:"av",src:im,alt:""}):h("span",{class:"av icn",title:MONL[ik]||""},ico("m_"+ik)),av=pres?avEl:h("button",{class:"avb",type:"button","aria-label":"Cambia aspetto di "+c.name,onclick:()=>openPortraits(c)},avEl);
+    const cell=h("div",{class:"nmw"},...[av,nm,c.dead?ico("skull"):null].filter(Boolean));
     return h("li",{class:"row"+(cur?" cur":"")+(c.dead?" dead":"")+(c.hide&&!pres?" hide":""),style:"--c:"+t[1]},n,cell,sub,...extra)}));
   const cu=ol.querySelector(".cur");if(cu)cu.scrollIntoView({block:"nearest",behavior:"smooth"});
 }
