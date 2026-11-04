@@ -92,7 +92,7 @@ const CELL=40,F=4,FP=CELL/F; // 1 pixel di campo = 10 px mappa
 const SIZES={s:[24,18,"Piccola 24×18"],m:[32,24,"Media 32×24"],l:[48,32,"Grande 48×32"]};
 const DEF_SET={ang:35,spd:1,amb:1,vig:.5,glow:1,part:1,rough:.8,grid:false,fog:0,tint:[1,1,1],fogc:[.55,.55,.62],theme:"neutra",autol:1};
 let S=null;
-function newMap(gw=32,gh=24){const fw=gw*F,fh=gh*F;return{id:uid(),name:"Mappa senza nome",seed:"",gw,gh,fw,fh,terr:new Uint8Array(fw*fh*4),liq:new Uint8Array(fw*fh*4),objs:[],lights:[],set:Object.assign({},DEF_SET)}}
+function newMap(gw=32,gh=24){const fw=gw*F,fh=gh*F;return{id:uid(),name:"Mappa senza nome",seed:"",gw,gh,fw,fh,terr:new Uint8Array(fw*fh*4),liq:new Uint8Array(fw*fh*4),dec:new Uint8Array(fw*fh*4),objs:[],lights:[],set:Object.assign({},DEF_SET)}}
 const MW=()=>S.gw*CELL,MH=()=>S.gh*CELL;
 const Z4=[0,0,0,0];
 const MATS={
@@ -105,11 +105,18 @@ const MATS={
   water:{n:"Acqua",l:[0,255,0,0],c:"linear-gradient(120deg,#08304f,#3a98b0)"},
   slime:{n:"Melma",l:[0,0,255,0],c:"linear-gradient(120deg,#1c4a0c,#7ac030)"},
   abyss:{n:"Abisso",l:[0,0,0,255],c:"radial-gradient(#000,#10131e)"},
+  roots:{n:"Radici luminose",d:0,c:"linear-gradient(120deg,#1c2a1a,#18c9a8)"},
+  runes:{n:"Lastre con rune",d:1,c:"linear-gradient(120deg,#3a3850,#8a5cff)"},
+  mud:{n:"Fango e ossa",d:2,c:"linear-gradient(120deg,#2a1a10,#d8cfae)"},
+  crys:{n:"Cristalli",d:3,c:"linear-gradient(120deg,#33d0ff,#c04cff)"},
+  clean:{n:"Pulisci decori",d:-1,c:"repeating-linear-gradient(45deg,#2a3535 0 6px,#1b2626 6px 12px)"},
   dry:{n:"Asciuga",l:Z4,keep:true,c:"repeating-linear-gradient(45deg,#2a3535 0 6px,#1b2626 6px 12px)"}
 };
 const FLOORS=["stone","grass","sand","snow"],LIQS=["lava","water","slime","abyss"];
 function applyMat(m,x,y){
   const i=(y*S.fw+x)*4,M=MATS[m];
+  if(M.d!==undefined){if(M.d<0){for(let k=0;k<4;k++)S.dec[i+k]=0}else S.dec[i+M.d]=255;return}
+  if(!M.t||m==="wall")for(let k=0;k<4;k++)S.dec[i+k]=0;
   if(M.t){for(let k=0;k<4;k++)S.terr[i+k]=M.t[k];for(let k=0;k<4;k++)S.liq[i+k]=0}
   else{ // liquido o asciuga: toglie la roccia, tiene il tipo di pavimento
     S.terr[i]=0;for(let k=0;k<4;k++)S.liq[i+k]=M.l[k];
@@ -129,8 +136,8 @@ function rle(u8){const o=[];let i=0;while(i<u8.length){const v=u8[i];let n=1;whi
 function b64(bytes){let s="";const ch=0x8000;for(let i=0;i<bytes.length;i+=ch)s+=String.fromCharCode.apply(null,bytes.subarray?bytes.subarray(i,i+ch):bytes.slice(i,i+ch));return btoa(s)}
 const enc=u8=>b64(Uint8Array.from(rle(u8)));
 function dec(s,len){const b=atob(s),out=new Uint8Array(len);let p=0;for(let i=0;i+1<b.length;i+=2){const n=b.charCodeAt(i),v=b.charCodeAt(i+1);out.fill(v,p,p+n);p+=n}return out}
-function serialize(m=S){return{v:1,id:m.id,name:m.name,seed:m.seed,gw:m.gw,gh:m.gh,terr:enc(m.terr),liq:enc(m.liq),objs:m.objs,lights:m.lights||[],set:m.set}}
-function deserialize(d){const m=newMap(d.gw,d.gh);m.id=d.id||uid();m.name=d.name||"Mappa";m.seed=d.seed||"";m.terr=dec(d.terr,m.fw*m.fh*4);m.liq=dec(d.liq,m.fw*m.fh*4);m.objs=(d.objs||[]).map(o=>Object.assign({},o));m.lights=(d.lights||[]).map(o=>Object.assign({},o));m.set=Object.assign({},DEF_SET,d.set||{});return m}
+function serialize(m=S){return{v:1,id:m.id,name:m.name,seed:m.seed,gw:m.gw,gh:m.gh,terr:enc(m.terr),liq:enc(m.liq),dec:enc(m.dec),objs:m.objs,lights:m.lights||[],set:m.set}}
+function deserialize(d){const m=newMap(d.gw,d.gh);m.id=d.id||uid();m.name=d.name||"Mappa";m.seed=d.seed||"";m.terr=dec(d.terr,m.fw*m.fh*4);m.liq=dec(d.liq,m.fw*m.fh*4);if(d.dec)m.dec=dec(d.dec,m.fw*m.fh*4);m.objs=(d.objs||[]).map(o=>Object.assign({},o));m.lights=(d.lights||[]).map(o=>Object.assign({},o));m.set=Object.assign({},DEF_SET,d.set||{});return m}
 
 /* ---------- generatori ---------- */
 function floodKeep(g,w,hh){ // tiene la regione libera piu' grande (g: 1=roccia)
@@ -408,7 +415,7 @@ void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Posit
 const FS=`#version 300 es
 precision highp float;
 uniform vec2 uCanvas;uniform float uScale,uT,uAmb,uVig,uGlow,uRough,uSeed;uniform vec2 uFlow,uMap;uniform vec3 uTint,uFogC;uniform float uFog;uniform int uLN;uniform vec4 uLP[16];uniform vec3 uLC[16];
-uniform sampler2D uTerr,uLiq;
+uniform sampler2D uTerr,uLiq,uDec;
 out vec4 o;
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
@@ -462,7 +469,76 @@ vec3 snowL(vec2 p,float t){
 }
 float wh(vec2 p,vec2 fl2,float t){vec2 q1=p*.028-fl2*.035,q2=p*.07-fl2*.07+vec2(3.,1.);return fbm2(q1+fbm2(q2*.5+t*.05)*1.2)*.65+vn(q2)*.35;}
 vec3 ramp(float h){vec3 a=vec3(.10,.025,.02),b=vec3(.62,.08,.02),c=vec3(1.,.42,.04),d=vec3(1.,.78,.32);return h<.4?mix(a,b,h/.4):h<.75?mix(b,c,(h-.4)/.35):mix(c,d,(h-.75)/.25);}
-float wallV(vec2 p){return texture(uTerr,p/uMap).r+(fbm(p*.035+uSeed)-.5)*uRough*.9+(fbm(p*.12+7.)-.5)*.1*uRough;}
+vec3 emi=vec3(0.);
+vec3 decor(vec2 p,vec4 D,vec3 fl,float t,float nA){
+  float wr=smoothstep(.3,.6,D.r+(nA-.5)*.35);
+  if(wr>.01){
+    float r1=1.-abs(2.*fbm(p*.022+vec2(3.1,1.7))-1.),r2=1.-abs(2.*fbm(p*.045+vec2(9.,4.))-1.);
+    float root=smoothstep(.9,.985,max(r1,r2*.92));
+    float moss=smoothstep(.45,.75,fbm(p*.05+2.));
+    vec3 bark=vec3(.14,.09,.07)*(.7+.6*vn(p*.4)),mc=vec3(.06,.2,.12)*(.7+.6*vn(p*.25));
+    vec3 c=mix(fl*.6,mc,moss*.8);c=mix(c,bark,root);
+    fl=mix(fl,c,wr);
+    float pulse=.65+.35*sin(t*1.1+fbm(p*.02)*9.);
+    emi+=vec3(.08,.85,.75)*(root*.55+moss*.35*smoothstep(.55,.8,vn(p*.15)))*wr*pulse*.9;
+  }
+  float wu=smoothstep(.4,.6,D.g+(nA-.5)*.2);
+  if(wu>.01){
+    vec2 cell=floor(p/64.),q=fract(p/64.)-.5;float hh=hash(cell+7.7);
+    float edge=max(abs(q.x),abs(q.y)),groove=smoothstep(.47,.5,edge);
+    vec3 sc=mix(vec3(.24,.24,.32),vec3(.52,.5,.58),hash(cell+1.3))*(.65+.6*fbm(p*.06+cell));
+    sc*=1.-.25*smoothstep(.1,.45,fbm(p*.11+3.));
+    sc*=(1.-.8*groove)*(1.-.25*smoothstep(.3,.5,edge));
+    float ring=smoothstep(.03,.01,abs(length(q)-.27));
+    float bar=smoothstep(.025,.008,abs(q.x))*step(abs(q.y),.27),bar2=smoothstep(.025,.008,abs(q.y))*step(abs(q.x),.27);
+    float dg=smoothstep(.03,.01,abs((q.x+q.y)*.7071))*step(length(q),.27);
+    float g=hh<.14?ring+bar:(hh<.28?ring+bar2+dg:(hh<.4?ring+dg:(hh<.5?bar+bar2:0.)));
+    g=clamp(g,0.,1.);
+    sc=mix(sc,vec3(.5,.35,1.),g*.5);
+    emi+=vec3(.55,.35,1.)*g*(.55+.45*sin(t*1.4+hh*40.))*wu*(1.-groove)*1.1;
+    fl=mix(fl,sc,wu);
+  }
+  float wm2=smoothstep(.4,.6,D.b+(nA-.5)*.3);
+  if(wm2>.01){
+    vec3 mud=vec3(.17,.11,.07)*(.65+.7*fbm(p*.06));
+    float hm=fbm(p*.1),hx=fbm((p+vec2(2.,0.))*.1),hy=fbm((p+vec2(0.,2.))*.1);
+    vec3 n=normalize(vec3(-(hx-hm)*9.,-(hy-hm)*9.,1.));
+    mud=mud*(.5+.9*max(dot(n,vec3(-.451,-.551,.7017)),0.))+pow(max(dot(n,normalize(vec3(-.45,-.55,.9))),0.),40.)*.5*vec3(.8,.9,1.);
+    vec2 bc=floor(p/60.);float bh=hash(bc+3.3);
+    if(bh>.7){
+      vec2 qq=(fract(p/60.)-.5+(vec2(hash(bc+1.),hash(bc+2.))-.5)*.4);float an=bh*6.283;
+      vec2 rr=vec2(cos(an)*qq.x+sin(an)*qq.y,-sin(an)*qq.x+cos(an)*qq.y);float L=.12+.08*hash(bc+5.);
+      float d=length(vec2(rr.x-clamp(rr.x,-L,L),rr.y))*60.;
+      float dk=min(length(rr-vec2(L,0.)),length(rr+vec2(L,0.)))*60.;
+      float b=max(smoothstep(3.4,2.2,d),smoothstep(5.,3.6,dk));
+      mud*=1.-.35*smoothstep(9.,2.,d)*(1.-b);
+      mud=mix(mud,vec3(.82,.78,.65)*(.8+.3*vn(p*.6)),b);
+    }
+    fl=mix(fl,mud,wm2);
+  }
+  float wc=smoothstep(.4,.6,D.a+(nA-.5)*.2);
+  if(wc>.01){
+    vec3 base=fl;
+    vec2 cell=floor(p/54.);float ch=hash(cell+11.1);
+    if(ch>.4){
+      vec2 q=(fract(p/54.)-.5-(vec2(hash(cell+1.7),hash(cell+8.1))-.5)*.25)*54.;
+      vec3 hue=mix(vec3(.2,.8,1.),vec3(.8,.3,1.),hash(cell+2.2));
+      float ins=0.,fc=0.;
+      for(int i=0;i<4;i++){
+        float fi=float(i),an=ch*6.283+fi*1.7+hash(cell+fi)*.8,L=7.+10.*hash(cell+fi*3.1+5.),w=3.2+2.4*hash(cell+fi*2.3+9.);
+        vec2 r=vec2(cos(an)*q.x+sin(an)*q.y,-sin(an)*q.x+cos(an)*q.y);
+        float inn=step(0.,r.x)*step(abs(r.y),w*(1.-r.x/L))*step(r.x,L);
+        if(inn>ins){ins=inn;fc=r.y>0.?1.:.5;}
+      }
+      float sd=length(q);
+      base=mix(base*(1.-.35*smoothstep(14.,3.,sd)),hue*(.3+.75*fc),ins);
+      emi+=hue*(ins*.5*fc+smoothstep(26.,4.,sd)*.12)*wc*(.8+.2*sin(t*2.+ch*30.));
+    }
+    fl=mix(fl,base,wc);
+  }
+  return fl;
+}
+float wallV(vec2 p){return texture(uTerr,p/uMap).r+(fbm(p*.035+uSeed)-.5)*uRough*.9+(fbm(p*.12+7.)-.5)*.1*uRough+(vn(p*.45)-.5)*.07*uRough;}
 void main(){
   vec2 p=vec2(gl_FragCoord.x,uCanvas.y-gl_FragCoord.y)/uScale;
   vec2 uv=p/uMap;
@@ -470,7 +546,7 @@ void main(){
   float t=uT;
   float nA=fbm(p*.035+uSeed),nB=fbm(p*.12+7.);
   // roccia
-  float wv=T.r+(nA-.5)*uRough*.9+(nB-.5)*.1*uRough;
+  float wv=T.r+(nA-.5)*uRough*.9+(nB-.5)*.1*uRough+(vn(p*.45)-.5)*.07*uRough;
   float wm=smoothstep(.485,.515,wv);
   float dIn=clamp((wv-.5)*3.2,0.,1.);
   // pavimento
@@ -487,7 +563,13 @@ void main(){
     vec2 ld=normalize(vec2(.55,.7))/uMap;
     float sh=(texture(uTerr,uv-ld*7.).r+texture(uTerr,uv-ld*16.).r+texture(uTerr,uv-ld*28.).r)/3.;
     fl*=1.-.55*smoothstep(.15,.85,sh);
-    fl*=1.-.32*smoothstep(.05,.5,T.r);
+    float ao=0.;for(int i=0;i<6;i++){float a=float(i)*1.047;ao+=texture(uTerr,uv+vec2(cos(a),sin(a))*15./uMap).r;}
+    fl*=1.-.5*smoothstep(.1,.75,ao/6.);
+    vec4 D=texture(uDec,uv);
+    if(D.r+D.g+D.b+D.a>.02)fl=decor(p,D,fl,t,nA);
+    float hal=0.;vec3 hc=vec3(0.);
+    for(int i=0;i<6;i++){float a=float(i)*1.047;vec4 Dh=texture(uDec,uv+vec2(cos(a),sin(a))*20./uMap);hc+=Dh.r*vec3(.05,.55,.5)+Dh.g*vec3(.3,.18,.6)+Dh.a*vec3(.25,.4,.6);}
+    emi+=hc/6.*.35*(.8+.2*sin(t*1.2+nA*7.));
   }
   vec3 wc=vec3(0.);
   if(wm>.005){
@@ -501,6 +583,7 @@ void main(){
     wc*=.5+.9*max(dot(wn,vec3(-.451,-.551,.7017)),0.);
     wc+=vec3(.15,.13,.10)*(1.-smoothstep(0.,.2,dIn))*(.55+.7*nB);
     wc*=1.-.5*(1.-smoothstep(0.,.05,dIn));
+    wc+=vec3(.2,.17,.13)*smoothstep(0.,.1,dIn)*(1.-smoothstep(.1,.28,dIn))*max(dot(wn,vec3(-.451,-.551,.7017))-.55,0.)*1.6;
   }
   vec3 col=mix(fl,wc,wm);
   // liquidi
@@ -572,11 +655,12 @@ void main(){
   vec3 amb3=uTint*uAmb;
   col=col*(amb3+lsum*1.5)+lsum*.05;
   col=mix(col,uFogC*(amb3*.9+lsum*.9),fogA*.9);
+  col+=emi*(1.-wm)*(1.-max(max(mL,mW),max(mS,mA)))*(1.-fogA*.5);
   col*=1.-.4*uVig*pow(length(uv-.5)*1.45,2.2);
   col+=(hash(p+t)-.5)/255.;
   o=vec4(col,1.);
 }`;
-let gl=null,prog=null,U={},texT=null,texL=null,glOK=false;
+let gl=null,prog=null,U={},texT=null,texL=null,texD=null,glOK=false;
 const glCv=$("#gl"),ov=$("#ov"),octx=ov.getContext("2d");
 function initGL(){
   gl=glCv.getContext("webgl2",{antialias:false,alpha:false,preserveDrawingBuffer:false});
@@ -584,9 +668,9 @@ function initGL(){
   const mk=(t,src)=>{const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));throw new Error("shader")}return s};
   prog=gl.createProgram();gl.attachShader(prog,mk(gl.VERTEX_SHADER,VS));gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);
   if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){console.error(gl.getProgramInfoLog(prog));return false}
-  for(const n of["uCanvas","uScale","uT","uAmb","uVig","uGlow","uRough","uSeed","uFlow","uMap","uTerr","uLiq","uTint","uFogC","uFog","uLN","uLP","uLC"])U[n]=gl.getUniformLocation(prog,n);
+  for(const n of["uCanvas","uScale","uT","uAmb","uVig","uGlow","uRough","uSeed","uFlow","uMap","uTerr","uLiq","uDec","uTint","uFogC","uFog","uLN","uLP","uLC"])U[n]=gl.getUniformLocation(prog,n);
   const mkT=()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t};
-  texT=mkT();texL=mkT();glOK=true;return true;
+  texT=mkT();texL=mkT();texD=mkT();glOK=true;return true;
 }
 function blurField(src,w,hh,rad,passes){
   let a=Float32Array.from(src),b=new Float32Array(a.length);
@@ -600,7 +684,7 @@ let dirtyTex=true,lavaPts=[];
 function uploadFields(){
   if(!glOK)return;
   const bt=blurField(S.terr,S.fw,S.fh,1,2),bl=blurField(S.liq,S.fw,S.fh,1,3);
-  for(const[t,d]of[[texT,bt],[texL,bl]]){gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,S.fw,S.fh,0,gl.RGBA,gl.UNSIGNED_BYTE,d)}
+  const bd=blurField(S.dec,S.fw,S.fh,1,1);for(const[t,d]of[[texT,bt],[texL,bl],[texD,bd]]){gl.bindTexture(gl.TEXTURE_2D,t);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,S.fw,S.fh,0,gl.RGBA,gl.UNSIGNED_BYTE,d)}
   lavaPts=[];for(let y=0;y<S.fh;y++)for(let x=0;x<S.fw;x++)if(bl[(y*S.fw+x)*4]>150)lavaPts.push([(x+.5)*FP,(y+.5)*FP]);
   dirtyTex=false;
 }
@@ -638,6 +722,7 @@ function drawGL(scale,time){
   const a=S.set.ang*Math.PI/180,sp=S.set.spd*28;gl.uniform2f(U.uFlow,Math.cos(a)*sp,Math.sin(a)*sp);
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texT);gl.uniform1i(U.uTerr,0);
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,texL);gl.uniform1i(U.uLiq,1);
+  gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,texD);gl.uniform1i(U.uDec,2);
   gl.drawArrays(gl.TRIANGLES,0,3);
 }
 /* ---------- overlay: oggetti, fuoco, braci, griglia, anteprime ---------- */
@@ -713,7 +798,7 @@ function frame(now){
   drawOverlay(octx,Q,T);
 }
 /* ---------- interfaccia ---------- */
-const gen={type:"cave",seed:"",floor:"stone",liq:"lava",shape:"both",amount:.5,rock:.5,objects:.5,size:"m"};
+const gen={deco:"none",type:"cave",seed:"",floor:"stone",liq:"lava",shape:"both",amount:.5,rock:.5,objects:.5,size:"m"};
 let tab="gen",undoSt=[];
 const THEMES=[
  {id:"neutra",n:"Neutra",tint:[1,1,1],amb:1,vig:.5,fog:0,fogc:[.55,.55,.62]},
@@ -726,9 +811,9 @@ const THEMES=[
 const LCOL=[["Torcia",[1,.62,.28]],["Viola",[.65,.4,1]],["Ciano",[.25,.85,1]],["Verde",[.4,1,.5]],["Rosso",[1,.25,.2]],["Fredda",[.85,.92,1]]];
 function applyTheme(id){const t=THEMES.find(x=>x.id===id);if(!t)return;pushUndo();Object.assign(S.set,{theme:id,tint:t.tint.slice(),amb:t.amb,vig:t.vig,fog:t.fog,fogc:t.fogc.slice()});renderPane()}
 const TABS=[["gen","Genera"],["draw","Disegna"],["obj","Oggetti"],["light","Luci"],["fx","Effetti"]];
-function pushUndo(){undoSt.push({t:S.terr.slice(),l:S.liq.slice(),o:JSON.stringify(S.objs),lt:JSON.stringify(S.lights||[]),set:JSON.stringify(S.set)});if(undoSt.length>40)undoSt.shift()}
+function pushUndo(){undoSt.push({t:S.terr.slice(),l:S.liq.slice(),dc:S.dec.slice(),o:JSON.stringify(S.objs),lt:JSON.stringify(S.lights||[]),set:JSON.stringify(S.set)});if(undoSt.length>40)undoSt.shift()}
 function undo(){if(shp&&shp.k==="poly"&&shp.pts.length){shp.pts.pop();if(!shp.pts.length)shpCancel();else shpPreview(null);return}
-  const u=undoSt.pop();if(!u){toast("Niente da annullare");return}S.terr=u.t;S.liq=u.l;S.objs=JSON.parse(u.o);S.lights=JSON.parse(u.lt||"[]");S.set=JSON.parse(u.set);sel=null;selL=null;dirtyTex=true;renderPane()}
+  const u=undoSt.pop();if(!u){toast("Niente da annullare");return}S.terr=u.t;S.liq=u.l;if(u.dc)S.dec=u.dc;S.objs=JSON.parse(u.o);S.lights=JSON.parse(u.lt||"[]");S.set=JSON.parse(u.set);sel=null;selL=null;dirtyTex=true;renderPane()}
 const slider=(lab,min,max,step,get,set,fmt=v=>v)=>{const o=h("b",{},fmt(get())),r=h("input",{type:"range",min,max,step,value:get()});r.addEventListener("input",()=>{set(+r.value);o.textContent=fmt(+r.value)});return h("label",{class:"lab"},h("span",{},lab+": ",o),r)};
 const sel_=(opts,get,set)=>{const s=h("select",{},...opts.map(([v,t])=>h("option",{value:v,selected:v===get()},t)));s.addEventListener("change",()=>set(s.value));return s};
 function buildTabs(){const t=$("#tabs");t.replaceChildren(...TABS.map(([id,l])=>h("button",{role:"tab","aria-selected":String(tab===id),onclick:()=>{shpCancel();tab=id;ui.place=null;buildTabs();renderPane()}},l)))}
@@ -746,6 +831,7 @@ function renderPane(){
         sel_([["both","Laghi e fiume"],["lakes","Solo laghi"],["river","Solo fiume"]],()=>gen.shape,v=>gen.shape=v),
         slider("Quantità",0,1,.05,()=>gen.amount,v=>gen.amount=v,v=>Math.round(v*100)+"%")),
       gen.type==="dungeon"?null:h("div",{class:"grp"},slider(gen.type==="cave"?"Pareti di roccia":"Rocce sparse",0,1,.05,()=>gen.rock,v=>gen.rock=v,v=>Math.round(v*100)+"%")),
+      h("div",{class:"grp"},h("h3",{},"Decorazioni"),sel_([["none","Nessuna"],["roots","Radici luminose"],["runes","Lastre con rune"],["mud","Fango e ossa"],["crys","Cristalli"]],()=>gen.deco,v=>gen.deco=v),h("div",{class:"hint"},"Chiazze sul pavimento. Poi le ritocchi nella scheda Disegna.")),
       h("div",{class:"grp"},slider("Oggetti sparsi",0,1,.05,()=>gen.objects,v=>gen.objects=v,v=>v?Math.round(v*100)+"%":"nessuno")),
       h("button",{class:"btn gold",style:"justify-content:center;padding:11px",onclick:doGenerate},"Genera mappa"),
       h("div",{class:"hint"},"Sostituisce la mappa attuale. Se non ti piace, Ctrl+Z (o il tasto Annulla) la riporta indietro. Poi puoi ritoccare tutto con Disegna e Oggetti."));
@@ -811,9 +897,11 @@ function doGenerate(){
   pushUndo();
   const keep={name:S.name,set:S.set},sz=SIZES[gen.size];
   if(S.gw!==sz[0]||S.gh!==sz[1]){const id=S.id;S=newMap(sz[0],sz[1]);S.id=id;S.name=keep.name;S.set=keep.set;sizeCanvases();undoSt=[]}
+  S.dec.fill(0);
   const seed=gen.seed||("m"+((Math.random()*1e6)|0));
   const rock=gen.type==="cave"?.38+.18*gen.rock:.04+.3*gen.rock;
   generate({type:gen.type,seed,floor:gen.floor,liq:gen.liq,shape:gen.shape,amount:gen.amount,walls:rock,objects:gen.objects});
+  if(gen.deco!=="none"){const rng=rngOf(seed+"d"),n=gen.type==="dungeon"?6:9;for(let i=0;i<n;i++){const s_=floorSpot(rng,3);if(!s_)continue;const r0=50+rng()*90;paintCircle(gen.deco,s_[0],s_[1],r0);if(gen.deco!=="runes")for(let k=0;k<3;k++)paintCircle(gen.deco,s_[0]+(rng()-.5)*r0*1.6,s_[1]+(rng()-.5)*r0*1.6,r0*.5)}}
   for(const o of S.objs)if(!o.id)o.id=uid();
   sel=null;dirtyTex=true;toast(gen.seed?"Mappa generata":"Mappa generata (seme "+seed+")");
 }
