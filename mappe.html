@@ -90,9 +90,9 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 /* ---------- modello ---------- */
 const CELL=40,F=4,FP=CELL/F; // 1 pixel di campo = 10 px mappa
 const SIZES={s:[24,18,"Piccola 24×18"],m:[32,24,"Media 32×24"],l:[48,32,"Grande 48×32"]};
-const DEF_SET={ang:35,spd:1,amb:1,vig:.5,glow:1,part:1,rough:.8,grid:false,fog:0};
+const DEF_SET={ang:35,spd:1,amb:1,vig:.5,glow:1,part:1,rough:.8,grid:false,fog:0,tint:[1,1,1],fogc:[.55,.55,.62],theme:"neutra",autol:1};
 let S=null;
-function newMap(gw=32,gh=24){const fw=gw*F,fh=gh*F;return{id:uid(),name:"Mappa senza nome",seed:"",gw,gh,fw,fh,terr:new Uint8Array(fw*fh*4),liq:new Uint8Array(fw*fh*4),objs:[],set:Object.assign({},DEF_SET)}}
+function newMap(gw=32,gh=24){const fw=gw*F,fh=gh*F;return{id:uid(),name:"Mappa senza nome",seed:"",gw,gh,fw,fh,terr:new Uint8Array(fw*fh*4),liq:new Uint8Array(fw*fh*4),objs:[],lights:[],set:Object.assign({},DEF_SET)}}
 const MW=()=>S.gw*CELL,MH=()=>S.gh*CELL;
 const Z4=[0,0,0,0];
 const MATS={
@@ -129,8 +129,8 @@ function rle(u8){const o=[];let i=0;while(i<u8.length){const v=u8[i];let n=1;whi
 function b64(bytes){let s="";const ch=0x8000;for(let i=0;i<bytes.length;i+=ch)s+=String.fromCharCode.apply(null,bytes.subarray?bytes.subarray(i,i+ch):bytes.slice(i,i+ch));return btoa(s)}
 const enc=u8=>b64(Uint8Array.from(rle(u8)));
 function dec(s,len){const b=atob(s),out=new Uint8Array(len);let p=0;for(let i=0;i+1<b.length;i+=2){const n=b.charCodeAt(i),v=b.charCodeAt(i+1);out.fill(v,p,p+n);p+=n}return out}
-function serialize(m=S){return{v:1,id:m.id,name:m.name,seed:m.seed,gw:m.gw,gh:m.gh,terr:enc(m.terr),liq:enc(m.liq),objs:m.objs,set:m.set}}
-function deserialize(d){const m=newMap(d.gw,d.gh);m.id=d.id||uid();m.name=d.name||"Mappa";m.seed=d.seed||"";m.terr=dec(d.terr,m.fw*m.fh*4);m.liq=dec(d.liq,m.fw*m.fh*4);m.objs=(d.objs||[]).map(o=>Object.assign({},o));m.set=Object.assign({},DEF_SET,d.set||{});return m}
+function serialize(m=S){return{v:1,id:m.id,name:m.name,seed:m.seed,gw:m.gw,gh:m.gh,terr:enc(m.terr),liq:enc(m.liq),objs:m.objs,lights:m.lights||[],set:m.set}}
+function deserialize(d){const m=newMap(d.gw,d.gh);m.id=d.id||uid();m.name=d.name||"Mappa";m.seed=d.seed||"";m.terr=dec(d.terr,m.fw*m.fh*4);m.liq=dec(d.liq,m.fw*m.fh*4);m.objs=(d.objs||[]).map(o=>Object.assign({},o));m.lights=(d.lights||[]).map(o=>Object.assign({},o));m.set=Object.assign({},DEF_SET,d.set||{});return m}
 
 /* ---------- generatori ---------- */
 function floodKeep(g,w,hh){ // tiene la regione libera piu' grande (g: 1=roccia)
@@ -371,9 +371,10 @@ def("tesoro","Tesoro",.45,r=>({faces:cat(sphere(0,0,.06,.42,.38,.18,C.gold,r,{ri
 const OBJ_ORDER=["colonna","colonnaspezzata","stalagmite","roccia","cristalli","fungo","bracere","fuococampo","statua","forziere","tavolo","botte","cassa","altare","sarcofago","trono","tesoro","quercia","pino","cespuglio","tronco","tenda","carro","ponte","scalini","pozzo","muretto","ossa","punte"];
 const meshCache=new Map(),spriteCache=new Map();
 function getMesh(k,v){const key=k+"|"+v;let m=meshCache.get(key);if(!m){m=OBJ[k].build(rngOf(key));meshCache.set(key,m)}return m}
+let sprTint=[1,1,1];
 function getSprite(k,rot,s,v){
   rot=((Math.round(rot/5)*5)%360+360)%360;s=Math.round(s*20)/20;
-  const key=k+"|"+rot+"|"+s+"|"+v,hit=spriteCache.get(key);if(hit)return hit;
+  const key=k+"|"+rot+"|"+s+"|"+v+"|"+sprTint.map(x=>x.toFixed(2)).join(","),hit=spriteCache.get(key);if(hit)return hit;
   const m=getMesh(k,v),a=rot*Math.PI/180,U=CELL*SQ,tr=p=>{const q=Rz([p[0]*s,p[1]*s,p[2]*s],a);return q};
   const P=p=>[p[0]*U,(p[1]*SP-p[2]*CP)*U];
   const faces=m.faces.map(f=>{const v3=f.v.map(tr);const n=nrm(v3);let cx=0,cy=0,cz=0;for(const p of v3){cx+=p[0];cy+=p[1];cz+=p[2]}const k_=v3.length;return{v:v3,n,c:f.c,e:f.e||0,d:(cy/k_)*CP+(cz/k_)*SP}});
@@ -391,7 +392,7 @@ function getSprite(k,rot,s,v){
   c.lineJoin="round";
   for(const f of vis){
     const lam=Math.max(0,f.n[0]*LGT[0]+f.n[1]*LGT[1]+f.n[2]*LGT[2]),sh=.42+.72*lam;
-    let col=f.c.map(x=>x*sh);if(f.e)col=col.map((x,i)=>x*(1-f.e)+f.c[i]*1.25*f.e);
+    let col=f.c.map((x,i)=>x*sh*sprTint[i]);if(f.e)col=col.map((x,i)=>x*(1-f.e)+f.c[i]*1.25*f.e);
     const css="rgb("+col.map(x=>clamp(Math.round(x),0,255)).join(",")+")";
     c.fillStyle=css;c.strokeStyle=css;c.lineWidth=1.1;c.beginPath();
     f.v.forEach((p,i)=>{const q=P(p);if(i)c.lineTo(q[0]+ox,q[1]+oy);else c.moveTo(q[0]+ox,q[1]+oy)});c.closePath();c.fill();c.stroke();
@@ -406,7 +407,7 @@ const VS=`#version 300 es
 void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.-1.,0.,1.);}`;
 const FS=`#version 300 es
 precision highp float;
-uniform vec2 uCanvas;uniform float uScale,uT,uAmb,uVig,uGlow,uRough,uSeed;uniform vec2 uFlow,uMap;
+uniform vec2 uCanvas;uniform float uScale,uT,uAmb,uVig,uGlow,uRough,uSeed;uniform vec2 uFlow,uMap;uniform vec3 uTint,uFogC;uniform float uFog;uniform int uLN;uniform vec4 uLP[16];uniform vec3 uLC[16];
 uniform sampler2D uTerr,uLiq;
 out vec4 o;
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
@@ -414,12 +415,54 @@ float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(
 float fbm(vec2 p){float a=.5,s=0.;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+vec2(17.1,9.2);a*=.5;}return s;}
 float fbm2(vec2 p){return .66*vn(p)+.34*vn(p*2.07+vec2(5.3,1.7));}
 vec3 vor(vec2 p){vec2 i=floor(p),f=fract(p);float d1=8.,d2=8.,id=0.;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 g=vec2(float(x),float(y));vec2 r=vec2(hash(i+g),hash(i+g+31.7));float d=length(g+r-f);if(d<d1){d2=d1;d1=d;id=hash(i+g+5.3);}else if(d<d2)d2=d;}return vec3(d1,d2,id);}
-vec3 stoneC(vec2 p){vec3 v=vor(p/50.);float e=smoothstep(0.,.07,v.y-v.x);vec3 b=vec3(.43,.41,.39)*(.74+.34*v.z)*(.8+.4*fbm(p*.05));return mix(vec3(.10,.095,.095),b,e);}
-vec3 grassC(vec2 p){float n=fbm(p*.04);float b=vn(p*vec2(.5,1.5)+n*5.);vec3 c=mix(vec3(.11,.28,.09),vec3(.27,.47,.15),n);return c*(.78+.5*b);}
-vec3 sandC(vec2 p){float n=fbm(p*.03);float r=vn(p*vec2(.05,.5)+n*3.);return mix(vec3(.60,.48,.30),vec3(.80,.68,.46),n)*(.92+.12*r+.06*hash(floor(p)));}
-vec3 snowC(vec2 p){float n=fbm(p*.04);vec3 c=mix(vec3(.74,.82,.92),vec3(.93,.96,1.),n);return c*(.94+.08*vn(p*.5))+step(.9985,hash(floor(p*.7)))*.25;}
+vec3 shade(vec3 a,float h0,float hx,float hy,float k){vec3 n=normalize(vec3(-(hx-h0)*k,-(hy-h0)*k,1.));return a*(.45+.8*max(dot(n,vec3(-.451,-.551,.7017)),0.));}
+float stH(vec2 p){vec3 v=vor(p/54.);return smoothstep(0.,.14,v.y-v.x)*.55+fbm2(p*.09)*.12+vn(p*.45)*.08;}
+vec3 stoneL(vec2 p){
+  vec3 v=vor(p/54.);float e=v.y-v.x;
+  float groove=1.-smoothstep(0.,.1,e);
+  vec3 c=mix(vec3(.38,.37,.37),vec3(.50,.46,.40),hash(vec2(v.z*91.7,3.1)))*(.78+.36*v.z)*(.78+.44*fbm(p*.05));
+  c*=.92+.1*vn(p*.8);
+  c=mix(c,vec3(.05,.045,.04),groove*.92);
+  c+=vec3(.015,.05,.01)*groove*smoothstep(.5,.78,fbm(p*.03+4.));
+  vec3 v2=vor(p/17.+v.z*9.);
+  c*=1.-.55*(1.-smoothstep(0.,.045,v2.y-v2.x))*step(.74,v.z)*(1.-groove);
+  return shade(c,stH(p),stH(p+vec2(2.,0.)),stH(p+vec2(0.,2.)),5.);
+}
+float grH(vec2 p){float tu=fbm2(p*.12);return tu*.6+vn(p*vec2(1.1,1.4)+tu*4.)*.4;}
+vec3 grassL(vec2 p,float t){
+  float n=fbm(p*.04);
+  float gust=fbm2(p*.009+vec2(t*.18,t*.07));
+  vec3 c=mix(vec3(.10,.25,.07),vec3(.30,.50,.16),n);
+  float dirt=smoothstep(.64,.78,fbm(p*.018+9.));
+  c=mix(c,vec3(.30,.22,.13)*(.8+.4*vn(p*.3)),dirt*.55);
+  c*=.8+.5*vn(p*vec2(.7,1.9)+n*6.);
+  c=shade(c,grH(p),grH(p+vec2(2.,0.)),grH(p+vec2(0.,2.)),2.4);
+  c*=.9+.2*gust;
+  vec2 cl=floor(p/24.),f=fract(p/24.)-.5;float hh=hash(cl+3.7);
+  vec2 off=(vec2(hash(cl+1.1),hash(cl+2.3))-.5)*.5;float fd=length(f-off)*24.;
+  float fm=step(.9,hh)*(1.-dirt)*smoothstep(2.6,1.4,fd);
+  vec3 fc=hh>.96?vec3(.95,.88,.30):(hh>.93?vec3(.96,.96,.96):vec3(.86,.42,.66));
+  return mix(c,fc,fm);
+}
+float sdH(vec2 p){float w=fbm(p*.02);float rp=sin(dot(p,vec2(.55,.83))*.11+w*7.)*.5+.5;vec2 pc=floor(p/34.);float ph=hash(pc);vec2 po=(vec2(hash(pc+1.),hash(pc+2.))-.5)*.5+.5;float d=length(fract(p/34.)-po)*34.;return rp*.35+step(.9,ph)*smoothstep(3.+4.*ph,1.5,d)*.6+vn(p*.8)*.05;}
+vec3 sandL(vec2 p){
+  float n=fbm(p*.03);vec3 c=mix(vec3(.62,.50,.32),vec3(.82,.70,.48),n)*(.93+.12*hash(floor(p)));
+  vec2 pc=floor(p/34.);float ph=hash(pc);vec2 po=(vec2(hash(pc+1.),hash(pc+2.))-.5)*.5+.5;float d=length(fract(p/34.)-po)*34.;
+  c=mix(c,vec3(.45,.40,.35)*(.8+.4*hash(pc+7.)),step(.9,ph)*smoothstep(3.+4.*ph,2.,d)*.7);
+  return shade(c,sdH(p),sdH(p+vec2(2.,0.)),sdH(p+vec2(0.,2.)),3.5);
+}
+float snH(vec2 p){return fbm(p*.018)*.9+vn(p*.35)*.08;}
+vec3 snowL(vec2 p,float t){
+  float h0=snH(p);
+  vec3 c=mix(vec3(.72,.80,.92),vec3(.97,.98,1.),smoothstep(.25,.75,h0));
+  c=shade(c,h0,snH(p+vec2(2.,0.)),snH(p+vec2(0.,2.)),5.);
+  vec2 g=floor(p*.55);float hs=hash(g);
+  c+=step(.985,hs)*pow(.5+.5*sin(t*2.6+hs*60.),10.)*vec3(.9,.95,1.)*.9;
+  return c;
+}
 float wh(vec2 p,vec2 fl2,float t){vec2 q1=p*.028-fl2*.035,q2=p*.07-fl2*.07+vec2(3.,1.);return fbm2(q1+fbm2(q2*.5+t*.05)*1.2)*.65+vn(q2)*.35;}
 vec3 ramp(float h){vec3 a=vec3(.10,.025,.02),b=vec3(.62,.08,.02),c=vec3(1.,.42,.04),d=vec3(1.,.78,.32);return h<.4?mix(a,b,h/.4):h<.75?mix(b,c,(h-.4)/.35):mix(c,d,(h-.75)/.25);}
+float wallV(vec2 p){return texture(uTerr,p/uMap).r+(fbm(p*.035+uSeed)-.5)*uRough*.9+(fbm(p*.12+7.)-.5)*.1*uRough;}
 void main(){
   vec2 p=vec2(gl_FragCoord.x,uCanvas.y-gl_FragCoord.y)/uScale;
   vec2 uv=p/uMap;
@@ -432,16 +475,33 @@ void main(){
   float dIn=clamp((wv-.5)*3.2,0.,1.);
   // pavimento
   float wg=smoothstep(.35,.65,T.g+(nA-.5)*.5),wb=smoothstep(.35,.65,T.b+(nA-.5)*.5),ws=smoothstep(.35,.65,T.a+(nA-.5)*.5);
-  vec3 fl=stoneC(p);fl=mix(fl,grassC(p),wg);fl=mix(fl,sandC(p),wb);fl=mix(fl,snowC(p),ws);
-  // ombra delle pareti sul pavimento (luce da nord-ovest)
-  vec2 ld=normalize(vec2(.55,.7))/uMap;
-  float sh=(texture(uTerr,uv-ld*7.).r+texture(uTerr,uv-ld*16.).r+texture(uTerr,uv-ld*28.).r)/3.;
-  fl*=1.-.55*smoothstep(.15,.85,sh);
-  fl*=1.-.32*smoothstep(.05,.5,T.r);
-  vec3 wc=mix(vec3(.34,.30,.26),vec3(.11,.10,.10),dIn)*(.65+.7*fbm(p*.07));
-  vec3 vw=vor(p/32.);wc*=mix(.55,1.,smoothstep(0.,.09,vw.y-vw.x));
-  wc+=vec3(.15,.13,.10)*(1.-smoothstep(0.,.2,dIn))*(.55+.7*nB);
-  wc*=1.-.5*(1.-smoothstep(0.,.05,dIn));
+  float kst=(1.-wg)*(1.-wb)*(1.-ws),kgr=wg*(1.-wb)*(1.-ws),ksa=wb*(1.-ws);
+  vec3 fl=vec3(0.);
+  if(wm<.995){
+    if(kst>.004)fl+=stoneL(p)*kst;
+    if(kgr>.004)fl+=grassL(p,t)*kgr;
+    if(ksa>.004)fl+=sandL(p)*ksa;
+    if(ws>.004)fl+=snowL(p,t)*ws;
+    float wet=0.;for(int i=0;i<6;i++){float a=float(i)*1.047;wet+=texture(uLiq,uv+vec2(cos(a),sin(a))*13./uMap).g;}
+    fl*=1.-.3*smoothstep(.1,.9,wet/6.);
+    vec2 ld=normalize(vec2(.55,.7))/uMap;
+    float sh=(texture(uTerr,uv-ld*7.).r+texture(uTerr,uv-ld*16.).r+texture(uTerr,uv-ld*28.).r)/3.;
+    fl*=1.-.55*smoothstep(.15,.85,sh);
+    fl*=1.-.32*smoothstep(.05,.5,T.r);
+  }
+  vec3 wc=vec3(0.);
+  if(wm>.005){
+    vec3 vw=vor(p/32.);
+    vec2 tl=(vec2(hash(vec2(vw.z*57.3,1.7)),hash(vec2(vw.z*91.1,4.4)))-.5)*.9;
+    float wx=wallV(p+vec2(3.,0.)),wy=wallV(p+vec2(0.,3.));
+    vec3 wn=normalize(vec3(-(wx-wv)*2.6+tl.x*.5,-(wy-wv)*2.6+tl.y*.5,1.));
+    wc=mix(vec3(.40,.35,.30),vec3(.13,.115,.11),dIn)*(.7+.6*fbm(p*.07));
+    wc*=.92+.1*sin(p.y*.09+p.x*.03+nA*9.);
+    wc*=mix(.5,1.,smoothstep(0.,.08,vw.y-vw.x));
+    wc*=.5+.9*max(dot(wn,vec3(-.451,-.551,.7017)),0.);
+    wc+=vec3(.15,.13,.10)*(1.-smoothstep(0.,.2,dIn))*(.55+.7*nB);
+    wc*=1.-.5*(1.-smoothstep(0.,.05,dIn));
+  }
   vec3 col=mix(fl,wc,wm);
   // liquidi
   float nl=(fbm(p*.045+uSeed+3.)-.5)*uRough*.7;
@@ -455,6 +515,12 @@ void main(){
     float mo=smoothstep(.38,.8,v+(dp-.5)*.22+cr*.12);
     mo*=smoothstep(0.,.25,dp)*.85+.15;
     vec3 lc=ramp(mo);lc+=vec3(1.,.5,.1)*cr*.35*mo;
+    vec3 vp=vor(p/46.+q*.5+fl2*.004);
+    float crk=1.-smoothstep(0.,.13,vp.y-vp.x);
+    float crust=smoothstep(.5,.22,mo+(dp-.5)*.1)*.9;
+    vec3 pc=vec3(.075,.06,.055)*(.6+.8*fbm(p*.11))*(.8+.5*vp.z);
+    vec3 cg=ramp(.55+.4*(.5+.5*sin(t*1.3+vp.z*20.)))*crk*1.5;
+    lc=mix(lc,pc+cg,crust);
     lc*=.9+.15*sin(t*1.5+nA*8.);
     col=mix(col,lc,mL);
   }
@@ -469,6 +535,7 @@ void main(){
     float cau=pow(1.-abs(2.*fbm2(p*.06-fl2*.05+vec2(t*.07,0.))-1.),6.)*.38*(1.-dp*.7);
     wcl+=vec3(.3,.5,.55)*cau;
     wcl+=spec*vec3(.9,.95,1.)*.7;
+    wcl+=pow(max(dot(nn,normalize(vec3(-.4,-.5,.75))),0.),220.)*1.3;
     float edge=1.-smoothstep(0.,.24,dp);
     float fN=fbm2(p*.09+fl2*-.1+vec2(0.,t*.2));
     wcl+=edge*smoothstep(.45,.7,fN+edge*.25)*.65;
@@ -498,7 +565,13 @@ void main(){
     g/=14.4;
     col+=vec3(1.,.42,.08)*g*uGlow*.75*(1.-mL)*(.7+.3*sin(t*1.7+nA*6.));
   }
-  col*=uAmb;
+  vec3 lsum=vec3(0.);
+  for(int i=0;i<16;i++){if(i>=uLN)break;float d=length(p-uLP[i].xy)/uLP[i].z;lsum+=uLC[i]*pow(max(1.-d,0.),1.8);}
+  float fgn=fbm(p*.005+vec2(t*.012,t*.006))*.7+fbm2(p*.011-vec2(t*.02,0.))*.5;
+  float fogA=uFog*smoothstep(.22,.7,fgn);
+  vec3 amb3=uTint*uAmb;
+  col=col*(amb3+lsum*1.5)+lsum*.05;
+  col=mix(col,uFogC*(amb3*.9+lsum*.9),fogA*.9);
   col*=1.-.4*uVig*pow(length(uv-.5)*1.45,2.2);
   col+=(hash(p+t)-.5)/255.;
   o=vec4(col,1.);
@@ -511,7 +584,7 @@ function initGL(){
   const mk=(t,src)=>{const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));throw new Error("shader")}return s};
   prog=gl.createProgram();gl.attachShader(prog,mk(gl.VERTEX_SHADER,VS));gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);
   if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){console.error(gl.getProgramInfoLog(prog));return false}
-  for(const n of["uCanvas","uScale","uT","uAmb","uVig","uGlow","uRough","uSeed","uFlow","uMap","uTerr","uLiq"])U[n]=gl.getUniformLocation(prog,n);
+  for(const n of["uCanvas","uScale","uT","uAmb","uVig","uGlow","uRough","uSeed","uFlow","uMap","uTerr","uLiq","uTint","uFogC","uFog","uLN","uLP","uLC"])U[n]=gl.getUniformLocation(prog,n);
   const mkT=()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t};
   texT=mkT();texL=mkT();glOK=true;return true;
 }
@@ -544,18 +617,31 @@ function fitBox(){
   const pad=VIEWER?0:20,aw=wrap.clientWidth-pad,ah=wrap.clientHeight-pad,k=Math.min(aw/w,ah/hh);
   b.style.width=Math.floor(w*k)+"px";b.style.height=Math.floor(hh*k)+"px";
 }
+function allLights(time){
+  const out=[],fk=(i,f)=>f?1+.09*Math.sin(time*7+i*2.3)+.05*Math.sin(time*13.3+i*1.7):1;
+  (S.lights||[]).forEach((l,i)=>out.push({x:l.x,y:l.y,r:l.r,c:l.c,i:l.i,fk:fk(i,l.f)}));
+  if(S.set.autol){for(const o of S.objs){if(out.length>=16)break;if(!OBJ[o.k])continue;const sp=getSprite(o.k,o.r,o.s,o.v);
+    sp.fire.forEach((f,i)=>{if(out.length<16)out.push({x:o.x+f[0],y:o.y+f[1],r:CELL*(2.6+f[2]/CELL*1.4),c:[1,.6,.26],i:.85,fk:fk(out.length,1)})});
+    sp.glow.forEach((g,i)=>{if(out.length<16&&typeof g[3]==="string"){const cc=g[3].split(",").map(v=>(+v||0)/255);out.push({x:o.x+g[0],y:o.y+g[1],r:Math.max(CELL*1.6,g[2]*2.4),c:cc,i:.7,fk:fk(out.length,1)})}})}}
+  return out;
+}
+function tintOf(){const a=.45+.6*Math.min(1.2,S.set.amb),t=S.set.tint||[1,1,1];return t.map(v=>Math.max(.15,Math.min(1.2,v*a)))}
 function drawGL(scale,time){
   gl.viewport(0,0,glCv.width,glCv.height);gl.useProgram(prog);
   gl.uniform2f(U.uCanvas,glCv.width,glCv.height);gl.uniform1f(U.uScale,glCv.width/MW());gl.uniform2f(U.uMap,MW(),MH());
   gl.uniform1f(U.uT,time);gl.uniform1f(U.uAmb,S.set.amb);gl.uniform1f(U.uVig,S.set.vig);gl.uniform1f(U.uGlow,S.set.glow);gl.uniform1f(U.uRough,S.set.rough);
   let sd=0;for(const ch of String(S.seed||S.id))sd=(sd*31+ch.charCodeAt(0))%997;gl.uniform1f(U.uSeed,sd*1.37);
+  gl.uniform3fv(U.uTint,S.set.tint||[1,1,1]);gl.uniform3fv(U.uFogC,S.set.fogc||[.55,.55,.62]);gl.uniform1f(U.uFog,S.set.fog||0);
+  const LL=allLights(time),lp=new Float32Array(64),lc=new Float32Array(48);
+  LL.forEach((l,i)=>{lp.set([l.x,l.y,l.r,1],i*4);lc.set([l.c[0]*l.i*l.fk,l.c[1]*l.i*l.fk,l.c[2]*l.i*l.fk],i*3)});
+  gl.uniform1i(U.uLN,LL.length);gl.uniform4fv(U.uLP,lp);gl.uniform3fv(U.uLC,lc);
   const a=S.set.ang*Math.PI/180,sp=S.set.spd*28;gl.uniform2f(U.uFlow,Math.cos(a)*sp,Math.sin(a)*sp);
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texT);gl.uniform1i(U.uTerr,0);
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,texL);gl.uniform1i(U.uLiq,1);
   gl.drawArrays(gl.TRIANGLES,0,3);
 }
 /* ---------- overlay: oggetti, fuoco, braci, griglia, anteprime ---------- */
-let sel=null,ui={mode:"sel",mat:"wall",shape:"brush",brush:60,place:null,rot:0,scale:1,rand:true,snap:false},pv=null,parts=[];
+let selL=null,sel=null,ui={mode:"sel",mat:"wall",shape:"brush",brush:60,place:null,rot:0,scale:1,rand:true,snap:false},pv=null,parts=[];
 function flame(c,x,y,sz,t,seed){
   c.save();c.globalCompositeOperation="lighter";
   const fk=.85+.15*Math.sin(t*9+seed)+.1*Math.sin(t*23+seed*2.3);
@@ -575,13 +661,14 @@ function stepParts(dt){
   for(let i=parts.length-1;i>=0;i--){const q=parts[i];q.life+=dt;q.y+=q.vy*dt;q.x+=Math.sin(q.ph+q.life*2)*10*dt;if(q.life>q.max){const p=lavaPts[(Math.random()*lavaPts.length)|0];q.x=p[0]+(Math.random()-.5)*FP;q.y=p[1];q.life=0;q.max=2+Math.random()*2.5;q.vy=-(14+Math.random()*30)}}
 }
 function drawOverlay(c,sc,t,opts={}){
-  c.setTransform(sc,0,0,sc,0,0);c.clearRect(0,0,MW(),MH());
+  sprTint=tintOf();c.setTransform(sc,0,0,sc,0,0);c.clearRect(0,0,MW(),MH());
   const objs=S.objs.slice().sort((a,b)=>((OBJ[a.k]&&OBJ[a.k].flat)?0:1)-((OBJ[b.k]&&OBJ[b.k].flat)?0:1)||a.y-b.y);
   if(S.set.grid&&!opts.noGrid){c.strokeStyle="rgba(255,255,255,.22)";c.lineWidth=1/sc*sc;c.beginPath();for(let x=0;x<=MW();x+=CELL){c.moveTo(x+.5,0);c.lineTo(x+.5,MH())}for(let y=0;y<=MH();y+=CELL){c.moveTo(0,y+.5);c.lineTo(MW(),y+.5)}c.stroke()}
   for(const o of objs){
     if(!OBJ[o.k])continue;const sp=getSprite(o.k,o.r,o.s,o.v);
     c.drawImage(sp.cv,o.x-sp.ox,o.y-sp.oy,sp.w,sp.h);
   }
+  if(!opts.noLight){c.save();c.globalCompositeOperation="lighter";for(const l of allLights(t)){const g=c.createRadialGradient(l.x,l.y,0,l.x,l.y,l.r*.75),q=Math.min(.4,.2*l.i*l.fk),cs=l.c.map(v=>Math.round(v*255)).join(",");g.addColorStop(0,"rgba("+cs+","+q+")");g.addColorStop(1,"rgba("+cs+",0)");c.fillStyle=g;c.fillRect(l.x-l.r,l.y-l.r,l.r*2,l.r*2)}c.restore()}
   for(const o of objs){
     if(!OBJ[o.k])continue;const sp=getSprite(o.k,o.r,o.s,o.v);
     sp.glow.forEach((g,i)=>glowAt(c,o.x+g[0],o.y+g[1],g[2],g[3],t,o.v+i));
@@ -590,8 +677,23 @@ function drawOverlay(c,sc,t,opts={}){
   if(S.set.part&&parts.length){c.save();c.globalCompositeOperation="lighter";for(const q of parts){const a=Math.max(0,1-q.life/q.max);c.fillStyle="rgba(255,"+(120+Math.round(80*a))+",40,"+(.85*a)+")";c.beginPath();c.arc(q.x,q.y,q.s,0,6.283);c.fill()}c.restore()}
   if(!opts.clean)drawEditor(c);
 }
+const hpx=()=>{const r=ov.getBoundingClientRect();return r.width?MW()/r.width:1};
+function handlesOf(o){const R=OBJ[o.k].fp*CELL*o.s,k=hpx();return{R,sc:[o.x+R*.707,o.y+R*.8*.707],rot:[o.x,o.y-R*.8-30*k]}}
 function drawEditor(c){
-  if(sel){const o=S.objs.find(x=>x.id===sel);if(o){const sp=getSprite(o.k,o.r,o.s,o.v);c.strokeStyle="#ffd36b";c.lineWidth=2;c.setLineDash([6,4]);c.beginPath();c.ellipse(o.x,o.y,OBJ[o.k].fp*CELL*o.s,OBJ[o.k].fp*CELL*o.s*.8,0,0,6.283);c.stroke();c.setLineDash([]);c.fillStyle="#ffd36b";c.beginPath();c.arc(o.x,o.y,3,0,6.283);c.fill()}}
+  if(sel){const o=S.objs.find(x=>x.id===sel);if(o&&OBJ[o.k]){const H=handlesOf(o),k=hpx();
+    c.save();c.strokeStyle="#ffd36b";c.fillStyle="#ffd36b";c.lineWidth=2*k;c.setLineDash([6*k,4*k]);
+    c.beginPath();c.ellipse(o.x,o.y,H.R,H.R*.8,0,0,6.283);c.stroke();c.setLineDash([]);
+    c.beginPath();c.moveTo(o.x,o.y-H.R*.8);c.lineTo(H.rot[0],H.rot[1]);c.stroke();
+    // centro: sposta
+    c.beginPath();c.arc(o.x,o.y,4*k,0,6.283);c.fill();
+    // maniglia rotazione
+    c.beginPath();c.arc(H.rot[0],H.rot[1],10*k,0,6.283);c.fillStyle="#1b2626";c.fill();c.strokeStyle="#ffd36b";c.stroke();
+    c.beginPath();c.arc(H.rot[0],H.rot[1],5*k,-2.4,1.2);c.stroke();c.beginPath();c.moveTo(H.rot[0]+3*k,H.rot[1]+5*k);c.lineTo(H.rot[0]+7*k,H.rot[1]+1*k);c.lineTo(H.rot[0]+1*k,H.rot[1]-1*k);c.fillStyle="#ffd36b";c.fill();
+    // maniglia scala
+    c.fillStyle="#1b2626";c.fillRect(H.sc[0]-9*k,H.sc[1]-9*k,18*k,18*k);c.strokeRect(H.sc[0]-9*k,H.sc[1]-9*k,18*k,18*k);
+    c.beginPath();c.moveTo(H.sc[0]-4*k,H.sc[1]+4*k);c.lineTo(H.sc[0]+4*k,H.sc[1]-4*k);c.moveTo(H.sc[0]+4*k,H.sc[1]-4*k);c.lineTo(H.sc[0]+4*k,H.sc[1]+1*k);c.moveTo(H.sc[0]+4*k,H.sc[1]-4*k);c.lineTo(H.sc[0]-1*k,H.sc[1]-4*k);c.stroke();
+    c.restore()}}
+  if(tab==="light"){const k=hpx();for(const l of S.lights){const cs=l.c.map(v=>Math.round(v*255)).join(","),on=l.id===selL;c.save();c.strokeStyle="rgba("+cs+","+(on?1:.55)+")";c.lineWidth=(on?2:1.2)*k;c.setLineDash([6*k,4*k]);c.beginPath();c.arc(l.x,l.y,l.r,0,6.283);c.stroke();c.setLineDash([]);c.fillStyle="rgb("+cs+")";c.strokeStyle="#000";c.lineWidth=1.5*k;c.beginPath();c.arc(l.x,l.y,(on?9:7)*k,0,6.283);c.fill();c.stroke();if(on){c.fillStyle="#1b2626";c.strokeStyle="rgb("+cs+")";c.fillRect(l.x+l.r-8*k,l.y-8*k,16*k,16*k);c.strokeRect(l.x+l.r-8*k,l.y-8*k,16*k,16*k)}c.restore()}}
   if(pv){c.save();c.setLineDash([8,5]);c.lineWidth=2.5;c.strokeStyle="#ffd36b";c.fillStyle="rgba(255,211,107,.2)";
     if(pv.rect){c.fillRect(...pv.rect);c.strokeRect(...pv.rect)}else if(pv.ell){const e=pv.ell;c.beginPath();c.ellipse(e[0],e[1],Math.max(.5,e[2]),Math.max(.5,e[3]),0,0,6.283);c.fill();c.stroke()}
     else if(pv.poly&&pv.poly.length>1){c.beginPath();pv.poly.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));if(pv.poly.length>2)c.fill();c.stroke();c.setLineDash([]);pv.poly.forEach((p,i)=>{c.beginPath();c.arc(p[0],p[1],i===0?7:4,0,6.283);c.fillStyle=i===0?"#fff":"#ffd36b";c.fill();c.strokeStyle="#000";c.lineWidth=1;c.stroke()})}
@@ -602,7 +704,7 @@ function drawEditor(c){
 let paused=false,fps=0;
 function frame(now){
   requestAnimationFrame(frame);
-  if(!S||!glOK||document.hidden)return;
+  if(!S||!glOK||document.hidden||window.__stop)return;
   const dt=Math.min(.1,(now-lastNow)/1000);lastNow=now;
   if(!paused)T+=dt;
   if(dirtyTex)uploadFields();
@@ -613,10 +715,20 @@ function frame(now){
 /* ---------- interfaccia ---------- */
 const gen={type:"cave",seed:"",floor:"stone",liq:"lava",shape:"both",amount:.5,rock:.5,objects:.5,size:"m"};
 let tab="gen",undoSt=[];
-const TABS=[["gen","Genera"],["draw","Disegna"],["obj","Oggetti"],["fx","Effetti"]];
-function pushUndo(){undoSt.push({t:S.terr.slice(),l:S.liq.slice(),o:JSON.stringify(S.objs),set:JSON.stringify(S.set)});if(undoSt.length>40)undoSt.shift()}
+const THEMES=[
+ {id:"neutra",n:"Neutra",tint:[1,1,1],amb:1,vig:.5,fog:0,fogc:[.55,.55,.62]},
+ {id:"viola",n:"Caverna viola",tint:[.62,.5,1],amb:.62,vig:.85,fog:.4,fogc:[.5,.32,.62]},
+ {id:"radici",n:"Radici luminose",tint:[.45,.85,.95],amb:.55,vig:.85,fog:.32,fogc:[.2,.48,.52]},
+ {id:"cripta",n:"Cripta fredda",tint:[.62,.76,1],amb:.55,vig:.8,fog:.28,fogc:[.38,.48,.66]},
+ {id:"vulcano",n:"Vulcano",tint:[1,.72,.52],amb:.72,vig:.75,fog:.22,fogc:[.45,.2,.12]},
+ {id:"notte",n:"Notte nel bosco",tint:[.46,.6,1],amb:.52,vig:.8,fog:.22,fogc:[.22,.32,.5]},
+ {id:"palude",n:"Palude",tint:[.72,1,.6],amb:.78,vig:.7,fog:.42,fogc:[.42,.58,.34]}];
+const LCOL=[["Torcia",[1,.62,.28]],["Viola",[.65,.4,1]],["Ciano",[.25,.85,1]],["Verde",[.4,1,.5]],["Rosso",[1,.25,.2]],["Fredda",[.85,.92,1]]];
+function applyTheme(id){const t=THEMES.find(x=>x.id===id);if(!t)return;pushUndo();Object.assign(S.set,{theme:id,tint:t.tint.slice(),amb:t.amb,vig:t.vig,fog:t.fog,fogc:t.fogc.slice()});renderPane()}
+const TABS=[["gen","Genera"],["draw","Disegna"],["obj","Oggetti"],["light","Luci"],["fx","Effetti"]];
+function pushUndo(){undoSt.push({t:S.terr.slice(),l:S.liq.slice(),o:JSON.stringify(S.objs),lt:JSON.stringify(S.lights||[]),set:JSON.stringify(S.set)});if(undoSt.length>40)undoSt.shift()}
 function undo(){if(shp&&shp.k==="poly"&&shp.pts.length){shp.pts.pop();if(!shp.pts.length)shpCancel();else shpPreview(null);return}
-  const u=undoSt.pop();if(!u){toast("Niente da annullare");return}S.terr=u.t;S.liq=u.l;S.objs=JSON.parse(u.o);S.set=JSON.parse(u.set);sel=null;dirtyTex=true;renderPane()}
+  const u=undoSt.pop();if(!u){toast("Niente da annullare");return}S.terr=u.t;S.liq=u.l;S.objs=JSON.parse(u.o);S.lights=JSON.parse(u.lt||"[]");S.set=JSON.parse(u.set);sel=null;selL=null;dirtyTex=true;renderPane()}
 const slider=(lab,min,max,step,get,set,fmt=v=>v)=>{const o=h("b",{},fmt(get())),r=h("input",{type:"range",min,max,step,value:get()});r.addEventListener("input",()=>{set(+r.value);o.textContent=fmt(+r.value)});return h("label",{class:"lab"},h("span",{},lab+": ",o),r)};
 const sel_=(opts,get,set)=>{const s=h("select",{},...opts.map(([v,t])=>h("option",{value:v,selected:v===get()},t)));s.addEventListener("change",()=>set(s.value));return s};
 function buildTabs(){const t=$("#tabs");t.replaceChildren(...TABS.map(([id,l])=>h("button",{role:"tab","aria-selected":String(tab===id),onclick:()=>{shpCancel();tab=id;ui.place=null;buildTabs();renderPane()}},l)))}
@@ -648,17 +760,33 @@ function renderPane(){
   }else if(tab==="obj"){
     const grid=h("div",{class:"objs"},...OBJ_ORDER.map(k=>{const cv=h("canvas",{width:64,height:64});const b=h("button",{class:"obj","aria-pressed":String(ui.place===k),onclick:()=>{ui.place=ui.place===k?null:k;ui.pv=(Math.random()*1e6)|0;sel=null;renderPane()}},cv,OBJ[k].n);thumbFor(k,cv);return b}));
     const o=sel&&S.objs.find(x=>x.id===sel);
-    p.append(h("div",{class:"grp"},h("h3",{},"Oggetti 3D"),h("div",{class:"hint"},ui.place?"Tocca la mappa per posizionare “"+OBJ[ui.place].n+"”. Esc per smettere.":"Scegli un oggetto, poi toccalo sulla mappa. Senza scelta puoi selezionare e trascinare quelli già messi."),grid),
+    p.append(h("div",{class:"grp"},h("h3",{},"Oggetti 3D"),h("div",{class:"hint"},ui.place?"Tocca la mappa per posizionare “"+OBJ[ui.place].n+"”. Poi lo regoli con le maniglie.":"Scegli un oggetto e toccalo sulla mappa. Tocca un oggetto già messo per selezionarlo: trascinalo per spostarlo, usa la maniglia tonda in alto per ruotarlo e il quadratino in basso a destra per ingrandirlo o rimpicciolirlo."),grid),
       h("div",{class:"grp"},h("h3",{},ui.place?"Prima di posizionare":"Oggetto selezionato"),
         slider("Rotazione",0,355,5,()=>o?o.r:ui.rot,v=>{if(o)o.r=v;else ui.rot=v},v=>v+"°"),
-        slider("Scala",.4,2.5,.05,()=>o?o.s:ui.scale,v=>{if(o)o.s=v;else ui.scale=v},v=>Math.round(v*100)+"%"),
+        slider("Dimensione",.3,3.5,.05,()=>o?o.s:ui.scale,v=>{if(o)o.s=v;else ui.scale=v},v=>Math.round(v*100)+"%"),
         ui.place?h("label",{},h("input",{type:"checkbox",checked:ui.rand,onchange:e=>ui.rand=e.target.checked})," Rotazione a caso a ogni oggetto"):null,
+        ui.place?h("label",{},h("input",{type:"checkbox",checked:!!ui.multi,onchange:e=>ui.multi=e.target.checked})," Continua a posare più copie"):null,
+        ui.place?h("button",{class:"btn",onclick:()=>{ui.place=null;renderPane()}},"Fatto, smetti di posare"):null,
         o?h("div",{class:"row"},h("button",{class:"btn",onclick:dupSel},"Duplica"),h("button",{class:"btn",onclick:()=>{pushUndo();o.v=(Math.random()*1e6)|0}},"Cambia forma"),h("button",{class:"btn",onclick:delSel},"Elimina")):null),
       h("div",{class:"row"},h("button",{class:"btn",onclick:undo},"Annulla"),h("button",{class:"btn",onclick:()=>{pushUndo();S.objs=[];sel=null;renderPane()}},"Togli tutti gli oggetti")),
-      h("div",{class:"hint"},"Tasti: Canc elimina · R ruota di 15° · D duplica. “Cambia forma” rigenera l’aspetto (rami, rocce, cristalli…)."));
+      h("div",{class:"hint"},"Tasti con un oggetto selezionato: frecce spostano (con Maiusc di più) · [ e ] ruotano · + e − ridimensionano · D duplica · Canc elimina. Con Maiusc la maniglia di rotazione scatta ogni 15°. “Cambia forma” rigenera l’aspetto (rami, rocce, cristalli…)."));
+  }else if(tab==="light"){
+    const l=selL&&S.lights.find(x=>x.id===selL),cur=l||{c:LCOL[ui.lc||0][1],r:(ui.lr||3)*CELL,i:ui.li||1,f:ui.lf!==false};
+    p.append(h("div",{class:"grp"},h("h3",{},"Luci"),h("div",{class:"hint"},"Tocca la mappa per mettere una luce (torcia, fungo, cristallo, runa…). Trascina il punto per spostarla e il quadratino sul bordo per cambiare la portata. Le luci colorano e schiariscono il terreno intorno."),
+        h("div",{class:"mats"},...LCOL.map(([n,c],i)=>h("button",{class:"mat","aria-pressed":String(l?l.c.join()===c.join():(ui.lc||0)===i),onclick:()=>{if(l){pushUndo();l.c=c.slice()}else ui.lc=i;renderPane()}},h("i",{style:"background:rgb("+c.map(v=>Math.round(v*255)).join(",")+")"}),n)))),
+      h("div",{class:"grp"},h("h3",{},l?"Luce selezionata":"Prima di posizionare"),
+        slider("Portata",1,12,.5,()=>cur.r/CELL,v=>{if(l)l.r=v*CELL;else ui.lr=v},v=>v+" caselle"),
+        slider("Intensità",.2,2.5,.05,()=>cur.i,v=>{if(l)l.i=v;else ui.li=v},v=>Math.round(v*100)+"%"),
+        h("label",{},h("input",{type:"checkbox",checked:!!cur.f,onchange:e=>{if(l)l.f=e.target.checked;else ui.lf=e.target.checked}})," Tremola come una fiamma"),
+        l?h("div",{class:"row"},h("button",{class:"btn",onclick:()=>{pushUndo();S.lights=S.lights.filter(x=>x.id!==selL);selL=null;renderPane()}},"Elimina luce"),h("button",{class:"btn",onclick:()=>{selL=null;renderPane()}},"Deseleziona")):null),
+      h("div",{class:"grp"},h("label",{},h("input",{type:"checkbox",checked:!!S.set.autol,onchange:e=>S.set.autol=e.target.checked?1:0})," Luci automatiche da fuochi, bracieri e oggetti luminosi")),
+      h("div",{class:"row"},h("button",{class:"btn",onclick:undo},"Annulla"),h("button",{class:"btn",onclick:()=>{pushUndo();S.lights=[];selL=null;renderPane()}},"Togli tutte le luci")),
+      h("div",{class:"hint"},"Consiglio: scegli prima un’atmosfera scura (scheda Effetti) e poi accendi le luci dove serve."));
   }else{
     const st=S.set;
-    p.append(h("div",{class:"grp"},h("h3",{},"Liquidi che scorrono"),
+    p.append(h("div",{class:"grp"},h("h3",{},"Atmosfera"),h("div",{class:"mats"},...THEMES.map(t=>h("button",{class:"mat","aria-pressed":String(st.theme===t.id),onclick:()=>applyTheme(t.id)},h("i",{style:"background:linear-gradient(120deg,rgb("+t.tint.map(v=>Math.round(v*160)).join(",")+"),rgb("+t.fogc.map(v=>Math.round(v*255)).join(",")+"))"}),t.n))),
+        slider("Nebbia",0,1,.05,()=>st.fog||0,v=>st.fog=v,v=>v?Math.round(v*100)+"%":"nessuna"),h("div",{class:"hint"},"L’atmosfera cambia colore e luce di tutta la mappa. Poi puoi ritoccare luminosità, bordi scuri e nebbia.")),
+      h("div",{class:"grp"},h("h3",{},"Liquidi che scorrono"),
         slider("Direzione della corrente",0,355,5,()=>st.ang,v=>st.ang=v,v=>v+"°"),
         slider("Velocità",0,3,.1,()=>st.spd,v=>st.spd=v,v=>v.toFixed(1)+"×"),
         slider("Bagliore della lava",0,2,.1,()=>st.glow,v=>st.glow=v,v=>v.toFixed(1)),
@@ -674,7 +802,8 @@ function renderPane(){
 }
 const thumbCache={};
 function thumbFor(k,cv){
-  try{const sp=getSprite(k,0,1,1),c=cv.getContext("2d"),sc=Math.min(60/sp.w,60/sp.h,2.2);c.clearRect(0,0,64,64);c.drawImage(sp.cv,32-sp.w*sc/2,34-sp.h*sc/2,sp.w*sc,sp.h*sc)}catch(e){console.error(k,e)}
+  const _t=sprTint;sprTint=[1,1,1];try{const sp=getSprite(k,0,1,1),c=cv.getContext("2d"),sc=Math.min(60/sp.w,60/sp.h,2.2);c.clearRect(0,0,64,64);c.drawImage(sp.cv,32-sp.w*sc/2,34-sp.h*sc/2,sp.w*sc,sp.h*sc)}catch(e){console.error(k,e)}
+  sprTint=_t;
 }
 function dupSel(){const o=S.objs.find(x=>x.id===sel);if(!o)return;pushUndo();const n=Object.assign({},o,{id:uid(),x:o.x+CELL*.6,y:o.y+CELL*.4});S.objs.push(n);sel=n.id}
 function delSel(){if(!sel)return;pushUndo();S.objs=S.objs.filter(x=>x.id!==sel);sel=null;renderPane()}
@@ -731,9 +860,23 @@ ov.addEventListener("pointerdown",e=>{
     }
     shp={k:ui.shape,a:[sx,sy],b:[sx,sy],pts:[[x,y]]};gest={t:"shape"};shpPreview(null);return;
   }
+  if(tab==="light"){
+    const k=hpx(),sl=selL&&S.lights.find(q=>q.id===selL);
+    if(sl&&Math.hypot(x-(sl.x+sl.r),y-sl.y)<=14*k){gest={t:"lrad",id:sl.id,pushed:false};return}
+    let hit=null,bd=1e9;for(const l of S.lights){const d=Math.hypot(l.x-x,l.y-y);if(d<=14*k&&d<bd){bd=d;hit=l}}
+    if(hit){selL=hit.id;gest={t:"lmove",id:hit.id,dx:hit.x-x,dy:hit.y-y,pushed:false};renderPane();return}
+    pushUndo();const nl={id:uid(),x,y,r:(ui.lr||3)*CELL,c:LCOL[ui.lc||0][1].slice(),i:ui.li||1,f:ui.lf!==false};S.lights.push(nl);selL=nl.id;renderPane();return;
+  }
   if(tab==="obj"){
+    const so=sel&&S.objs.find(q=>q.id===sel);
+    if(so&&OBJ[so.k]){
+      const H=handlesOf(so),k=hpx();
+      if(Math.hypot(x-H.rot[0],y-H.rot[1])<=16*k){gest={t:"rot",id:so.id,a0:Math.atan2(y-so.y,x-so.x),r0:so.r,pushed:false};return}
+      if(Math.hypot(x-H.sc[0],y-H.sc[1])<=16*k){gest={t:"scl",id:so.id,d0:Math.max(8,Math.hypot(x-so.x,y-so.y)),s0:so.s,pushed:false};return}
+    }
     if(ui.place){
-      pushUndo();const o={id:uid(),k:ui.place,x,y,r:ui.rand?Math.round(Math.random()*71)*5:ui.rot,s:ui.scale,v:ui.pv||((Math.random()*1e6)|0)};S.objs.push(o);ui.pv=(Math.random()*1e6)|0;return;
+      pushUndo();const o={id:uid(),k:ui.place,x,y,r:ui.rand?Math.round(Math.random()*71)*5:ui.rot,s:ui.scale,v:ui.pv||((Math.random()*1e6)|0)};S.objs.push(o);ui.pv=(Math.random()*1e6)|0;
+      sel=o.id;if(!ui.multi)ui.place=null;renderPane();return;
     }
     const o=hitObj(x,y);sel=o?o.id:null;if(o){gest={t:"move",id:o.id,dx:o.x-x,dy:o.y-y,pushed:false}}renderPane();
   }
@@ -745,12 +888,18 @@ ov.addEventListener("pointermove",e=>{
     if(ui.shape==="brush"&&!gest)pv={ring:[x,y,ui.brush/2]};
     else if(shp&&shp.k==="poly"&&!gest)shpPreview(snapP(x,y));
   }
+  if(tab==="obj"&&!gest){const so=sel&&S.objs.find(q=>q.id===sel);let cur="crosshair";if(so&&OBJ[so.k]){const H=handlesOf(so),k=hpx();if(Math.hypot(x-H.rot[0],y-H.rot[1])<=16*k)cur="grab";else if(Math.hypot(x-H.sc[0],y-H.sc[1])<=16*k)cur="nwse-resize";else if(hitObj(x,y))cur="move"}else if(!ui.place&&hitObj(x,y))cur="move";ov.style.cursor=cur}
   if(!gest)return;
   if(gest.t==="brush"){paintLine(ui.mat,gest.last,[x,y],ui.brush/2);gest.last=[x,y];dirtyTex=true;pv={ring:[x,y,ui.brush/2]}}
   else if(gest.t==="shape"&&shp){if(shp.k==="free"){const l=shp.pts[shp.pts.length-1];if(Math.hypot(x-l[0],y-l[1])>=5)shp.pts.push([x,y])}else shp.b=snapP(x,y);shpPreview(null)}
+  else if(gest.t==="lmove"){const l=S.lights.find(q=>q.id===gest.id);if(l){if(!gest.pushed){pushUndo();gest.pushed=true}l.x=x+gest.dx;l.y=y+gest.dy}}
+  else if(gest.t==="lrad"){const l=S.lights.find(q=>q.id===gest.id);if(l){if(!gest.pushed){pushUndo();gest.pushed=true}l.r=clamp(Math.hypot(x-l.x,y-l.y),CELL*.8,CELL*12);ui.dirtyPane=true}}
+  else if(gest.t==="rot"){const o=S.objs.find(q=>q.id===gest.id);if(o){if(!gest.pushed){pushUndo();gest.pushed=true}let r=gest.r0+(Math.atan2(y-o.y,x-o.x)-gest.a0)*180/Math.PI;if(e.shiftKey)r=Math.round(r/15)*15;o.r=((Math.round(r)%360)+360)%360;ui.dirtyPane=true}}
+  else if(gest.t==="scl"){const o=S.objs.find(q=>q.id===gest.id);if(o){if(!gest.pushed){pushUndo();gest.pushed=true}o.s=clamp(Math.round(gest.s0*Math.hypot(x-o.x,y-o.y)/gest.d0*20)/20,.3,3.5);ui.dirtyPane=true}}
   else if(gest.t==="move"){const o=S.objs.find(q=>q.id===gest.id);if(o){if(!gest.pushed){pushUndo();gest.pushed=true}o.x=x+gest.dx;o.y=y+gest.dy}}
 });
 function endG(){
+  if(gest&&(gest.t==='rot'||gest.t==='scl'||gest.t==='move'||gest.t==='lrad')&&ui.dirtyPane){ui.dirtyPane=false;renderPane()}
   if(gest&&gest.t==="shape"&&shp){const g=shpGeom(null);shpCancel();shpApply(g)}
   gest=null;
 }
@@ -759,11 +908,14 @@ ov.addEventListener("pointerleave",()=>{ui.ghost=null;if(tab==="draw"&&!shp)pv=n
 addEventListener("keydown",e=>{
   if(VIEWER)return;const t=e.target;if(t&&/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)&&t.type!=="range"&&t.type!=="checkbox")return;
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();undo();return}
-  if(e.key==="Escape"){if(shp)shpCancel();else if(ui.place){ui.place=null;renderPane()}else if(sel){sel=null;renderPane()}return}
+  if(e.key==="Escape"){if(tab==="light"&&selL){selL=null;renderPane();return}if(shp)shpCancel();else if(ui.place){ui.place=null;renderPane()}else if(sel){sel=null;renderPane()}return}
   if(shp&&shp.k==="poly"){if(e.key==="Enter"){e.preventDefault();polyClose();return}if(e.key==="Backspace"){e.preventDefault();shp.pts.pop();if(!shp.pts.length)shpCancel();else shpPreview(null);return}}
+  if(tab==="light"&&selL&&(e.key==="Delete"||e.key==="Backspace")){e.preventDefault();pushUndo();S.lights=S.lights.filter(x=>x.id!==selL);selL=null;renderPane();return}
   if(tab==="obj"&&sel){const o=S.objs.find(x=>x.id===sel);if(!o)return;
     if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();delSel()}
-    else if(e.key.toLowerCase()==="r"){pushUndo();o.r=((o.r+(e.shiftKey?-15:15))%360+360)%360;renderPane()}
+    else if(e.key.toLowerCase()==="r"||e.key==="]"||e.key==="["){pushUndo();const d=e.key==="["||(e.key.toLowerCase()==="r"&&e.shiftKey)?-15:15;o.r=((o.r+d)%360+360)%360;renderPane()}
+    else if(e.key==="+"||e.key==="="||e.key==="-"||e.key==="_"){pushUndo();o.s=clamp(Math.round((o.s+(e.key==="-"||e.key==="_"?-.1:.1))*20)/20,.3,3.5);renderPane()}
+    else if(e.key.startsWith("Arrow")){e.preventDefault();pushUndo();const d=e.shiftKey?CELL/2:6;if(e.key==="ArrowLeft")o.x-=d;if(e.key==="ArrowRight")o.x+=d;if(e.key==="ArrowUp")o.y-=d;if(e.key==="ArrowDown")o.y+=d}
     else if(e.key.toLowerCase()==="d"){dupSel();renderPane()}}
 });
 /* ---------- salvataggio, immagine, Tavolo ---------- */
@@ -793,7 +945,7 @@ function openList(){
     h("div",{class:"row"},h("button",{class:"btn",onclick:()=>{const f=h("input",{type:"file",accept:".json,application/json"});f.onchange=async()=>{try{const d=JSON.parse(await f.files[0].text());loadMapData(d);closeModal()}catch(e){toast("File non valido")}};f.click()}},"Apri un file .json"),h("button",{class:"btn",onclick:()=>{const b=new Blob([JSON.stringify(serialize())],{type:"application/json"}),a=h("a",{href:URL.createObjectURL(b),download:(S.name||"mappa").replace(/[^\w-]+/g,"_")+".json"});a.click()}},"Scarica questa mappa (.json)")),
     ix.length?ix.map(x=>h("div",{class:"item"},h("img",{src:x.th,width:64,height:48,alt:"",style:"border-radius:5px;background:#000"}),h("b",{},x.name),h("button",{class:"btn sm",onclick:()=>{try{loadMapData(JSON.parse(localStorage.getItem("mappa:"+x.id)));closeModal()}catch(e){toast("Impossibile aprire")}}},"Apri"),h("button",{class:"btn sm",onclick:()=>{localStorage.removeItem("mappa:"+x.id);localStorage.setItem(LS_IDX,JSON.stringify(idxGet().filter(q=>q.id!==x.id)));openList()}},"Elimina"))):h("div",{class:"hint"},"Ancora nessuna mappa salvata su questo dispositivo."));
 }
-function loadMapData(d){S=deserialize(d);for(const o of S.objs)if(!o.id)o.id=uid();undoSt=[];sel=null;shpCancel();sizeCanvases();dirtyTex=true;renderPane();toast("Aperta: "+S.name)}
+function loadMapData(d){S=deserialize(d);for(const o of S.objs)if(!o.id)o.id=uid();undoSt=[];sel=null;selL=null;shpCancel();sizeCanvases();dirtyTex=true;renderPane();toast("Aperta: "+S.name)}
 function askName(then){
   const i=h("input",{type:"text",value:S.name,style:"width:100%"});
   modal(h("h2",{},"Nome della mappa"),i,h("div",{class:"row"},h("button",{class:"btn gold",onclick:()=>{S.name=i.value.trim()||"Mappa senza nome";closeModal();then()}},"Conferma"),h("button",{class:"btn",onclick:closeModal},"Annulla")));setTimeout(()=>i.focus(),50);
@@ -816,13 +968,29 @@ function openTavolo(){
     }catch(e){console.error(e);toast("Non riesco a scrivere nel Tavolo: apri questa pagina dallo stesso sito del Tavolo",5000)}
   });
 }
+function openNew(first){
+  const o={size:"m",floor:"stone",grid:true};
+  const sz=h("div",{class:"row"}),fl=h("div",{class:"row"});
+  const draw=()=>{sz.replaceChildren(...Object.entries(SIZES).map(([k,v])=>h("button",{class:"btn sm","aria-pressed":String(o.size===k),onclick:()=>{o.size=k;draw()}},v[2])));
+    fl.replaceChildren(...FLOORS.map(k=>h("button",{class:"btn sm","aria-pressed":String(o.floor===k),onclick:()=>{o.floor=k;draw()}},MATS[k].n)))};draw();
+  modal(h("h2",{},first?"Come vuoi cominciare?":"Nuova mappa"),
+    h("div",{class:"grp"},h("h3",{},"Dimensione"),sz),h("div",{class:"grp"},h("h3",{},"Pavimento di partenza"),fl),
+    h("label",{class:"row"},h("input",{type:"checkbox",checked:o.grid,onchange:e=>o.grid=e.target.checked})," Mostra la griglia mentre lavoro"),
+    h("button",{class:"btn gold",style:"justify-content:center;padding:12px",onclick:()=>{
+      const sz_=SIZES[o.size];S=newMap(sz_[0],sz_[1]);S.set.rough=.8;S.set.grid=o.grid;S.name="Mappa senza nome";setFloor(o.floor);
+      undoSt=[];sel=null;selL=null;shpCancel();ui.place=null;sizeCanvases();dirtyTex=true;tab="obj";buildTabs();renderPane();closeModal();toast("Pagina bianca pronta: scegli un oggetto o disegna il terreno")}},"Pagina bianca"),
+    h("div",{class:"hint"},"Parti da un pavimento vuoto e costruisci tutto tu: disegni pareti, acqua e lava nella scheda Disegna e posi gli oggetti nella scheda Oggetti."),
+    h("div",{class:"row"},h("button",{class:"btn",onclick:()=>{closeModal();tab="gen";buildTabs();renderPane()}},first?"Genera una mappa a caso":"Genera una mappa"),first?h("button",{class:"btn",onclick:closeModal},"Continua con quella che c’è"):h("button",{class:"btn",onclick:closeModal},"Annulla")));
+}
 function openHelp(){
   modal(h("div",{class:"row"},h("h2",{style:"flex:1"},"Come funziona"),h("button",{class:"btn",onclick:closeModal},"Chiudi")),
     h("ul",{style:"margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px"},
+      h("li",{},h("b",{},"Nuova"),": parti da una pagina bianca (solo pavimento) e costruisci tutto tu."),
       h("li",{},h("b",{},"Genera"),": scegli luogo, seme, pavimento e liquido e premi Genera. Stesso seme = stessa mappa."),
       h("li",{},h("b",{},"Disegna"),": dipingi roccia, pavimenti, lava, acqua, melma e abisso con pennello, rettangolo, ellisse, cerchio, mano libera o poligono a tratti."),
       h("li",{},h("b",{},"Oggetti"),": colonne, stalagmiti, bracieri, statue, alberi, un carro… sono veri modelli 3D con ombra: li ruoti e li scali. I fuochi sono animati."),
-      h("li",{},h("b",{},"Effetti"),": direzione e velocità della corrente, bagliore della lava, braci, luminosità, griglia."),
+      h("li",{},h("b",{},"Luci"),": metti torce, funghi luminosi, cristalli e rune: ogni luce ha colore, portata e tremolio."),
+      h("li",{},h("b",{},"Effetti"),": atmosfera (caverna viola, radici luminose, cripta, vulcano, notte, palude), nebbia animata, corrente, bagliore della lava, braci, luminosità, griglia."),
       h("li",{},h("b",{},"Manda al Tavolo"),": la mappa compare tra le scene del Tavolo del Master, animata."),
       h("li",{},"Annulla: Ctrl+Z. Salva le mappe su questo dispositivo o come file .json.")));
 }
@@ -839,12 +1007,13 @@ function start(){
   buildTabs();
   gen.seed="drago-"+((Math.random()*900+100)|0);
   doGenerate();undoSt=[];renderPane();
-  $("#b-new").onclick=()=>{S=newMap(32,24);S.set.rough=.8;undoSt=[];sel=null;sizeCanvases();dirtyTex=true;toast("Mappa vuota")};
+  $("#b-new").onclick=()=>openNew(false);
   $("#b-save").onclick=()=>askName(saveMap);
   $("#b-load").onclick=openList;$("#b-png").onclick=openPng;$("#b-tav").onclick=openTavolo;$("#b-help").onclick=openHelp;
   addEventListener("resize",()=>{fitBox();sizeCanvases()});
   requestAnimationFrame(frame);
+  openNew(true);
 }
 start();
-window.__mappe={get S(){return S},generate:doGenerate,gen};
+window.__mappe={get S(){return S},generate:doGenerate,gen,hnd:()=>{const o=S.objs.find(q=>q.id===sel);if(!o)return null;const H=handlesOf(o),r=ov.getBoundingClientRect(),f=q=>[r.left+q[0]/MW()*r.width,r.top+q[1]/MH()*r.height];return{c:f([o.x,o.y]),rot:f(H.rot),sc:f(H.sc)}},frame:()=>{if(dirtyTex)uploadFields();drawGL(Q,T);drawOverlay(octx,Q,T)},blank:(sz,fl)=>{const a=SIZES[sz||'m'];S=newMap(a[0],a[1]);S.set.rough=.8;S.set.grid=true;setFloor(fl||'stone');undoSt=[];sel=null;sizeCanvases();dirtyTex=true;closeModal()},still:(sc,t)=>{if(t!=null)T=t;return renderStill(sc||1).toDataURL('image/png')}};
 </script></body></html>
