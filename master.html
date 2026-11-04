@@ -488,7 +488,7 @@ function shpGeom(cur){
 function shpCommit(g){
   if(!sc||!g)return;const s={m:tool==="reveal"?"r":"c"};
   if(g.rect){if(g.rect[2]<2||g.rect[3]<2)return;s.rect=g.rect}else if(g.ell){if(g.ell[2]<1||g.ell[3]<1)return;s.ell=g.ell}else if(g.poly){if(g.poly.length<3)return;s.poly=g.poly}else return;
-  applyStroke(fctx,s);commit(s);send({t:"op",s});
+  applyStroke(fctx,s);commit(s);if(s.rect)send({t:"op",s});else syncFog();
 }
 function shpCancel(){const had=shp;shp=null;pvx.clearRect(0,0,pvC.width,pvC.height);if(had&&had.k==="poly")drawBars()}
 function polyClose(){if(!shp||shp.k!=="poly")return;if(shp.pts.length<3){toast("Servono almeno 3 punti");return}const g={poly:shp.pts.slice()};shpCancel();shpCommit(g);drawBars()}
