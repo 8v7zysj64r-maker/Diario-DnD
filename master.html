@@ -169,6 +169,7 @@ body.player #empty .card{pointer-events:none}
 .lrow time{color:var(--mute);font-variant-numeric:tabular-nums}
 .lrow.nota{background:rgba(208,178,90,.1)}
 .lrow.nota span:before{content:"Nota · ";color:var(--brass);font-weight:700}
+.lrow.man{background:rgba(208,178,90,.1)}.lrow.man span:before{content:"Registrato · ";color:var(--brass);font-weight:700}.lrow.man span{white-space:pre-wrap}
 .lrow.mappa span{color:var(--al)}.lrow.pf span{color:var(--ne)}.lrow.scontro span{color:var(--brass)}
 .lday{font-family:Alegreya,serif;color:var(--brass);font-size:1.1rem;padding:10px 8px 2px;text-transform:capitalize}
 .llist{max-height:48vh;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--bg);-webkit-user-select:text;user-select:text}
@@ -589,6 +590,7 @@ function drawBars(){
     bt("expand","Schermo intero",toggleFs,{title:"Schermo intero (F)"}),
     bt("film","Palcoscenico",openStage,{title:"Palcoscenico: mostra ai giocatori volti e parole (S)"}),
     bt("pen","Cronista",openCron,{title:"Collega la pagina dove un giocatore segna battute e momenti salienti, anche da un altro dispositivo"}),
+    bt("swords","Registra",openReg,{title:"Racconta cosa succede (chi fa cosa a chi): finisce nel diario in ordine, senza numeri (R)"}),
     bt("book","Diario di sessione",openLog,{title:"Registro della serata (D)"}),
     btn(null,vbar?"⇄":"Strumenti a lato",toggleBar,{title:vbar?"Riporta gli strumenti in alto":"Metti gli strumenti in una colonna a lato","aria-label":"Posizione degli strumenti"}),
     bt("help","Guida",openHelp,{title:"Istruzioni e comandi (?)"}),
@@ -644,7 +646,7 @@ function openHelp(){
         h("div",{},h("h3",{},"5 · Finestra giocatori"),h("ul",{},h("li",{},"Premi “Finestra giocatori”, trascina la finestra sulla TV e premi F per lo schermo intero."),h("li",{},"Vedono la mappa, la nebbia nera, la griglia e solo le iniziative che hai mostrato. Seguono il tuo zoom."),h("li",{},"In alto nella loro finestra c’è un piccolo selettore (tenue finché non lo sfiori): possono mettere le iniziative a sinistra, a destra o su entrambi i lati."),h("li",{},"Le due finestre devono stare nello stesso browser e nello stesso computer. Consenti i popup."))),
         h("div",{},h("h3",{},"6 · Puntatore"),h("ul",{},h("li",{},"Con lo strumento Puntatore i giocatori vedono un punto che ti segue. Un clic lancia un segnale luminoso."),h("li",{},"Non modifica nulla sulla mappa."))),
         h("div",{},h("h3",{},"7 · Ritratti e compagnia"),h("ul",{},h("li",{},"Nel diario, nella scheda dell’eroe, scegli il ritratto. Poi nel diario premi “Salva la compagnia” e qui “Importa la compagnia dal diario”: arrivano nome, PF, CA e volto."),h("li",{},"Scrivi tu l’iniziativa di ciascuno. Se importi di nuovo, gli eroi già presenti si aggiornano."),h("li",{},"Chi non ha un volto prende un’icona dal nome (goblin, hobgoblin, drago, lupo, scheletro…). Tocca l’avatar o l’icona della persona per cambiarla o caricare un volto. I volti restano sul tuo browser."))),
-        h("div",{},h("h3",{},"8 · Diario di sessione"),h("ul",{},h("li",{},"Si scrive da solo: mappe aperte, inizio dello scontro, round, danni, cure, chi cade, chi appare."),h("li",{},"Aggiungi tu le note importanti. A fine serata “Copia il testo” o “Scarica .txt” e dallo a Claude per il riassunto animato."))),
+        h("div",{},h("h3",{},"8 · Diario di sessione"),h("ul",{},h("li",{},"Si scrive quando tocchi “Registra” (tasto R): chi fa cosa a chi, con lo stato del bersaglio a parole (niente numeri). Gli appunti rapidi del cronista arrivano da soli. Da solo si segnano soltanto inizio scontro, round, fine scontro e cambio mappa."),h("li",{},"Aggiungi tu le note importanti. A fine serata “Copia il testo” o “Scarica .txt” e dallo a Claude per il riassunto animato."))),
         h("div",{},h("h3",{},"9 · Palcoscenico"),h("ul",{},h("li",{},"Prepara una scena: titolo, chi appare e le battute, una per riga. “Nome: frase” fa parlare quel personaggio e abbassa la luce agli altri."),h("li",{},"“Mostra ai giocatori”: sulla loro finestra entrano i volti e le parole si scrivono a macchina."),h("li",{},"Dalla barra in basso vai Avanti o Indietro, oppure scrivi una frase in diretta. “Chiudi scena” torna alla mappa.")))),
       h("div",{},h("h3",{},"Scorciatoie da tastiera"),h("div",{class:"keys"},...keys.flatMap(([k,t])=>K(k,t)))),
       h("div",{class:"help"},"Mappe, nebbia, griglia e iniziative restano salvate su questo browser. “Vista giocatori” (H) nasconde i comandi sul tuo schermo; per uno schermo separato usa la finestra giocatori."))));
@@ -688,21 +690,109 @@ $("#modal").addEventListener("pointerdown",e=>{if(e.target===$("#modal"))$("#mod
 /* ---------- iniziative ---------- */
 let LOG=(()=>{try{const a=JSON.parse(lsGet("tavolo-log")||"[]");return Array.isArray(a)?a:[]}catch(e){return[]}})();
 const saveLog=()=>lsSet("tavolo-log",JSON.stringify(LOG));
-const logEv=(x,k)=>{LOG.push({t:Date.now(),k:k||"",x});if(LOG.length>3000)LOG.splice(0,LOG.length-3000);saveLog()};
+let AUTO=lsGet("tavolo-auto")!=="0";
+const logEv=(x,k)=>{if(k&&k!=="nota"&&k!=="man"&&!(AUTO&&(k==="scontro"||k==="mappa")))return;LOG.push({t:Date.now(),k:k||"",x});if(LOG.length>3000)LOG.splice(0,LOG.length-3000);saveLog()};
 const fT=t=>new Date(t).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}),fD=t=>new Date(t).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 function logText(){
   let out="DIARIO DI SESSIONE – Tavolo del Master\n",day="";
-  for(const e of LOG){const d=fD(e.t);if(d!==day){day=d;out+="\n== "+d+" ==\n"}out+=fT(e.t)+"  "+(e.k==="nota"?"NOTA: ":"")+e.x+"\n"}
+  let loc="";
+  for(const e of LOG){const d=fD(e.t);if(d!==day){day=d;out+="\n== "+d+" ==\n"}if(e.l&&e.l!==loc){loc=e.l;out+="\n-- Luogo: "+loc+" --\n"}out+=fT(e.t)+"  "+(e.k==="nota"?"NOTA: ":"")+(e.r?"[Round "+e.r+"] ":"")+e.x+"\n"}
   return out;
+}
+/* ---------- Registra: racconto a mano, senza numeri ---------- */
+const NARR={
+  hit:[ // dopo un colpo, in base a quanta vita resta (frazione)
+    [.75,["{T} incassa il colpo e stringe i denti","{T} barcolla appena, ma resta in piedi","{T} non arretra di un passo"]],
+    [.5,["{T} ansima, il colpo si è fatto sentire","{T} perde un po’ di sangue e stringe i denti","{T} arretra con una smorfia di dolore"]],
+    [.25,["{T} sanguina copiosamente e ringhia di rabbia","{T} è ferito sul serio: il sangue cola a terra e lo sguardo si fa feroce","{T} urla di rabbia, il sangue che gocciola"]],
+    [0.0001,["{T} vacilla, con lo sguardo offuscato, a un passo dal crollo","{T} barcolla stordito, a malapena in piedi","{T} è allo stremo: le gambe cedono e il respiro è affannato"]]
+  ],
+  down:{pg:["{T} crolla a terra, incosciente","{T} cade a terra e non si muove più"],other:["{T} crolla a terra senza vita","{T} cade a terra e non si rialza più"]},
+  heal:["{T} riprende colore e fiato","{T} si sente di nuovo più forte","{T} respira più a fondo, le ferite si richiudono"]
+};
+const STATI=[["auto","Automatico (dai PF)"],["none","Nessuna descrizione"],["ferito","Ferito"],["sang","Sanguina e si infuria"],["furia","Furioso"],["stordito","Stordito"],["agonia","Allo stremo"],["giu","A terra"]];
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function stateText(c,st,frac,heal){
+  const T=c.name;let t=null;
+  if(st==="none")return"";
+  if(st==="ferito")t=NARR.hit[1][1];else if(st==="sang")t=NARR.hit[2][1];else if(st==="agonia"||st==="stordito")t=st==="stordito"?["{T} resta immobile, la mente annebbiata dal colpo","{T} barcolla stordito, senza riuscire a reagire"]:NARR.hit[3][1];
+  else if(st==="furia")t=["{T} ruggisce di rabbia, ignorando il dolore","{T} si scaglia avanti con occhi iniettati di furia"];
+  else if(st==="giu")t=c.type==="pg"?NARR.down.pg:NARR.down.other;
+  else if(st==="auto"){
+    if(frac==null)return"";
+    if(heal)return pick(NARR.heal).replace("{T}",T);
+    if(frac<=0)t=c.type==="pg"?NARR.down.pg:NARR.down.other;
+    else{const band=NARR.hit.find(b=>frac>b[0]);t=(band||NARR.hit[3])[1]}
+  }
+  return t?pick(t).replace("{T}",T):"";
+}
+function openReg(){
+  const m=$("#modal");m.hidden=false;
+  const L=sorted(),cur=ini.list.find(c=>c.id===ini.turn);
+  const names=L.map(c=>[c.id,c.name+(c.type==="ne"?" (nemico)":c.type==="al"?" (alleato)":"")]);
+  const sel=(opts,val)=>h("select",{style:"min-width:0;width:100%"},...opts.map(([v,t])=>h("option",{value:v,selected:v===val},t)));
+  const who=sel([["","— nessuno / narratore —"],...names],cur?cur.id:""),
+    act=sel([["att","Attacca"],["inc","Lancia un incantesimo"],["cur","Cura"],["mov","Si muove"],["par","Parla"],["ogg","Usa un oggetto"],["ev","Evento / altro"]],"att"),
+    tgt=sel([["","— nessuno —"],...names],""),
+    res=sel([["colpo","Colpisce"],["manca","Manca"],["crit","Colpo critico"],["resiste","Il bersaglio resiste"],["fallisce","Il bersaglio non resiste"]],"colpo"),
+    stt=sel(STATI,"auto"),
+    det=h("input",{type:"text",placeholder:"Dettaglio (es. con la spada lunga, Dardo incantato, «Arrendetevi!»)",style:"width:100%"}),
+    dmg=h("input",{type:"number",min:0,placeholder:"Danni o cure (non appaiono nel testo)",style:"width:100%"}),
+    apply=h("input",{type:"checkbox",checked:true}),
+    ta=h("textarea",{rows:4,style:"width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;resize:vertical",placeholder:"Il racconto che finirà nel diario"});
+  let dirty=false;ta.addEventListener("input",()=>dirty=true);
+  const cname=id=>{const c=ini.list.find(x=>x.id===id);return c?c.name:""};
+  const calc=()=>{ // restituisce {text, st}
+    const W=cname(who.value),T=cname(tgt.value),d=det.value.trim(),a=act.value,r=res.value;
+    const tc=ini.list.find(x=>x.id===tgt.value),n=Math.abs(parseFloat(dmg.value))||0,heal=a==="cur";
+    let frac=null;
+    if(tc&&tc.hp!==undefined&&tc.mx){let v=tc.hp;if(apply.checked&&n)v=Math.max(0,Math.min(tc.mx,tc.hp+(heal?n:-n)));frac=v/tc.mx}
+    const hits=(a==="att"&&(r==="colpo"||r==="crit"))||(a==="inc"&&(r==="colpo"||r==="crit"||r==="fallisce"));
+    const w=W||"Qualcuno",dd=d?" "+d:"";let s="";
+    if(a==="att"){ if(!T)s=w+" attacca"+dd;else if(r==="manca")s=w+" attacca "+T+dd+", ma il colpo va a vuoto";else if(r==="crit")s=w+" assesta a "+T+" un colpo micidiale"+dd;else s=w+" colpisce "+T+dd}
+    else if(a==="inc"){const sp=d||"un incantesimo";s=w+" lancia "+sp+(T?" su "+T:"");if(T&&r==="resiste")s+=", ma "+T+" resiste all’effetto";else if(T&&r==="fallisce")s+=" e "+T+" non riesce a resistere"}
+    else if(a==="cur")s=w+" cura "+(T||"un alleato")+dd;
+    else if(a==="mov")s=w+" si sposta"+dd;
+    else if(a==="par")s=w+" dice: «"+(d||"…")+"»";
+    else if(a==="ogg")s=w+" usa "+(d||"un oggetto")+(T?" su "+T:"");
+    else s=d||(W?W+" agisce":"");
+    let ex="";
+    if(tc&&T&&(hits||heal||stt.value!=="auto")){ex=stateText(tc,stt.value,frac,heal)}
+    return{text:(s?s+(ex?": "+ex:""):ex)+(s||ex?".":""),st:stt.value}
+  };
+  const upd=()=>{if(!dirty)ta.value=calc().text};
+  for(const e of[who,act,tgt,res,stt,det,dmg,apply])e.addEventListener("input",upd),e.addEventListener("change",upd);
+  const go=()=>{
+    const v=ta.value.trim();if(!v){toast("Scrivi o scegli cosa è successo");return}
+    const tc=ini.list.find(x=>x.id===tgt.value),n=Math.abs(parseFloat(dmg.value))||0;
+    if(tc&&n&&apply.checked&&tc.hp!==undefined){tc.hp=Math.max(0,tc.mx!==undefined?Math.min(tc.mx,tc.hp+(act.value==="cur"?n:-n)):tc.hp+(act.value==="cur"?n:-n));hpDead(tc);saveIni();drawIni()}
+    else if(tc&&n&&apply.checked&&tc.hp===undefined)toast("Il bersaglio non ha PF scritti: il testo è registrato, i PF no",3500);
+    LOG.push({t:Date.now(),k:"man",x:v,r:ini.round,l:(sc&&sc.name)||"",w:cname(who.value),a:act.value,g:cname(tgt.value)});if(LOG.length>3000)LOG.splice(0,LOG.length-3000);saveLog();
+    m.hidden=true;toast("Registrato nel diario",1800);
+  };
+  const lab=(t,el)=>{const w=h("label",{class:"help",style:"display:flex;flex-direction:column;gap:3px;min-width:0"},t,el);return w};
+  const gT=lab("Bersaglio",tgt),gR=lab("Esito",res),gD=lab("Danni o cure (non compaiono nel testo)",dmg),gDet=lab("Dettaglio",det);
+  const vis=()=>{const a=act.value,fight=a==="att"||a==="inc",two=fight||a==="cur"||a==="ogg";
+    gT.style.display=two?"":"none";gR.style.display=fight?"":"none";gD.style.display=fight||a==="cur"?"":"none";
+    gDet.firstChild.textContent=a==="par"?"Cosa dice":a==="ev"?"Cosa succede":a==="inc"?"Incantesimo":"Dettaglio"};
+  act.addEventListener("change",vis);vis();
+  m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Registra nel diario"},
+    h("div",{style:"display:flex;gap:8px;align-items:center"},h("h2",{style:"flex:1"},"Registra"),btn(null,"Chiudi",()=>{m.hidden=true})),
+    h("div",{style:"display:grid;grid-template-columns:1fr 1fr;gap:8px"},lab("Chi",who),lab("Azione",act),gT,gR),
+    gDet,gD,
+    lab("Racconto (si può correggere)",ta),
+    h("details",{class:"help"},h("summary",{style:"cursor:pointer"},"Altro"),h("div",{style:"display:flex;flex-direction:column;gap:8px;margin-top:6px"},lab("Descrizione dello stato del bersaglio",stt),h("label",{style:"display:flex;gap:8px;align-items:center"},apply,"Aggiorna anche i PF del bersaglio"))),
+    h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},btn("plus","Registra",go,{class:"btn gold"}),btn(null,"Annulla",()=>{m.hidden=true}))));
+  upd();setTimeout(()=>det.focus(),50);
 }
 function openLog(){
   const m=$("#modal");m.hidden=false;
   const draw=()=>{
     const list=h("div",{class:"llist"});let day="";
-    if(!LOG.length)list.append(h("div",{class:"vide"},"Ancora vuoto. Mappe aperte, round, danni e nemici rivelati si scrivono qui da soli."));
+    if(!LOG.length)list.append(h("div",{class:"vide"},"Ancora vuoto. Tocca “Registra” (o R) per raccontare cosa succede. Gli appunti rapidi del cronista arrivano qui da soli."));
     LOG.forEach((e,i)=>{const d=fD(e.t);if(d!==day){day=d;list.append(h("div",{class:"lday"},d))}
       const x=h("button",{class:"btn ghost",type:"button","aria-label":"Togli questa riga",style:"padding:1px 6px"},ico("trash"));x.addEventListener("click",()=>{LOG.splice(i,1);saveLog();draw()});
-      list.append(h("div",{class:"lrow "+(e.k||"")},h("time",{},fT(e.t)),h("span",{},e.x),x))});
+      list.append(h("div",{class:"lrow "+(e.k||"")},h("time",{},fT(e.t)),h("span",{},(e.r?"R"+e.r+" · ":"")+e.x),x))});
     const inp=h("input",{placeholder:"Aggiungi una nota (es. “Il gruppo ha liberato il prigioniero”)","aria-label":"Nuova nota"});
     const add=()=>{const v=inp.value.trim();if(!v)return;logEv(v,"nota");draw();setTimeout(()=>{const l=$(".llist");if(l)l.scrollTop=l.scrollHeight},0)};
     inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();add()}});
@@ -711,7 +801,8 @@ function openLog(){
     const dl=btn(null,"Scarica .txt",()=>{const d=new Date(),n="diario-sessione-"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+".txt",u=URL.createObjectURL(new Blob([logText()],{type:"text/plain;charset=utf-8"})),a=h("a",{href:u,download:n});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)});
     m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Diario di sessione"},
       h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"},h("h2",{style:"flex:1"},"Diario di sessione"),btn(null,"Chiudi",()=>{m.hidden=true})),
-      h("div",{class:"help"},"Il Tavolo segna da solo mappe, round, danni, nemici che appaiono. Aggiungi tu le note importanti. A fine serata copia o scarica il testo e dallo a Claude per il riassunto animato."),
+      h("div",{class:"help"},"Il racconto della serata, in ordine. A fine serata copia o scarica il testo e dallo a Claude."),
+      h("label",{class:"help",style:"display:flex;gap:8px;align-items:center"},h("input",{type:"checkbox",checked:AUTO,onchange:e=>{AUTO=e.target.checked;lsSet("tavolo-auto",AUTO?"1":"0")}}),"Segna da solo inizio scontro, round, fine scontro e cambio mappa (niente danni né PF)"),
       list,h("div",{class:"lform"},inp,btn("plus","Aggiungi",add)),
       h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},copy,dl,clr)));
     const l=$(".llist");if(l)l.scrollTop=l.scrollHeight;
@@ -911,10 +1002,9 @@ $("#impf").addEventListener("change",async e=>{
       let c=ini.list.find(x=>x.type==="pg"&&x.name.toLowerCase()===name.toLowerCase());
       if(!c){c={id:uid(),name,init:0,type:"pg",dead:false,hide:false};ini.list.push(c)}
       c.mx=mx;c.hp=hp;if(ac)c.ac=ac;if(pid)c.pid=pid;hpDead(c);n++;
-      for(const q of((ch.diary&&ch.diary.battute)||[])){const tx=((q.t?q.t+": ":"")+String(q.b||"").trim()).trim();if(!tx||tx===":")continue;const line="Battuta "+name+": "+tx;if(!LOG.some(e=>e.x===line)){logEv(line,"nota");nq++}}
     }
     if(!n)throw 0;logEv("Compagnia importata: "+n+(n===1?" eroe":" eroi"),"scena");savePort();saveIni();drawIni();
-    toast(n+(n===1?" eroe importato":" eroi importati")+(nq?" e "+nq+(nq===1?" battuta aggiunta":" battute aggiunte")+" al diario":"")+": scrivi l’iniziativa di ciascuno."+(noac?" Per la CA apri e richiudi la scheda nel diario e salva di nuovo.":""),6500);
+    toast(n+(n===1?" eroe importato":" eroi importati")+": scrivi l’iniziativa di ciascuno."+(noac?" Per la CA apri e richiudi la scheda nel diario e salva di nuovo.":""),6500);
   }catch(err){toast("File non valido: scegli il backup “Salva la compagnia” del diario",4500)}
 });
 $("#newfight").append(ico("swords"),"Nuovo scontro");$("#hideini").append(ico("panel"),"Nascondi");
@@ -935,6 +1025,7 @@ addEventListener("keydown",e=>{
   if(e.key==="Escape"){if(shp){shpCancel();drawBars();return}$("#modal").hidden=true;return}
   if(shp&&shp.k==="poly"){if(e.key==="Enter"){e.preventDefault();polyClose();return}if(e.key==="Backspace"){e.preventDefault();polyBack();return}}
   if(k==="d"){openLog();return}
+  if(k==="r"){openReg();return}
   if(k==="s"){openStage();return}
   if(k==="h")setPresent(!document.body.classList.contains("present"));
   else if(k==="f")toggleFs();

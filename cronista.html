@@ -5,8 +5,9 @@
 :root{color-scheme:dark;--bg:#0b0f0f;--panel:#141c1c;--panel2:#1b2626;--ink:#e6e9df;--mute:#97a49f;--line:#33443f;--brass:#d0b25a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 "Alegreya Sans",system-ui,sans-serif}
-main{max-width:760px;margin:0 auto;padding:14px 14px 40px;display:grid;gap:12px}
+main{max-width:780px;margin:0 auto;padding:14px 14px 40px;display:grid;gap:12px}
 h1{margin:0;font-size:1.5rem;color:var(--brass)}
+h2{margin:0;font-size:1.1rem;color:var(--brass)}
 .sub{color:var(--mute);font-size:.95rem}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -14,80 +15,155 @@ h1{margin:0;font-size:1.5rem;color:var(--brass)}
 .btn{border-radius:8px}
 .chip[aria-pressed=true]{background:var(--brass);color:#1a1405;border-color:var(--brass);font-weight:700}
 .btn.gold{background:var(--brass);color:#1a1405;border-color:var(--brass);font-weight:700}
+.btn.sm{padding:3px 9px;font-size:.88rem}
 .btn:hover,.chip:hover{border-color:var(--brass)}
-input,textarea{width:100%;background:#0f1616;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}
+input,textarea,select{width:100%;background:#0f1616;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}
 textarea{min-height:84px;resize:vertical}
 label{display:grid;gap:4px;color:var(--mute);font-size:.92rem}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.list{display:grid;gap:6px;max-height:55vh;overflow:auto}
+.row>label{flex:1;min-width:170px}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:var(--mute);padding:10px 4px;font:inherit;cursor:pointer}
+.tabs button[aria-selected=true]{color:var(--brass);border-bottom-color:var(--brass);font-weight:700}
+.list{display:grid;gap:0;max-height:58vh;overflow:auto}
+.scene{margin:12px 0 4px;padding:5px 10px;background:rgba(208,178,90,.12);border-left:3px solid var(--brass);color:var(--brass);font-weight:700}
 .e{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:start;border-bottom:1px solid var(--line);padding:6px 0}
 .e time{color:var(--mute);font-variant-numeric:tabular-nums}
 .tag{font-size:.8rem;border:1px solid var(--brass);color:var(--brass);border-radius:999px;padding:1px 8px;white-space:nowrap}
-.e .x{word-break:break-word}.e b{color:var(--brass)}
-.e button{background:none;border:0;color:var(--mute);cursor:pointer;font-size:1.1rem}
+.tag.fg{border-color:var(--mute);color:var(--mute)}
+.e .x{word-break:break-word;white-space:pre-wrap}.e b{color:var(--brass)}
+.e .ac{display:flex;gap:2px}
+.e .ac button{background:none;border:0;color:var(--mute);cursor:pointer;font-size:1.05rem;padding:0 4px}
 .ok{color:#6fcf9f;font-size:.85rem}.no{color:var(--mute);font-size:.85rem}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;font:14px/1.45 ui-monospace,Menlo,monospace;background:#0f1616;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:55vh;overflow:auto}
+#quad{min-height:48vh;font-size:1.05rem;line-height:1.55}
 :focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 </style></head><body><main>
-<div><h1>Cronista della sessione</h1><div class="sub">Segna le cose importanti mentre si gioca: battute, momenti epici, tiri, luoghi, PNG. A fine serata copi il testo e lo mandi a Claude.</div></div>
+<div><h1>Cronista della sessione</h1><div class="sub">Appunti per il gruppo e materiale per Claude: da qui si ricavano il racconto della campagna e le puntate animate.</div></div>
 <div class="card">
-  <div class="chips" id="types" role="group" aria-label="Tipo di annotazione"></div>
-  <div class="row"><label style="flex:1;min-width:200px">Chi
-    <input id="who" list="whos" placeholder="Dre, Orchideo, Master…" autocomplete="off"></label>
-    <datalist id="whos"></datalist></div>
-  <label>Cosa è successo
-    <textarea id="txt" placeholder="La battuta, il momento, il luogo…"></textarea></label>
-  <div class="row"><button class="btn gold" id="add" type="button">Aggiungi (Ctrl+Invio)</button><span id="link" class="no"></span></div>
+  <div class="row">
+    <label style="max-width:150px">Sessione <select id="sess"></select></label>
+    <label>Titolo (facoltativo)<input id="tit" placeholder="Es. La rissa del Leviatano" autocomplete="off"></label>
+    <button class="btn" id="newsess" type="button" style="align-self:end">+ Nuova sessione</button>
+  </div>
+  <span id="link" class="no"></span>
 </div>
-<div class="card">
-  <div class="row"><b id="cnt">Registro</b><span style="flex:1"></span>
-    <button class="btn" id="copy" type="button">Copia il testo</button>
-    <button class="btn" id="dl" type="button">Scarica .txt</button>
-    <button class="btn" id="clr" type="button">Azzera</button></div>
-  <div class="list" id="list"></div>
+<div class="card" style="padding:0 12px 12px">
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="pane" style="display:grid;gap:10px;padding-top:6px"></div>
 </div>
 </main>
 <script>
 "use strict";
-const KEY="tavolo-cronaca",TYPES=["Battuta","Momento epico","Tiro","Luogo","PNG","Scoperta","Regola","Fuori gioco"],HERO=["Dre","Orchideo","Myrith","Rowen","Freya","Vesna","Master"];
-let LOG=[],kind=TYPES[0],BC=null;
+const KEY="tavolo-cron2",OLD="tavolo-cronaca",TYPES=["Racconto","Battuta","Momento epico","Tiro","Luogo","PNG","Scoperta","Regola","Fuori gioco"],HERO=["Dre","Orchideo","Myrith","Rowen","Freya","Vesna","Master"];
+const HINT={Racconto:"Cosa succede, in poche righe: azioni, luoghi, emozioni.",Battuta:"La frase detta, parola per parola.","Momento epico":"Il momento che si vuole rivedere.",Tiro:"Tiro di dado memorabile e cosa ha causato.",Luogo:"Dove sono i personaggi, com’è il posto.",PNG:"Chi è, com’è fatto, cosa dice o vuole.",Scoperta:"Indizio, oggetto, segreto trovato.",Regola:"Regola o decisione del master da ricordare.","Fuori gioco":"Commenti dei giocatori: non fanno parte della storia."};
+let ST={cur:1,sc:"",tit:{},log:[],quad:{}};
 const QS=new URLSearchParams(location.search);let CODE=QS.get("c")||"";
 try{if(CODE)localStorage.setItem("tavolo-cron-c",CODE);else CODE=localStorage.getItem("tavolo-cron-c")||""}catch(e){}
 const BASE=()=>{try{return localStorage.getItem("tavolo-ntfy")||"https://ntfy.sh"}catch(e){return"https://ntfy.sh"}};
-try{LOG=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){}
-try{BC=new BroadcastChannel("tavolo-master")}catch(e){}
+try{const v=JSON.parse(localStorage.getItem(KEY)||"null");if(v&&v.log)ST=Object.assign(ST,v);else{const o=JSON.parse(localStorage.getItem(OLD)||"[]");if(Array.isArray(o)&&o.length)ST.log=o.map(e=>Object.assign({n:1,sc:"",k:e.k==="Battuta"?e.k:e.k},e))}}catch(e){}
+let BC=null;try{BC=new BroadcastChannel("tavolo-master")}catch(e){}
 const $=s=>document.querySelector(s);
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(LOG))}catch(e){}};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(ST))}catch(e){}};
+function h(t,a={},...c){const e=document.createElement(t);for(const[k,v]of Object.entries(a)){if(k==="class")e.className=v;else if(k.startsWith("on"))e.addEventListener(k.slice(2),v);else if(k==="value"||k==="checked"||k==="textContent")e[k]=v;else if(v!==false&&v!=null)e.setAttribute(k,v)}for(const x of c.flat())if(x!=null&&x!==false)e.append(x.nodeType?x:document.createTextNode(String(x)));return e}
 const pad=n=>String(n).padStart(2,"0"),fT=t=>{const d=new Date(t);return pad(d.getHours())+":"+pad(d.getMinutes())},fD=t=>new Date(t).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+const sessions=()=>{const s=new Set([ST.cur]);ST.log.forEach(e=>s.add(e.n||1));Object.keys(ST.quad).forEach(k=>s.add(+k));return[...s].sort((a,b)=>a-b)};
+const entries=n=>ST.log.filter(e=>(e.n||1)===n);
+let tab="app",kind=TYPES[0],view=ST.cur,editing=-1;
+/* ---- rete (solo gli appunti rapidi vanno al Tavolo; il quaderno resta qui) ---- */
 const line=e=>e.k+(e.w?" "+e.w:"")+": "+e.x;
-function drawTypes(){const b=$("#types");b.replaceChildren(...TYPES.map(t=>{const c=document.createElement("button");c.type="button";c.className="chip";c.textContent=t;c.setAttribute("aria-pressed",t===kind);c.onclick=()=>{kind=t;drawTypes();$("#txt").focus()};return c}))}
-function drawWho(){const s=new Set(HERO);LOG.forEach(e=>e.w&&s.add(e.w));$("#whos").replaceChildren(...[...s].map(v=>{const o=document.createElement("option");o.value=v;return o}))}
-function draw(){
-  $("#cnt").textContent="Registro ("+LOG.length+")";
-  const l=$("#list");l.replaceChildren();
-  if(!LOG.length){const d=document.createElement("div");d.className="sub";d.textContent="Ancora vuoto.";l.append(d);return}
-  LOG.forEach((e,i)=>{const r=document.createElement("div");r.className="e";
-    const tm=document.createElement("time");tm.textContent=fT(e.t);
-    const tg=document.createElement("span");tg.className="tag";tg.textContent=e.k;
-    const x=document.createElement("div");x.className="x";if(e.w){const b=document.createElement("b");b.textContent=e.w+": ";x.append(b)}x.append(e.x);if(CODE&&!e.s){const w=document.createElement("span");w.className="no";w.textContent=" ⏳";x.append(w)}
-    const del=document.createElement("button");del.type="button";del.textContent="✕";del.title="Togli questa riga";del.setAttribute("aria-label","Togli questa riga");del.onclick=()=>{LOG.splice(i,1);save();draw()};
-    r.append(tm,tg,x,del);l.append(r)});
-  l.scrollTop=l.scrollHeight}
-function fullText(){let out="CRONACA DI SESSIONE\n",day="";for(const e of LOG){const d=fD(e.t);if(d!==day){day=d;out+="\n== "+d+" ==\n"}out+=fT(e.t)+"  "+line(e)+"\n"}return out}
 let pend=null,busy=false;
-function stat(ok){const l=$("#link");if(!CODE){l.className="no";l.textContent="Non collegato al Tavolo: salva solo su questo dispositivo";return}l.className=ok?"ok":"no";l.textContent=ok?"✓ Collegato al Tavolo":"Senza rete: le righe partono appena torna"}
-async function flush(){if(!CODE||busy)return;busy=true;let ok=true;try{for(const e of LOG){if(!e.s){const r=await fetch(BASE()+"/dnd-"+CODE,{method:"POST",body:line(e)});if(!r.ok)throw 0;e.s=1;save()}}}catch(err){ok=false}busy=false;stat(ok);draw()}
+function stat(ok){const l=$("#link");if(!CODE){l.className="no";l.textContent="Salvato su questo dispositivo. Non collegato al Tavolo.";return}l.className=ok?"ok":"no";l.textContent=ok?"✓ Collegato al Tavolo":"Senza rete: le righe partono appena torna"}
+async function flush(){if(!CODE||busy)return;busy=true;let ok=true;try{for(const e of ST.log){if(!e.s&&e.k!=="Scena"&&e.k!=="Fuori gioco"){const r=await fetch(BASE()+"/dnd-"+CODE,{method:"POST",body:line(e)});if(!r.ok)throw 0;e.s=1;save()}else if(!e.s){e.s=1}}}catch(err){ok=false}busy=false;stat(ok)}
 setInterval(flush,10000);
-function add(){
-  const x=$("#txt").value.trim();if(!x){$("#txt").focus();return}
-  const e={t:Date.now(),k:kind,w:$("#who").value.trim(),x};LOG.push(e);save();draw();drawWho();$("#txt").value="";$("#txt").focus();
-  if(CODE){flush();return}
-  if(BC){pend=e.t;try{BC.postMessage({t:"cron",id:e.t,x:line(e)})}catch(err){}setTimeout(()=>{if(pend===e.t)$("#link").textContent="Solo qui (il Tavolo non è in ascolto)";pend=null},900)}
+if(BC)BC.onmessage=ev=>{const d=ev.data;if(d&&d.t==="cron-ok"&&d.id===pend){pend=null;$("#link").className="ok";$("#link").textContent="✓ Inviata al Tavolo";setTimeout(()=>stat(true),2200)}};
+/* ---- archivio per Claude ---- */
+function archive(n){
+  const L=entries(n),tit=ST.tit[n]||"",d0=L.length?fD(L[0].t):fD(Date.now());
+  let o="# ARCHIVIO DI SESSIONE "+n+(tit?" — "+tit:"")+"\nData: "+d0+"\n";
+  o+="Uso: materiale per il racconto della campagna e per le puntate animate. «Fuori gioco» = commenti dei giocatori, non parte della storia.\n";
+  const play=L.filter(e=>e.k!=="Fuori gioco"),off=L.filter(e=>e.k==="Fuori gioco");
+  let sc=null,sn=0;
+  for(const e of play){
+    const s=e.sc||"";
+    if(sc===null||s!==sc){sc=s;sn++;o+="\n## Scena "+sn+(s?" — "+s:" (senza titolo)")+"\n"}
+    if(e.k==="Scena")continue;
+    o+="- "+fT(e.t)+" · "+e.k+(e.w?" · "+e.w:"")+": "+(e.k==="Battuta"?"«"+e.x+"»":e.x.replace(/\n/g,"\n  "))+"\n";
+  }
+  if(!play.length)o+="\n(nessun appunto rapido)\n";
+  const q=(ST.quad[n]||"").trim();
+  o+="\n## Appunti liberi\n"+(q||"(vuoto)")+"\n";
+  if(off.length){o+="\n## Fuori gioco\n";for(const e of off)o+="- "+fT(e.t)+(e.w?" · "+e.w:"")+": "+e.x.replace(/\n/g,"\n  ")+"\n"}
+  return o;
 }
-if(BC)BC.onmessage=ev=>{const d=ev.data;if(d&&d.t==="cron-ok"&&d.id===pend){pend=null;$("#link").className="ok";$("#link").textContent="✓ Inviata al Tavolo";setTimeout(()=>{$("#link").textContent="";$("#link").className="no"},2500)}};
-$("#add").onclick=add;
-$("#txt").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();add()}});
-$("#copy").onclick=async()=>{try{await navigator.clipboard.writeText(fullText());$("#copy").textContent="Copiato ✓"}catch(e){const t=document.createElement("textarea");t.value=fullText();document.body.append(t);t.select();document.execCommand("copy");t.remove();$("#copy").textContent="Copiato ✓"}setTimeout(()=>$("#copy").textContent="Copia il testo",1800)};
-$("#dl").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([fullText()],{type:"text/plain;charset=utf-8"}));a.download="cronaca-sessione.txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)};
-let armed=false;$("#clr").onclick=()=>{if(!armed){armed=true;$("#clr").textContent="Sicuro? Tocca ancora";setTimeout(()=>{armed=false;$("#clr").textContent="Azzera"},2600);return}LOG=[];save();draw();armed=false;$("#clr").textContent="Azzera"};
-drawTypes();drawWho();draw();stat(true);flush();
+function allArchive(){return sessions().map(archive).join("\n\n------------------------------\n\n")}
+async function copyTxt(t,btn,lab){try{await navigator.clipboard.writeText(t)}catch(e){const x=h("textarea",{value:t});document.body.append(x);x.select();document.execCommand("copy");x.remove()}btn.textContent="Copiato ✓";setTimeout(()=>btn.textContent=lab,1800)}
+function dl(name,text,type="text/plain;charset=utf-8"){const a=h("a",{href:URL.createObjectURL(new Blob([text],{type})),download:name});a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+/* ---- viste ---- */
+function drawHead(){
+  const s=$("#sess");s.replaceChildren(...sessions().map(n=>h("option",{value:n,selected:n===view},"Sessione "+n)));
+  s.onchange=()=>{view=+s.value;ST.cur=view;save();draw()};
+  const t=$("#tit");t.value=ST.tit[view]||"";t.oninput=()=>{ST.tit[view]=t.value;save()};
+  $("#newsess").onclick=()=>{const m=Math.max(...sessions())+1;if(!confirm("Iniziare la sessione "+m+"? Gli appunti della sessione "+view+" restano salvati."))return;ST.cur=m;view=m;ST.sc="";save();draw()};
+}
+function drawTabs(){
+  const b=$("#tabs");b.replaceChildren(...[["app","Appunti rapidi"],["quad","Appunti liberi"],["arc","Archivio"]].map(([id,l])=>h("button",{role:"tab","aria-selected":String(tab===id),onclick:()=>{tab=id;draw()}},l)));
+}
+function paneApp(p){
+  const sceneIn=h("input",{placeholder:"Dove siamo? (es. La taverna, Il carro sulla strada…)",value:ST.sc,autocomplete:"off"});
+  const newScene=()=>{const v=sceneIn.value.trim();if(!v){sceneIn.focus();return}ST.sc=v;ST.log.push({t:Date.now(),n:view,sc:v,k:"Scena",w:"",x:v});save();draw()};
+  sceneIn.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();newScene()}});
+  const who=h("input",{list:"whos",placeholder:"Dre, Orchideo, Master…",autocomplete:"off"}),dl_=h("datalist",{id:"whos"},[...new Set([...HERO,...ST.log.map(e=>e.w).filter(Boolean)])].map(v=>h("option",{value:v})));
+  const txt=h("textarea",{placeholder:HINT[kind]});
+  const add=()=>{const x=txt.value.trim();if(!x){txt.focus();return}const e={t:Date.now(),n:view,sc:ST.sc,k:kind,w:who.value.trim(),x};ST.log.push(e);save();txt.value="";draw();$("#txt")&&$("#txt").focus();
+    if(CODE){flush();return}if(BC&&e.k!=="Fuori gioco"){pend=e.t;try{BC.postMessage({t:"cron",id:e.t,x:line(e)})}catch(err){}setTimeout(()=>{if(pend===e.t){pend=null}},900)}};
+  txt.id="txt";txt.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();add()}});
+  const chips=h("div",{class:"chips",role:"group","aria-label":"Tipo di appunto"},TYPES.map(t=>h("button",{type:"button",class:"chip","aria-pressed":String(t===kind),onclick:()=>{kind=t;draw();$("#txt").focus()}},t)));
+  p.append(
+    h("label",{},"Scena attuale",h("div",{class:"row",style:"flex-wrap:nowrap"},sceneIn,h("button",{class:"btn",type:"button",onclick:newScene,style:"white-space:nowrap"},"Nuova scena"))),
+    h("div",{class:"sub",style:"margin-top:-4px"},ST.sc?"Gli appunti che scrivi finiscono sotto: «"+ST.sc+"». Cambia scena quando cambia luogo o momento.":"Scrivi il luogo e tocca “Nuova scena”: gli appunti verranno raggruppati per scena."),
+    chips,h("label",{},"Chi",who,dl_),h("label",{},kind,txt),
+    h("div",{class:"row"},h("button",{class:"btn gold",type:"button",onclick:add},"Aggiungi (Ctrl+Invio)")));
+  const L=entries(view),list=h("div",{class:"list"});
+  if(!L.length)list.append(h("div",{class:"sub",style:"padding:8px 0"},"Ancora nessun appunto in questa sessione."));
+  let sc=null;
+  L.forEach(e=>{
+    const i=ST.log.indexOf(e),s=e.sc||"";
+    if(e.k==="Scena"){list.append(h("div",{class:"scene"},"Scena · "+e.x,h("span",{class:"no",style:"float:right"},fT(e.t))));sc=s;return}
+    if(sc===null&&s){sc=s}
+    const x=h("div",{class:"x"});
+    if(editing===i){const ta=h("textarea",{value:e.x,style:"min-height:64px"});x.append(ta,h("div",{class:"row",style:"margin-top:4px"},h("button",{class:"btn sm gold",type:"button",onclick:()=>{e.x=ta.value.trim()||e.x;editing=-1;save();draw()}},"Salva"),h("button",{class:"btn sm",type:"button",onclick:()=>{editing=-1;draw()}},"Annulla")))}
+    else{if(e.w)x.append(h("b",{},e.w+": "));x.append(e.x);if(CODE&&!e.s&&e.k!=="Fuori gioco")x.append(h("span",{class:"no"}," ⏳"))}
+    list.append(h("div",{class:"e"},h("time",{},fT(e.t)),h("span",{class:"tag"+(e.k==="Fuori gioco"?" fg":"")},e.k),x,h("span",{class:"ac"},
+      h("button",{type:"button",title:"Modifica","aria-label":"Modifica",onclick:()=>{editing=i;draw()}},"✎"),
+      h("button",{type:"button",title:"Togli","aria-label":"Togli questa riga",onclick:()=>{ST.log.splice(i,1);save();draw()}},"✕"))));
+  });
+  p.append(h("h2",{},"Sessione "+view+" · "+L.filter(e=>e.k!=="Scena").length+" appunti"),list);
+  setTimeout(()=>{list.scrollTop=list.scrollHeight},0);
+}
+function paneQuad(p){
+  const ta=h("textarea",{id:"quad",placeholder:"Scrivi liberamente: cosa fanno i personaggi, cosa provano, dettagli che colpiscono, idee per la puntata… Si salva da solo.",value:ST.quad[view]||""});
+  const cnt=h("span",{class:"no"},"");const upd=()=>cnt.textContent=(ta.value.trim()?ta.value.trim().split(/\s+/).length:0)+" parole";upd();
+  let tm=0;ta.addEventListener("input",()=>{ST.quad[view]=ta.value;upd();clearTimeout(tm);tm=setTimeout(save,300)});
+  ta.addEventListener("blur",save);
+  const ins=h("button",{class:"btn sm",type:"button",onclick:()=>{const s=ta.selectionStart??ta.value.length;const mk="\n\n— "+(ST.sc||"Nuova scena")+" —\n";ta.setRangeText(mk,s,ta.selectionEnd??s,"end");ta.dispatchEvent(new Event("input"));ta.focus()}},"Inserisci titoletto di scena");
+  p.append(h("div",{class:"sub"},"Il quaderno della sessione "+view+": testo libero, solo tuo e di Claude. Non viene mandato al Tavolo."),ta,h("div",{class:"row"},ins,cnt));
+}
+function paneArc(p){
+  const t=archive(view);
+  const c=h("button",{class:"btn gold",type:"button"},"Copia per Claude");c.onclick=()=>copyTxt(t,c,"Copia per Claude");
+  const ca=h("button",{class:"btn",type:"button"},"Copia tutte le sessioni");ca.onclick=()=>copyTxt(allArchive(),ca,"Copia tutte le sessioni");
+  const imp=h("input",{type:"file",accept:".json,application/json",style:"display:none"});
+  imp.onchange=async()=>{try{const d=JSON.parse(await imp.files[0].text());if(!d.log)throw 0;if(!confirm("Unire questo archivio a quello di questo dispositivo?"))return;const ks=new Set(ST.log.map(e=>e.t+"|"+e.k+"|"+e.x));for(const e of d.log)if(!ks.has(e.t+"|"+e.k+"|"+e.x))ST.log.push(e);ST.log.sort((a,b)=>a.t-b.t);for(const[k,v]of Object.entries(d.quad||{}))if(!ST.quad[k])ST.quad[k]=v;Object.assign(ST.tit,d.tit&&Object.fromEntries(Object.entries(d.tit).filter(([k])=>!ST.tit[k]))||{});save();draw()}catch(e){alert("File non valido")}};
+  p.append(h("div",{class:"sub"},"Questo è il testo ordinato della sessione "+view+": appunti rapidi per scena, appunti liberi e fuori gioco. Copialo e mandalo a Claude a fine serata."),
+    h("div",{class:"row"},c,ca,h("button",{class:"btn",type:"button",onclick:()=>dl("archivio-sessione-"+view+".txt",t)},"Scarica .txt"),h("button",{class:"btn",type:"button",onclick:()=>dl("cronista-backup.json",JSON.stringify(ST),"application/json")},"Copia di sicurezza (.json)"),h("button",{class:"btn",type:"button",onclick:()=>imp.click()},"Riapri una copia"),imp),
+    h("pre",{},t),
+    h("div",{class:"row"},h("button",{class:"btn sm",type:"button",onclick:()=>{if(!confirm("Cancellare TUTTA la sessione "+view+" (appunti e quaderno)?"))return;ST.log=ST.log.filter(e=>(e.n||1)!==view);delete ST.quad[view];delete ST.tit[view];save();draw()}},"Azzera questa sessione")));
+}
+function draw(){
+  drawHead();drawTabs();const p=$("#pane");p.replaceChildren();
+  if(tab==="app")paneApp(p);else if(tab==="quad")paneQuad(p);else paneArc(p);
+  stat(true);
+}
+draw();flush();
 </script></body></html>

@@ -60,7 +60,7 @@ const LS={g(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse
 const BASE=()=>{try{return localStorage.getItem("tavolo-ntfy")||"https://ntfy.sh"}catch(e){return"https://ntfy.sh"}};
 const QS=new URLSearchParams(location.search);
 let CODE=QS.get("c")||LS.g("cr-code","");if(QS.get("c"))LS.s("cr-code",CODE);
-let ME=LS.g("cr-me","");let MEM=LS.g("cr-mem",{});let cur=LS.g("cr-cur",STORY[0].id);
+let VIEW=LS.g("cr-view","story");let ME=LS.g("cr-me","");let MEM=LS.g("cr-mem",{});let cur=LS.g("cr-cur",STORY[0].id);
 for(const b of BAKED)MEM[b.i]=Object.assign({sent:1},b);
 const save=()=>{LS.s("cr-mem",MEM)};
 const topic=()=>BASE()+"/dnd-cr-"+CODE;
@@ -98,8 +98,28 @@ function draw(){
   ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();add()}});
   const form=el("div",{class:"card"},el("h3",{},"Aggiungi un ricordo come "+ME),el("label",{},"Il tuo ricordo",ta),el("div",{class:"row",style:"margin-top:8px"},el("button",{class:"btn gold",type:"button",onclick:add},"Aggiungi (Ctrl+Invio)"),el("span",{id:"net",class:"st"})),el("div",{class:"st",style:"margin-top:6px"},"Una volta inviato un ricordo non si può più cancellare da qui: chiedi a Mario se vuoi toglierlo."));
   const tools=el("div",{class:"row"},el("button",{class:"btn",type:"button",onclick:async e=>{try{await navigator.clipboard.writeText(allText());e.target.textContent="Copiato ✓"}catch(x){const t=el("textarea");t.value=allText();document.body.append(t);t.select();document.execCommand("copy");t.remove();e.target.textContent="Copiato ✓"}setTimeout(()=>e.target.textContent="Copia tutti i ricordi",1800)}},"Copia tutti i ricordi"),el("button",{class:"btn",type:"button",onclick:()=>{const a=el("a",{href:URL.createObjectURL(new Blob([allText()],{type:"text/plain;charset=utf-8"})),download:"ricordi-giocatori.txt"});a.click()}},"Scarica .txt"),el("button",{class:"btn",type:"button",onclick:async e=>{const l=location.origin+location.pathname+"?c="+CODE;try{await navigator.clipboard.writeText(l);e.target.textContent="Link copiato ✓"}catch(x){prompt("Copia il link:",l)}setTimeout(()=>e.target.textContent="Copia il link per gli amici",1800)}},"Copia il link per gli amici"));
+  const vs=el("div",{class:"tabs",role:"group"},[["story","La storia"],["heroes","I personaggi"]].map(([id,l])=>el("button",{class:"chip",type:"button","aria-pressed":String(VIEW===id),onclick:()=>{VIEW=id;LS.s("cr-view",id);draw()}},l)));
+  if(VIEW==="heroes"){app.append(vs);heroesView(app);stat();return}
+  app.append(vs);
   app.append(tabs,el("div",{class:"cols"},story,el("div",{style:"display:grid;gap:16px"},mem,form)),tools);
   stat();
+}
+
+function heroesView(app){
+  const names=[...new Set([...HERO.filter(n=>n!=="Master"),...Object.values(MEM).map(m=>m.w)])];
+  const ord=[ME,...names.filter(n=>n!==ME)].filter(Boolean);
+  const ta=el("textarea",{id:"x",placeholder:"Cosa pensa e prova il tuo personaggio, cosa ricorda, cosa vuole, i legami con gli altri…","aria-label":"Il tuo ricordo"});
+  let sel=cur;
+  const sesSel=el("select",{"aria-label":"Sessione"},STORY.map(s=>el("option",{value:s.id,selected:s.id===cur},s.title.split(" · ")[0])));
+  sesSel.onchange=()=>{sel=sesSel.value};
+  const add=()=>{const x=ta.value.trim();if(!x){ta.focus();return}const i=rid();MEM[i]={i,s:sel,w:ME,x,t:Date.now(),own:1,sent:0};save();draw();flush()};
+  ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();add()}});
+  app.append(el("div",{class:"card"},el("h3",{},"Il mio personaggio · "+ME),el("p",{class:"st"},"Qui scrivi quello che sa e sente solo "+ME+": pensieri, ricordi, legami. Gli altri lo leggono accanto alla storia, e Claude lo userà per raccontare la tua parte."),el("label",{},"Sessione",sesSel),el("label",{},"Il tuo ricordo",ta),el("div",{class:"row",style:"margin-top:8px"},el("button",{class:"btn gold",type:"button",onclick:add},"Aggiungi (Ctrl+Invio)"),el("span",{id:"net",class:"st"}))));
+  for(const n of ord){
+    const L=Object.values(MEM).filter(m=>m.w===n).sort((a,b)=>a.t-b.t);
+    app.append(el("div",{class:"card"},el("h3",{style:"color:hsl("+hue(n)+" 60% 68%)"},n+(n===ME?" (tu)":"")),
+      L.length?L.map(m=>{const S=STORY.find(x=>x.id===m.s);return el("div",{class:"mem",style:"border-color:hsl("+hue(n)+" 55% 60%)"},el("span",{class:"t"},(S?S.title.split(" · ")[0]:"")+" · "+fmt(m.t)+(m.own&&!m.sent?" · ⏳ in attesa":"")),el("p",{},m.x),m.own?el("button",{class:"btn",type:"button",style:"padding:2px 8px;font-size:.8rem;margin-top:4px",onclick:()=>{if(confirm("Togliere questo ricordo?")){delete MEM[m.i];save();draw()}}},"Togli (solo qui)"):null)}):el("div",{class:"vuoto"},"Ancora niente.")));
+  }
 }
 function setupCard(){
   const A="abcdefghjkmnpqrstuvwxyz23456789",inp=el("input",{placeholder:"Codice del gruppo","aria-label":"Codice del gruppo"});
