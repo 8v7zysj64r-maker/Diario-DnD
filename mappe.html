@@ -464,7 +464,7 @@ function custSprite(k,rot,s,key){
   const spr={cv,ox:W/2/SQ,oy:W/2/SQ,w:W/SQ,h:W/SQ,fire:c.fire?[[0,0,.5*s*CELL]]:[],glow:c.glow?[[0,0,(c.gs||.9)*s*CELL,c.glow]]:[]};
   if(spriteCache.size>400)spriteCache.clear();spriteCache.set(key,spr);return spr;
 }
-function keyGreen(im){
+function keyGreen(im,whole){
   const mx=Math.max(im.naturalWidth,im.naturalHeight),k=Math.min(1,768/mx),w=Math.max(1,Math.round(im.naturalWidth*k)),h=Math.max(1,Math.round(im.naturalHeight*k));
   const cv=document.createElement("canvas");cv.width=w;cv.height=h;const x=cv.getContext("2d",{willReadFrequently:true});x.drawImage(im,0,0,w,h);
   const D=x.getImageData(0,0,w,h),a=D.data;let hasA=false;for(let i=3;i<a.length;i+=4)if(a[i]<250){hasA=true;break}
@@ -479,10 +479,34 @@ function keyGreen(im){
     for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){const p=y*w+xx;if(gone[p])continue;let n=0;for(let dy=-2;dy<=2&&!n;dy++)for(let dx=-2;dx<=2;dx++){const X=xx+dx,Y=y+dy;if(X>=0&&Y>=0&&X<w&&Y<h&&gone[Y*w+X]){n=Math.abs(dx)+Math.abs(dy)<=1?2:1;break}}edge[p]=n}
     for(let p=0;p<w*h;p++){const i=p*4;if(gone[p]){a[i+3]=0;continue}if(edge[p]){const m=Math.max(a[i],a[i+2]);if(a[i+1]>m)a[i+1]=m+(a[i+1]-m)*.1;a[i+3]=edge[p]===2?70:190}}
   }
+  if(whole){x.putImageData(D,0,0);return{cv}}
   let x0=w,y0=h,x1=-1,y1=-1;for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)if(a[(y*w+xx)*4+3]>40){if(xx<x0)x0=xx;if(xx>x1)x1=xx;if(y<y0)y0=y;if(y>y1)y1=y}
   if(x1<0)return null;
   x.putImageData(D,0,0);const cw=x1-x0+1,ch=y1-y0+1,o=document.createElement("canvas");o.width=cw;o.height=ch;o.getContext("2d").drawImage(cv,x0,y0,cw,ch,0,0,cw,ch);
   return{url:o.toDataURL("image/png"),ar:ch/cw,cv:o};
+}
+function splitSheet(cv){
+  const w=cv.width,h=cv.height,x=cv.getContext("2d",{willReadFrequently:true}),D=x.getImageData(0,0,w,h).data;
+  const q=2,mw=Math.ceil(w/q),mh=Math.ceil(h/q),m=new Uint8Array(mw*mh);
+  for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)if(D[(y*w+xx)*4+3]>60)m[((y/q)|0)*mw+((xx/q)|0)]=1;
+  const R=Math.max(3,Math.round(Math.min(w,h)/150)),dm=new Uint8Array(mw*mh),tmp=new Uint8Array(mw*mh);
+  for(let y=0;y<mh;y++){let c=0;for(let xx=-R;xx<mw+R;xx++){const a=xx+R<mw?m[y*mw+xx+R]:0,b=xx-R-1>=0?m[y*mw+xx-R-1]:0;if(xx+R>=0&&xx+R<mw)c+=a;if(xx-R-1>=0)c-=b;if(xx>=0&&xx<mw)tmp[y*mw+xx]=c>0?1:0}}
+  for(let xx=0;xx<mw;xx++){let c=0;for(let y=-R;y<mh+R;y++){const a=y+R<mh?tmp[(y+R)*mw+xx]:0,b=y-R-1>=0?tmp[(y-R-1)*mw+xx]:0;if(y+R>=0&&y+R<mh)c+=a;if(y-R-1>=0)c-=b;if(y>=0&&y<mh)dm[y*mw+xx]=c>0?1:0}}
+  const lab=new Int32Array(mw*mh),comps=[];let n=0;
+  for(let p0=0;p0<mw*mh;p0++){if(!dm[p0]||lab[p0])continue;n++;const st=[p0];lab[p0]=n;let x0=mw,y0=mh,x1=-1,y1=-1,ar=0;
+    while(st.length){const p=st.pop(),px=p%mw,py=(p/mw)|0;ar++;if(px<x0)x0=px;if(px>x1)x1=px;if(py<y0)y0=py;if(py>y1)y1=py;
+      if(px>0&&dm[p-1]&&!lab[p-1]){lab[p-1]=n;st.push(p-1)}if(px<mw-1&&dm[p+1]&&!lab[p+1]){lab[p+1]=n;st.push(p+1)}if(py>0&&dm[p-mw]&&!lab[p-mw]){lab[p-mw]=n;st.push(p-mw)}if(py<mh-1&&dm[p+mw]&&!lab[p+mw]){lab[p+mw]=n;st.push(p+mw)}}
+    comps.push({id:n,x0,y0,x1,y1,ar})}
+  const big=comps.filter(c=>c.ar>mw*mh*.0015).sort((a,b)=>(a.y0-b.y0)||(a.x0-b.x0));
+  const out=[];
+  for(const c of big){const X0=Math.max(0,c.x0*q-q),Y0=Math.max(0,c.y0*q-q),X1=Math.min(w-1,c.x1*q+q),Y1=Math.min(h-1,c.y1*q+q),cw=X1-X0+1,ch=Y1-Y0+1;
+    const o=document.createElement("canvas");o.width=cw;o.height=ch;const ox=o.getContext("2d"),id=ox.createImageData(cw,ch);
+    for(let y=0;y<ch;y++)for(let xx=0;xx<cw;xx++){const sx=X0+xx,sy=Y0+y,i=(sy*w+sx)*4,j=(y*cw+xx)*4;if(lab[((sy/q)|0)*mw+((sx/q)|0)]===c.id){id.data[j]=D[i];id.data[j+1]=D[i+1];id.data[j+2]=D[i+2];id.data[j+3]=D[i+3]}}
+    ox.putImageData(id,0,0);
+    let a0=cw,b0=ch,a1=-1,b1=-1;for(let y=0;y<ch;y++)for(let xx=0;xx<cw;xx++)if(id.data[(y*cw+xx)*4+3]>40){if(xx<a0)a0=xx;if(xx>a1)a1=xx;if(y<b0)b0=y;if(y>b1)b1=y}
+    if(a1<0)continue;const fw=a1-a0+1,fh=b1-b0+1,f=document.createElement("canvas");f.width=fw;f.height=fh;f.getContext("2d").drawImage(o,a0,b0,fw,fh,0,0,fw,fh);
+    out.push({cv:f,url:f.toDataURL("image/png"),ar:fh/fw,w:fw,h:fh})}
+  return out;
 }
 function getSprite(k,rot,s,v){
   rot=((Math.round(rot/5)*5)%360+360)%360;s=Math.round(s*20)/20;
@@ -542,8 +566,8 @@ const VS=`#version 300 es
 void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.-1.,0.,1.);}`;
 const FS=`#version 300 es
 precision highp float;
-uniform vec2 uCanvas;uniform float uScale,uT,uAmb,uVig,uGlow,uRough,uSeed;uniform vec2 uFlow,uMap,uOff;uniform vec3 uTint,uFogC;uniform float uFog,uRel;uniform int uLN;uniform vec4 uLP[16];uniform vec3 uLC[16];
-uniform sampler2D uTerr,uLiq,uDec,uBg,uFl,uWl,uGr;uniform float uBgOn,uFlOn,uFlS,uWlOn,uWlS,uGrOn,uGrS;
+uniform vec2 uCanvas;uniform float uScale,uT,uAmb,uVig,uGlow,uRough,uSeed;uniform vec2 uFlow,uMap,uOff;uniform vec3 uTint,uFogC;uniform float uFog,uRel;uniform int uLN;uniform vec4 uLP[32];uniform vec3 uLC[32];
+uniform sampler2D uTerr,uLiq,uDec,uBg,uFl,uWl,uGr;uniform float uBgOn,uFlOn,uFlS,uWlOn,uWlS,uGrOn,uGrS,uWS,uWA;
 out vec4 o;
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
@@ -753,7 +777,7 @@ void main(){
   if(uBgOn>.5&&uBgOn<1.5){col=texture(uBg,uv).rgb;vis=1.;mT=0.;mB=0.;}
   // liquidi
   float nl=(fbm(p*.045+uSeed+3.)-.5)*uRough*.7;
-  float mL=smoothstep(.465,.515,L.r+nl),mW=smoothstep(.465,.515,L.g+nl),mS=smoothstep(.465,.515,L.b+nl),mA=smoothstep(.465,.515,L.a+nl);
+  float mL=smoothstep(.465,.515,L.r+nl),mW=smoothstep(.465-uWS,.515+uWS,L.g+nl),mS=smoothstep(.465,.515,L.b+nl),mA=smoothstep(.465,.515,L.a+nl);
   mL*=vis;mW*=vis;mS*=vis;mA*=vis;
   if(mL>0.){
     float dp=clamp((L.r+nl-.5)*2.6,0.,1.);
@@ -791,7 +815,7 @@ void main(){
     if(uBgOn>.5){
       vec3 bs=texture(uBg,uv+nn.xy*.0045+vec2(sin(p.y*.05+t*1.1),cos(p.x*.04+t*.9))*.0007).rgb;
       vec3 bw=bs*(.86+.3*hgt)+vec3(.25,.45,.5)*cau*.6+spec*vec3(.9,.95,1.)*.55+edge*smoothstep(.45,.7,fN+edge*.25)*.22;
-      col=mix(col,bw,mW);
+      col=mix(col,bw,mW*uWA);
     }else{
     wcl=mix(fl*vec3(.75,.9,1.),wcl,.5+.5*smoothstep(0.,.5,dp));
     col=mix(col,wcl,mW);}
@@ -820,7 +844,7 @@ void main(){
     col+=vec3(1.,.42,.08)*g*uGlow*.75*(1.-mL)*(.7+.3*sin(t*1.7+nA*6.));
   }
   vec3 lsum=vec3(0.);
-  for(int i=0;i<16;i++){if(i>=uLN)break;float d=length(p-uLP[i].xy)/uLP[i].z;lsum+=uLC[i]*pow(max(1.-d,0.),1.8);}
+  for(int i=0;i<32;i++){if(i>=uLN)break;float d=length(p-uLP[i].xy)/uLP[i].z;lsum+=uLC[i]*pow(max(1.-d,0.),1.8);}
   float fgn=fbm(p*.005+vec2(t*.012,t*.006))*.7+fbm2(p*.011-vec2(t*.02,0.))*.5;
   float fogA=uFog*smoothstep(.22,.7,fgn);
   vec3 amb3=uTint*uAmb;
@@ -839,7 +863,7 @@ function initGL(){
   const mk=(t,src)=>{const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));throw new Error("shader")}return s};
   prog=gl.createProgram();gl.attachShader(prog,mk(gl.VERTEX_SHADER,VS));gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,FS));gl.linkProgram(prog);
   if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){console.error(gl.getProgramInfoLog(prog));return false}
-  for(const n of["uCanvas","uScale","uT","uAmb","uVig","uGlow","uRough","uSeed","uFlow","uMap","uOff","uRel","uTerr","uLiq","uDec","uBg","uBgOn","uFl","uFlOn","uFlS","uWl","uWlOn","uWlS","uGr","uGrOn","uGrS","uTint","uFogC","uFog","uLN","uLP","uLC"])U[n]=gl.getUniformLocation(prog,n);
+  for(const n of["uCanvas","uScale","uT","uAmb","uVig","uGlow","uRough","uSeed","uFlow","uMap","uOff","uRel","uTerr","uLiq","uDec","uBg","uBgOn","uFl","uFlOn","uFlS","uWl","uWlOn","uWlS","uGr","uGrOn","uGrS","uWS","uWA","uTint","uFogC","uFog","uLN","uLP","uLC"])U[n]=gl.getUniformLocation(prog,n);
   const mkT=()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t};
   texT=mkT();texL=mkT();texD=mkT();texB=mkT();texF=mkT();texW=mkT();texG=mkT();glOK=true;return true;
 }
@@ -935,10 +959,10 @@ function fitBox(){
 function allLights(time){
   const out=[],fk=(i,f)=>f?1+.09*Math.sin(time*7+i*2.3)+.05*Math.sin(time*13.3+i*1.7):1;
   (S.lights||[]).forEach((l,i)=>out.push({x:l.x,y:l.y,r:l.r,c:l.c,i:l.i,fk:fk(i,l.f)}));
-  if(S.set.autol){for(const o of S.objs){if(out.length>=16)break;if(!OBJ[o.k])continue;const sp=getSprite(o.k,o.r,o.s,o.v);
-    sp.fire.forEach((f,i)=>{if(out.length<16)out.push({x:o.x+f[0],y:o.y+f[1],r:CELL*(2.6+f[2]/CELL*1.4),c:[1,.6,.26],i:.85,fk:fk(out.length,1)})});
-    sp.glow.forEach((g,i)=>{if(out.length<16&&typeof g[3]==="string"){const cc=g[3].split(",").map(v=>(+v||0)/255);out.push({x:o.x+g[0],y:o.y+g[1],r:Math.max(CELL*1.6,g[2]*2.4),c:cc,i:.7,fk:fk(out.length,1)})}})}}
-  return out;
+  if(S.set.autol){for(const o of S.objs){if(out.length>=32)break;if(!OBJ[o.k])continue;const sp=getSprite(o.k,o.r,o.s,o.v);
+    sp.fire.forEach((f,i)=>{if(out.length<32)out.push({x:o.x+f[0],y:o.y+f[1],r:CELL*(2.6+f[2]/CELL*1.4),c:[1,.6,.26],i:.85,fk:fk(out.length,1)})});
+    sp.glow.forEach((g,i)=>{if(out.length<32&&typeof g[3]==="string"){const cc=g[3].split(",").map(v=>(+v||0)/255);out.push({x:o.x+g[0],y:o.y+g[1],r:Math.max(CELL*1.6,g[2]*2.4),c:cc,i:.7,fk:fk(out.length,1)})}})}}
+  return out.slice(0,32);
 }
 function tintOf(){const a=.45+.6*Math.min(1.2,S.set.amb),t=S.set.tint||[1,1,1];return t.map(v=>Math.max(.15,Math.min(1.2,v*a)))}
 function drawGL(scale,time){
@@ -947,7 +971,7 @@ function drawGL(scale,time){
   gl.uniform1f(U.uT,time);gl.uniform1f(U.uAmb,S.set.amb);gl.uniform1f(U.uVig,S.set.vig);gl.uniform1f(U.uGlow,S.set.glow);gl.uniform1f(U.uRough,S.set.rough);
   let sd=0;for(const ch of String(S.seed||S.id))sd=(sd*31+ch.charCodeAt(0))%997;gl.uniform1f(U.uSeed,sd*1.37);
   gl.uniform3fv(U.uTint,S.set.tint||[1,1,1]);gl.uniform3fv(U.uFogC,S.set.fogc||[.55,.55,.62]);gl.uniform1f(U.uFog,S.set.fog||0);
-  const LL=allLights(time),lp=new Float32Array(64),lc=new Float32Array(48);
+  const LL=allLights(time),lp=new Float32Array(128),lc=new Float32Array(96);
   LL.forEach((l,i)=>{lp.set([l.x,l.y,l.r,1],i*4);lc.set([l.c[0]*l.i*l.fk,l.c[1]*l.i*l.fk,l.c[2]*l.i*l.fk],i*3)});
   gl.uniform1i(U.uLN,LL.length);gl.uniform4fv(U.uLP,lp);gl.uniform3fv(U.uLC,lc);
   const a=S.set.ang*Math.PI/180,sp=S.set.spd*28;gl.uniform2f(U.uFlow,Math.cos(a)*sp,Math.sin(a)*sp);
@@ -955,7 +979,7 @@ function drawGL(scale,time){
   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,texL);gl.uniform1i(U.uLiq,1);
   gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,texD);gl.uniform1i(U.uDec,2);
   gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,texB);gl.uniform1i(U.uBg,3);gl.uniform1f(U.uBgOn,(S.bg&&bgReady&&bgSrc===S.bg)?(S.set.hyb?2:1):0);
-  gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,texF);gl.uniform1i(U.uFl,4);gl.uniform1f(U.uFlOn,(S.ftex&&flReady&&flSrc===S.ftex)?1:0);gl.uniform1f(U.uFlS,S.set.fls||640);
+  gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,texF);gl.uniform1i(U.uFl,4);gl.uniform1f(U.uFlOn,(S.ftex&&flReady&&flSrc===S.ftex)?1:0);gl.uniform1f(U.uFlS,S.set.fls||640);gl.uniform1f(U.uWS,S.bg?(S.set.wsoft==null?.8:S.set.wsoft)*.12:0);gl.uniform1f(U.uWA,S.bg?(S.set.wop==null?.85:S.set.wop):1);
   gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,texW);gl.uniform1i(U.uWl,5);gl.uniform1f(U.uWlOn,(S.wtex&&wlReady&&wlSrc===S.wtex)?1:0);gl.uniform1f(U.uWlS,S.set.wls||520);
   gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,texG);gl.uniform1i(U.uGr,6);gl.uniform1f(U.uGrOn,(S.gtex&&grReady&&grSrc===S.gtex)?1:0);gl.uniform1f(U.uGrS,S.set.gls||520);
   gl.drawArrays(gl.TRIANGLES,0,3);
@@ -1106,7 +1130,7 @@ const THEMES=[
  {id:"notte",n:"Notte nel bosco",tint:[.46,.6,1],amb:.52,vig:.8,fog:.22,fogc:[.22,.32,.5]},
  {id:"palude",n:"Palude",tint:[.72,1,.6],amb:.78,vig:.7,fog:.42,fogc:[.42,.58,.34]}];
 const FOGC=[["Grigia",[.6,.6,.66]],["Viola",[.5,.32,.64]],["Azzurra",[.3,.5,.72]],["Verde",[.35,.6,.4]],["Rossastra",[.55,.22,.16]],["Rosa",[.8,.55,.7]]];
-const LCOL=[["Torcia",[1,.62,.28]],["Viola",[.65,.4,1]],["Ciano",[.25,.85,1]],["Verde",[.4,1,.5]],["Rosso",[1,.25,.2]],["Fredda",[.85,.92,1]]];
+const LCOL=[["Torcia",[1,.62,.28],{r:3.5,i:1,f:true}],["Sole",[1,.95,.78],{r:9,i:.8,f:false}],["Luna",[.7,.8,1],{r:8,i:.6,f:false}],["Viola",[.65,.4,1]],["Ciano",[.25,.85,1]],["Verde",[.4,1,.5]],["Rosso",[1,.25,.2]],["Fredda",[.85,.92,1]]];
 function applyTheme(id){const t=THEMES.find(x=>x.id===id);if(!t)return;pushUndo();Object.assign(S.set,{theme:id,tint:t.tint.slice(),amb:t.amb,vig:t.vig});renderPane()}
 const TABS=[["gen","Genera"],["draw","Disegna"],["obj","Oggetti"],["light","Luci"],["fx","Effetti"]];
 function pushUndo(){undoSt.push({t:S.terr.slice(),l:S.liq.slice(),dc:S.dec.slice(),o:JSON.stringify(S.objs),lt:JSON.stringify(S.lights||[]),set:JSON.stringify(S.set)});if(undoSt.length>40)undoSt.shift()}
@@ -1157,7 +1181,13 @@ function renderPane(){
         h("label",{},h("input",{type:"checkbox",checked:!!dr.fire,onchange:e=>dr.fire=e.target.checked})," Fuoco animato al centro (falò, torcia, braciere)"),
         h("label",{},h("input",{type:"checkbox",checked:!!dr.glow,onchange:e=>dr.glow=e.target.checked?"255,170,80":null})," Emette luce calda"),
         h("div",{class:"row"},h("button",{class:"btn",onclick:()=>{const c={id:uid(),n:(dr.n||"Oggetto").trim()||"Oggetto",img:dr.url,ar:dr.ar,cells:dr.cells,flat:!!dr.flat,fire:!!dr.fire,glow:dr.glow||null};S.cust=(S.cust||[]).concat([c]);ui.cdraft=null;ensureCust();ui.place="u_"+c.id;ui.pv=1;renderPane()}},"Aggiungi"),h("button",{class:"btn",onclick:()=>{ui.cdraft=null;renderPane()}},"Annulla"))):
-      h("div",{class:"row"},h("button",{class:"btn",onclick:()=>pickCust()},"Importa immagine…")));
+      h("div",{class:"row"},h("button",{class:"btn",onclick:()=>pickCust()},"Importa immagine…"),h("button",{class:"btn",onclick:()=>pickSheet()},"Importa foglio di oggetti…")),
+      (()=>{const c=(S.cust||[]).find(q=>"u_"+q.id===ui.place);return c?h("div",{class:"grp"},h("h3",{},"Oggetto scelto"),
+        h("input",{type:"text",value:c.n,oninput:e=>{c.n=e.target.value;OBJ["u_"+c.id].n=c.n}}),
+        slider("Larghezza in caselle",.5,8,.25,()=>c.cells,v=>{c.cells=v;spriteCache.clear();ensureCust()},v=>v+" caselle"),
+        h("label",{},h("input",{type:"checkbox",checked:!!c.flat,onchange:e=>{c.flat=e.target.checked;spriteCache.clear();ensureCust()}})," Resta a terra, senza ombra"),
+        h("label",{},h("input",{type:"checkbox",checked:!!c.fire,onchange:e=>{c.fire=e.target.checked;spriteCache.clear()}})," Fuoco animato al centro"),
+        h("label",{},h("input",{type:"checkbox",checked:!!c.glow,onchange:e=>{c.glow=e.target.checked?"255,170,80":null;spriteCache.clear()}})," Emette luce calda")):null})());
     if(dr){const cvp=custGrp.querySelector("#cdprev");if(cvp&&dr.cv){const c2=cvp.getContext("2d"),sc=Math.min(92/dr.cv.width,92/dr.cv.height);c2.fillStyle="#2a2a2a";c2.fillRect(0,0,96,96);c2.drawImage(dr.cv,48-dr.cv.width*sc/2,48-dr.cv.height*sc/2,dr.cv.width*sc,dr.cv.height*sc)}}
     const o=sel&&S.objs.find(x=>x.id===sel);
     p.append(h("div",{class:"grp"},h("h3",{},"Oggetti 3D"),h("div",{class:"hint"},ui.place?"Tocca la mappa per posizionare “"+OBJ[ui.place].n+"”. Poi lo regoli con le maniglie.":"Scegli un oggetto e toccalo sulla mappa. Tocca un oggetto già messo per selezionarlo: trascinalo per spostarlo, usa la maniglia tonda in alto per ruotarlo e il quadratino in basso a destra per ingrandirlo o rimpicciolirlo."),grid),
@@ -1174,7 +1204,7 @@ function renderPane(){
   }else if(tab==="light"){
     const l=selL&&S.lights.find(x=>x.id===selL),cur=l||{c:LCOL[ui.lc||0][1],r:(ui.lr||3)*CELL,i:ui.li||1,f:ui.lf!==false};
     p.append(h("div",{class:"grp"},h("h3",{},"Luci"),h("div",{class:"hint"},"Tocca la mappa per mettere una luce (torcia, fungo, cristallo, runa…). Trascina il punto per spostarla e il quadratino sul bordo per cambiare la portata. Le luci colorano e schiariscono il terreno intorno."),
-        h("div",{class:"mats"},...LCOL.map(([n,c],i)=>h("button",{class:"mat","aria-pressed":String(l?l.c.join()===c.join():(ui.lc||0)===i),onclick:()=>{if(l){pushUndo();l.c=c.slice()}else ui.lc=i;renderPane()}},h("i",{style:"background:rgb("+c.map(v=>Math.round(v*255)).join(",")+")"}),n)))),
+        h("div",{class:"mats"},...LCOL.map(([n,c],i)=>h("button",{class:"mat","aria-pressed":String(l?l.c.join()===c.join():(ui.lc||0)===i),onclick:()=>{if(l){pushUndo();l.c=c.slice()}else{ui.lc=i;const pr=LCOL[i][2];if(pr){ui.lr=pr.r;ui.li=pr.i;ui.lf=pr.f}}renderPane()}},h("i",{style:"background:rgb("+c.map(v=>Math.round(v*255)).join(",")+")"}),n)))),
       h("div",{class:"grp"},h("h3",{},l?"Luce selezionata":"Prima di posizionare"),
         slider("Portata",1,12,.5,()=>cur.r/CELL,v=>{if(l)l.r=v*CELL;else ui.lr=v},v=>v+" caselle"),
         slider("Intensità",.2,2.5,.05,()=>cur.i,v=>{if(l)l.i=v;else ui.li=v},v=>Math.round(v*100)+"%"),
@@ -1199,6 +1229,16 @@ function renderPane(){
         S.gtex?slider("Grandezza dell’erba",200,1400,20,()=>S.set.gls||520,v=>S.set.gls=v,v=>Math.round(v/CELL*10)/10+" caselle"):null),
       h("div",{class:"grp"},h("h3",{},"Immagine di sfondo"),
         h("div",{class:"hint"},"Metti una mappa già disegnata come base: la Fucina ci anima sopra l’acqua (dipingila con il pennello Acqua), le luci, la nebbia e la polvere."),
+        h("div",{class:"row"},h("button",{class:"btn gold",onclick:()=>{if(confirm("Creo una nuova mappa su misura dell’immagine, senza deformarla. La mappa attuale non salvata va persa. Continuo?"))pickNewFromImage()}},"Nuova mappa da immagine…")),
+        S.bg?h("div",{class:"grp"},h("h3",{},"Dai vita all’immagine"),
+          h("div",{class:"hint"},"Trovo le fiamme già disegnate e ci metto una luce che vibra. Con la spunta aggiungo anche una fiamma animata (utile se le torce dipinte sono spente)."),
+          h("label",{},h("input",{type:"checkbox",checked:!!ui.tfl,onchange:e=>ui.tfl=e.target.checked})," Aggiungi anche la fiamma animata"),
+          slider("Forza delle luci trovate",.2,1.5,.05,()=>ui.tli==null?.5:ui.tli,v=>ui.tli=v,v=>Math.round(v*100)+"%"),
+          slider("Portata delle luci trovate",1,6,.5,()=>ui.tlr||2.6,v=>ui.tlr=v,v=>v+" caselle"),
+          h("div",{class:"row"},h("button",{class:"btn gold",onclick:()=>{findTorches(!!ui.tfl);renderPane()}},"Trova torce e fuochi")),
+          slider("Morbidezza dell’acqua",0,1,.05,()=>S.set.wsoft==null?.8:S.set.wsoft,v=>S.set.wsoft=v,v=>Math.round(v*100)+"%"),
+          slider("Forza dell’acqua animata",0,1,.05,()=>S.set.wop==null?.85:S.set.wop,v=>S.set.wop=v,v=>Math.round(v*100)+"%"),
+          h("div",{class:"hint"},"Luce del sole per l’esterno: scheda Luci, scegli “Sole” e tocca l’erba.")):null,
         h("div",{class:"row"},h("button",{class:"btn",onclick:()=>pickBg()},S.bg?"Cambia immagine…":"Carica immagine…"),S.bg?h("button",{class:"btn",onclick:()=>{S.bg=null;S.set.hyb=0;ui.wand=false;dirtyTex=true;renderPane()}},"Togli sfondo"):null),
         S.bg?h("div",{},
           h("label",{},h("input",{type:"checkbox",checked:!!S.set.hyb,onchange:e=>{if(e.target.checked&&!confirm("Le pareti diventano roccia vera della Fucina e il disegno resta solo sul pavimento. Parto con tutto roccia e poi apri le stanze con la bacchetta magica. Continuo?")){e.target.checked=false;return}setHybrid(e.target.checked);ui.wand=!!e.target.checked;renderPane()}})," Pareti in roccia vera (rilievo e ombre)"),
@@ -1292,8 +1332,32 @@ function setHybrid(on){
   else{S.set.hyb=0}
   dirtyTex=true;
 }
+function newFromImage(im){
+  const ir=im.naturalWidth/im.naturalHeight,L=48;let gw,gh;
+  if(ir>=1){gw=L;gh=Math.max(12,Math.round(L/ir))}else{gh=L;gw=Math.max(12,Math.round(L*ir))}
+  S=newMap(gw,gh);S.set.rough=.3;S.set.grid=false;S.set.relief=0;S.set.autol=0;S.name="Mappa da immagine";
+  undoSt=[];sel=null;selL=null;sizeCanvases();setBgFromImage(im,.9);closeModal();renderPane();
+  toast("Nuova mappa "+gw+"×"+gh+" caselle: l’immagine non è deformata")
+}
+function pickNewFromImage(){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>newFromImage(im);im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
+function findTorches(withFlame){
+  syncBg();if(!bgPix){toast("Aspetta un istante che l’immagine si carichi e riprova");return 0}
+  const {w,h,d}=bgPix,hot=new Uint8Array(w*h);
+  for(let p=0;p<w*h;p++){const r=d[p*4],g=d[p*4+1],b=d[p*4+2];if(r>215&&g>135&&b<165&&r-b>85&&r>=g)hot[p]=1}
+  const seen=new Uint8Array(w*h),cs=[];
+  for(let p0=0;p0<w*h;p0++){if(!hot[p0]||seen[p0])continue;const st=[p0];seen[p0]=1;let sx=0,sy=0,n=0;
+    while(st.length){const p=st.pop(),x=p%w,y=(p/w)|0;sx+=x;sy+=y;n++;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const X=x+dx,Y=y+dy;if(X<0||Y<0||X>=w||Y>=h)continue;const q=Y*w+X;if(hot[q]&&!seen[q]){seen[q]=1;st.push(q)}}}
+    if(n>=Math.max(4,w/260))cs.push([sx/n,sy/n,n])}
+  const out=[];for(const c of cs.sort((a,b)=>b[2]-a[2])){if(out.some(o=>Math.hypot(o[0]-c[0],o[1]-c[1])<w/36))continue;out.push(c)}
+  const k=S.gw*CELL/w,pk=out.slice(0,28);
+  if(!pk.length){toast("Non trovo fiamme: metti le luci a mano");return 0}
+  pushUndo();let fk=null;
+  if(withFlame){fk=(S.cust||[]).find(c=>c.n==="Fiamma");if(!fk){const cc=document.createElement("canvas");cc.width=cc.height=4;fk={id:uid(),n:"Fiamma",img:cc.toDataURL(),ar:1,cells:.4,flat:false,fire:true,glow:"255,170,80"};S.cust=(S.cust||[]).concat([fk])}ensureCust()}
+  for(const c of pk){const x=c[0]*k,y=c[1]*k;S.lights.push({id:uid(),x,y,r:(ui.tlr||2.6)*CELL,c:[1,.62,.28],i:ui.tli==null?.5:ui.tli,f:true});if(fk)S.objs.push({id:uid(),k:"u_"+fk.id,x,y:y-4,r:0,s:.5,v:1})}
+  dirtyTex=true;toast(pk.length+" torce/fuochi trovati e accesi");return pk.length
+}
 function setBgFromImage(im,quality){
-  const MWp=S.gw*CELL,MHp=S.gh*CELL,mw=Math.min(2048,MWp*1.2),mh=mw*MHp/MWp,c=document.createElement("canvas");c.width=Math.round(mw);c.height=Math.round(mh);
+  const MWp=S.gw*CELL,MHp=S.gh*CELL,mw=Math.min(2560,MWp*1.4),mh=mw*MHp/MWp,c=document.createElement("canvas");c.width=Math.round(mw);c.height=Math.round(mh);
   const ar=c.width/c.height,ir=im.naturalWidth/im.naturalHeight;let sx=0,sy=0,sw=im.naturalWidth,sh=im.naturalHeight;
   if(ir>ar){sw=sh*ar;sx=(im.naturalWidth-sw)/2}else{sh=sw/ar;sy=(im.naturalHeight-sh)/2}
   c.getContext("2d").drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);
@@ -1301,6 +1365,14 @@ function setBgFromImage(im,quality){
 }
 function setFloorFromImage(im){const m=Math.min(1536,Math.max(im.naturalWidth,im.naturalHeight)),k=m/Math.max(im.naturalWidth,im.naturalHeight),c=document.createElement("canvas");c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);S.ftex=c.toDataURL("image/jpeg",.9);if(!S.set.fls)S.set.fls=640;dirtyTex=true}
 function pickTex(key,sz){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const m=Math.min(1536,Math.max(im.naturalWidth,im.naturalHeight)),k=m/Math.max(im.naturalWidth,im.naturalHeight),c=document.createElement("canvas");c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);S[key]=c.toDataURL("image/jpeg",.9);if(!S.set[sz])S.set[sz]=520;dirtyTex=true;renderPane()};im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
+function importSheet(im){
+  const r=keyGreen(im,true);if(!r){toast("Non riesco a leggere il foglio");return}
+  const parts=splitSheet(r.cv);if(!parts.length){toast("Non trovo oggetti nel foglio");return}
+  const mx=Math.max(...parts.map(p=>Math.max(p.w,p.h)));pushUndo();
+  parts.forEach((p,i)=>{S.cust=(S.cust||[]).concat([{id:uid(),n:"Oggetto "+((S.cust||[]).length+1),img:p.url,ar:p.ar,cells:Math.max(.5,Math.min(4,Math.round(2.4*Math.max(p.w,p.h)/mx*4)/4)),flat:false,fire:false,glow:null}])});
+  ensureCust();renderPane();toast(parts.length+" oggetti separati dal foglio: rinominali e regola la grandezza nella lista")
+}
+function pickSheet(){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>importSheet(im);im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
 function pickCust(){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const r=keyGreen(im);if(!r){toast("Non trovo nessun oggetto nell’immagine");return}ui.cdraft={n:(f.files[0].name||"Oggetto").replace(/\.[^.]+$/,"").slice(0,24),url:r.url,ar:r.ar,cv:r.cv,cells:2,flat:false,fire:false,glow:null};renderPane()};im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
 function pickFloor(){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{setFloorFromImage(im);renderPane()};im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
 function pickBg(){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{pushUndo&&0;setBgFromImage(im);renderPane()};im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
@@ -1544,5 +1616,5 @@ function start(){
   openNew(true);
 }
 start();
-window.__mappe={get S(){return S},keyGreen,addCust:(c)=>{S.cust=(S.cust||[]).concat([Object.assign({id:uid(),n:"Oggetto",cells:2,flat:false,fire:false,glow:null,ar:1},c)]);ensureCust();return "u_"+S.cust[S.cust.length-1].id},setTex:(k,u)=>{S[k]=u;dirtyTex=true},setFloor:(u)=>{S.ftex=u;if(!S.set.fls)S.set.fls=640;dirtyTex=true},wand:(x,y,m)=>wandFill(x,y,m||"floor"),hyb:setHybrid,setBg:(u)=>{S.bg=u;dirtyTex=true},generate:doGenerate,gen,hnd:()=>{const o=S.objs.find(q=>q.id===sel);if(!o)return null;const H=handlesOf(o),wr=$("#wrap").getBoundingClientRect(),f=q=>{const z=proj(q[0],q[1]);return[wr.left+z[0],wr.top+z[1]]};return{c:f([o.x,o.y]),rot:f(H.rot),sc:f(H.sc)}},frame:()=>{if(dirtyTex)uploadFields();paintAll()},blank:(sz,fl)=>{const a=SIZES[sz||'m'];S=newMap(a[0],a[1]);S.set.rough=.8;S.set.grid=true;setFloor(fl||'stone');undoSt=[];sel=null;sizeCanvases();dirtyTex=true;closeModal()},still:(sc,t)=>{if(t!=null)T=t;return renderStill(sc||1).toDataURL('image/png')}};
+window.__mappe={get S(){return S},importSheet,newFromImage,findTorches,keyGreen,addCust:(c)=>{S.cust=(S.cust||[]).concat([Object.assign({id:uid(),n:"Oggetto",cells:2,flat:false,fire:false,glow:null,ar:1},c)]);ensureCust();return "u_"+S.cust[S.cust.length-1].id},setTex:(k,u)=>{S[k]=u;dirtyTex=true},setFloor:(u)=>{S.ftex=u;if(!S.set.fls)S.set.fls=640;dirtyTex=true},wand:(x,y,m)=>wandFill(x,y,m||"floor"),hyb:setHybrid,setBg:(u)=>{S.bg=u;dirtyTex=true},generate:doGenerate,gen,hnd:()=>{const o=S.objs.find(q=>q.id===sel);if(!o)return null;const H=handlesOf(o),wr=$("#wrap").getBoundingClientRect(),f=q=>{const z=proj(q[0],q[1]);return[wr.left+z[0],wr.top+z[1]]};return{c:f([o.x,o.y]),rot:f(H.rot),sc:f(H.sc)}},frame:()=>{if(dirtyTex)uploadFields();paintAll()},blank:(sz,fl)=>{const a=SIZES[sz||'m'];S=newMap(a[0],a[1]);S.set.rough=.8;S.set.grid=true;setFloor(fl||'stone');undoSt=[];sel=null;sizeCanvases();dirtyTex=true;closeModal()},still:(sc,t)=>{if(t!=null)T=t;return renderStill(sc||1).toDataURL('image/png')}};
 </script></body></html>
