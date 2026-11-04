@@ -19,6 +19,8 @@ body.noini #view{right:0}
 #map{display:block;max-width:none;pointer-events:none}
 #grid{position:absolute;inset:0;pointer-events:none}
 #fog{position:absolute;left:0;top:0;pointer-events:none;opacity:.6}
+#pv{position:absolute;left:0;top:0;pointer-events:none;z-index:3}
+body.present #pv{display:none}
 body.present #fog{opacity:1}
 #ring{position:fixed;border:2px solid var(--brass);border-radius:50%;pointer-events:none;display:none;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(0,0,0,.7);z-index:5}
 .ic{width:1.3em;height:1.3em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.26em;flex:none}
@@ -33,6 +35,15 @@ body.present #fog{opacity:1}
 .ui{position:fixed;z-index:10}
 #top{left:10px;top:10px;right:calc(var(--pw) + 10px);display:flex;flex-direction:column;gap:6px;pointer-events:none}
 body.noini #top{right:10px}
+body.vbar #top{flex-direction:row;align-items:flex-start;gap:8px}
+body.vbar #top>*{align-self:flex-start;max-width:none}
+body.vbar #top>.opt{min-width:0;max-width:calc(100vw - var(--pw) - 100px)}
+body.vbar.noini #top>.opt{max-width:calc(100vw - 100px)}
+body.vbar .bar.main{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:4px;padding:6px;max-height:calc(100vh - 20px);overflow-y:auto;scrollbar-width:thin}
+body.vbar .bar.main .btn{padding:5px;justify-content:center}
+body.vbar .bar.main .btn .ic{width:1.4em;height:1.4em}
+body.vbar .bar.main .btn .ic{width:1.5em;height:1.5em}
+body.vbar .bar.main .sep{width:auto;height:1px;margin:3px 0;align-self:stretch}
 #top>*{pointer-events:auto;align-self:flex-start;max-width:100%}
 .bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:rgba(20,28,28,.93);border:1px solid var(--line);border-radius:12px;padding:6px 8px;box-shadow:0 4px 18px rgba(0,0,0,.5)}
 .bar .sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
@@ -202,7 +213,7 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
 </head>
 <body>
 <div id="view">
-  <div id="stage"><img id="map" alt=""><div id="grid"></div><canvas id="fog"></canvas><div id="ptr"><i></i></div></div>
+  <div id="stage"><img id="map" alt=""><div id="grid"></div><canvas id="fog"></canvas><canvas id="pv"></canvas><div id="ptr"><i></i></div></div>
   <div id="act" aria-live="polite"><div class="shade"></div><div class="cast"></div><div class="cap"><div class="who"></div><p></p></div></div>
   <div id="empty"><div class="card"><h1>Tavolo del Master</h1><p>Carica una o più mappe: copriranno tutto lo schermo. Poi aggiungi griglia e nebbia.</p><div><button class="btn gold big" id="e-load"></button></div><p class="help">Trascina qui le immagini, incollale con Ctrl+V o scegli più file insieme.</p></div></div>
 </div>
@@ -318,7 +329,7 @@ const dbAll=()=>tx("readonly",s=>s.getAll()),dbGet=id=>tx("readonly",s=>s.get(id
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ---------- stato ---------- */
-const view=$("#view"),stage=$("#stage"),mapEl=$("#map"),gridEl=$("#grid"),fogC=$("#fog"),fctx=fogC.getContext("2d"),ring=$("#ring");
+const view=$("#view"),stage=$("#stage"),mapEl=$("#map"),gridEl=$("#grid"),fogC=$("#fog"),pvC=$("#pv"),pvx=pvC.getContext("2d"),fctx=fogC.getContext("2d"),ring=$("#ring");
 const ptrEl=$("#ptr");let pp=null;
 function placePtr(){if(!pp){ptrEl.style.display="none";return}ptrEl.style.display="block";ptrEl.style.transform="translate("+pp[0]+"px,"+pp[1]+"px) scale("+(1/zoom)+")"}
 function setPtr(x,y,ping){pp=[x,y];placePtr();if(ping){const r=h("span",{class:"pg"});ptrEl.append(r);r.addEventListener("animationend",()=>r.remove())}}
@@ -366,7 +377,7 @@ async function openScene(o){
   stage.style.width=iw+"px";stage.style.height=ih+"px";
   const k=Math.min(1,MAXFOG/Math.max(iw,ih));fw=Math.round(iw*k);fh=Math.round(ih*k);
   for(const c of[fogC,baseC]){c.width=fw;c.height=fh}
-  fogC.style.width=iw+"px";fogC.style.height=ih+"px";
+  fogC.style.width=iw+"px";fogC.style.height=ih+"px";pvC.width=iw;pvC.height=ih;pvC.style.width=iw+"px";pvC.style.height=ih+"px";shpCancel();
   bctx.globalCompositeOperation="source-over";bctx.clearRect(0,0,fw,fh);
   let loaded=false;
   if(o.fog){try{const bm=await createImageBitmap(o.fog);bctx.drawImage(bm,0,0,fw,fh);loaded=true}catch(e){}}
@@ -432,12 +443,14 @@ function applyStroke(ctx,s,from){
   const k=fw/iw;
   if(s.all)ctx.fillRect(0,0,fw,fh);
   else if(s.rect)ctx.fillRect(s.rect[0]*k,s.rect[1]*k,s.rect[2]*k,s.rect[3]*k);
+  else if(s.poly){const q=s.poly;ctx.beginPath();ctx.moveTo(q[0][0]*k,q[0][1]*k);for(let i=1;i<q.length;i++)ctx.lineTo(q[i][0]*k,q[i][1]*k);ctx.closePath();ctx.fill()}
+  else if(s.ell){const e=s.ell;ctx.beginPath();ctx.ellipse(e[0]*k,e[1]*k,Math.max(.5,e[2]*k),Math.max(.5,e[3]*k),0,0,Math.PI*2);ctx.fill()}
   else{const p=s.pts;if(from==null){seg(ctx,s,p[0],p[0]);for(let i=1;i<p.length;i++)seg(ctx,s,p[i-1],p[i])}else for(let i=Math.max(1,from);i<p.length;i++)seg(ctx,s,p[i-1],p[i])}
   ctx.restore();
 }
 function renderFog(){fctx.clearRect(0,0,fw,fh);fctx.drawImage(baseC,0,0);for(const s of strokes)applyStroke(fctx,s)}
 function commit(s){strokes.push(s);if(strokes.length>30){applyStroke(bctx,strokes.shift())}scheduleSave()}
-function undo(){if(!sc||!strokes.length){toast("Niente da annullare");return}strokes.pop();renderFog();scheduleSave();syncFog()}
+function undo(){if(polyBack())return;if(!sc||!strokes.length){toast("Niente da annullare");return}strokes.pop();renderFog();scheduleSave();syncFog()}
 function fogAll(reveal){if(!sc)return;const s={m:reveal?"r":"c",all:true};applyStroke(fctx,s);commit(s);send({t:"op",s})}
 function cellAt(x,y,cover){
   const g=sc.grid;if(!g.on){toast("Attiva la griglia per usare la modalità Cella");return}
@@ -445,10 +458,47 @@ function cellAt(x,y,cover){
   applyStroke(fctx,s);commit(s);send({t:"op",s});
 }
 
+
+/* ---------- aree (forme geometriche) ---------- */
+var shape="brush",snap=false,shp=null;
+const SHAPES=[["brush","Pennello"],["rect","Rettangolo"],["ell","Ellisse"],["circ","Cerchio"],["poly","Poligono a tratti"],["free","Mano libera"]];
+const isArea=()=>(tool==="reveal"||tool==="cover")&&shape!=="brush";
+function snapPt(x,y){if(snap&&sc&&sc.grid.on){const g=sc.grid;return[Math.round((x-g.ox)/g.size)*g.size+g.ox,Math.round((y-g.oy)/g.size)*g.size+g.oy]}return[x,y]}
+function shpDraw(cur){
+  pvx.clearRect(0,0,iw,ih);if(!shp)return;
+  const z=zoom,rev=tool==="reveal",col=rev?"#ffd36b":"#ff7a6b",fill=rev?"rgba(255,211,107,.22)":"rgba(255,122,107,.22)";
+  const st=()=>{pvx.lineWidth=2.5/z;pvx.strokeStyle=col;pvx.fillStyle=fill;pvx.setLineDash([8/z,5/z])};
+  st();
+  const dot=(x,y,r,f)=>{pvx.beginPath();pvx.arc(x,y,r/z,0,7);pvx.fillStyle=f;pvx.fill();pvx.strokeStyle="#000";pvx.lineWidth=1.5/z;pvx.setLineDash([]);pvx.stroke();st()};
+  const sh=shpGeom(cur);
+  if(sh&&sh.rect){pvx.fillRect(...sh.rect);pvx.strokeRect(...sh.rect)}
+  else if(sh&&sh.ell){const e=sh.ell;pvx.beginPath();pvx.ellipse(e[0],e[1],Math.max(.5,e[2]),Math.max(.5,e[3]),0,0,7);pvx.fill();pvx.stroke()}
+  else if(sh&&sh.poly){const q=sh.poly;pvx.beginPath();pvx.moveTo(q[0][0],q[0][1]);for(let i=1;i<q.length;i++)pvx.lineTo(q[i][0],q[i][1]);if(shp.k==="free"||q.length>2)pvx.fill();pvx.stroke()}
+  if(shp.k==="poly")shp.pts.forEach((q,i)=>dot(q[0],q[1],i===0&&shp.pts.length>=3?9:5,i===0?"#fff":col));
+}
+function shpGeom(cur){
+  if(!shp)return null;
+  if(shp.k==="poly"){const q=shp.pts.slice();if(cur)q.push(cur);return q.length>1?{poly:q}:null}
+  if(shp.k==="free")return shp.pts.length>1?{poly:shp.pts}:null;
+  const a=shp.a,b=cur||shp.b;if(!a||!b)return null;
+  if(shp.k==="rect")return{rect:[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1])]};
+  if(shp.k==="ell")return{ell:[(a[0]+b[0])/2,(a[1]+b[1])/2,Math.abs(b[0]-a[0])/2,Math.abs(b[1]-a[1])/2]};
+  if(shp.k==="circ"){const r=Math.hypot(b[0]-a[0],b[1]-a[1]);return{ell:[a[0],a[1],r,r]}}
+}
+function shpCommit(g){
+  if(!sc||!g)return;const s={m:tool==="reveal"?"r":"c"};
+  if(g.rect){if(g.rect[2]<2||g.rect[3]<2)return;s.rect=g.rect}else if(g.ell){if(g.ell[2]<1||g.ell[3]<1)return;s.ell=g.ell}else if(g.poly){if(g.poly.length<3)return;s.poly=g.poly}else return;
+  applyStroke(fctx,s);commit(s);send({t:"op",s});
+}
+function shpCancel(){const had=shp;shp=null;pvx.clearRect(0,0,pvC.width,pvC.height);if(had&&had.k==="poly")drawBars()}
+function polyClose(){if(!shp||shp.k!=="poly")return;if(shp.pts.length<3){toast("Servono almeno 3 punti");return}const g={poly:shp.pts.slice()};shpCancel();shpCommit(g);drawBars()}
+function polyBack(){if(shp&&shp.k==="poly"){shp.pts.pop();if(!shp.pts.length)shpCancel();else{shpDraw(null);drawBars()}return true}return false}
+function setShape(k){shpCancel();shape=k;ring.style.display="none";drawBars()}
+
 /* ---------- puntatore ---------- */
 const ptrs=new Map();let gest=null;
 const R=()=>brush.d/2;
-function ringShow(e){if(!(tool==="reveal"||tool==="cover")||!sc){ring.style.display="none";return}ring.style.display="block";ring.style.width=brush.d+"px";ring.style.height=brush.d+"px";ring.style.left=e.clientX+"px";ring.style.top=e.clientY+"px";ring.style.borderColor=tool==="cover"?"var(--acc)":"var(--brass)"}
+function ringShow(e){if(!(tool==="reveal"||tool==="cover")||!sc||shape!=="brush"){ring.style.display="none";return}ring.style.display="block";ring.style.width=brush.d+"px";ring.style.height=brush.d+"px";ring.style.left=e.clientX+"px";ring.style.top=e.clientY+"px";ring.style.borderColor=tool==="cover"?"var(--acc)":"var(--brass)"}
 view.addEventListener("contextmenu",e=>e.preventDefault());
 view.addEventListener("pointerenter",ringShow);
 view.addEventListener("pointerleave",()=>{ring.style.display="none";if(tool==="point"&&!PLAYER){ptrOff();send({t:"ptr",off:true})}});
@@ -460,6 +510,16 @@ view.addEventListener("pointerdown",e=>{
   if(pan){gest={t:"pan",x:e.clientX,y:e.clientY,tx:tx0,ty:ty0};view.style.cursor="grabbing";return}
   const[x,y]=toImg(e.clientX,e.clientY);
   if(tool==="point"){setPtr(x,y,true);send({t:"ptr",x,y,ping:true});return}
+  if(isArea()){
+    const[sx,sy]=snapPt(x,y);
+    if(shape==="poly"){
+      if(!shp)shp={k:"poly",pts:[]};
+      if(shp.pts.length>=3){const f=shp.pts[0];if(Math.hypot(f[0]-sx,f[1]-sy)*zoom<16){polyClose();return}}
+      const l=shp.pts[shp.pts.length-1];if(!l||Math.hypot(l[0]-sx,l[1]-sy)*zoom>3)shp.pts.push([sx,sy]);
+      shpDraw([sx,sy]);drawBars();return;
+    }
+    shp={k:shape,a:[sx,sy],b:[sx,sy],pts:[[x,y]]};gest={t:"shape"};shpDraw(null);return;
+  }
   if(tool==="reveal"||tool==="cover"){
     const s={m:tool==="reveal"?"r":"c",r:R()/zoom,soft:brush.soft,pts:[[x,y]]};gest={t:"draw",s,n:0};applyStroke(fctx,s,null);send({t:"sb",s:{m:s.m,r:s.r,soft:s.soft,pts:[[x,y]]}});
   }else if(tool==="cell"){cellAt(x,y,e.shiftKey)}
@@ -467,16 +527,19 @@ view.addEventListener("pointerdown",e=>{
 });
 view.addEventListener("pointermove",e=>{
   ringShow(e);if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(shp&&shp.k==="poly"&&sc&&!PLAYER&&!gest){const[px,py]=toImg(e.clientX,e.clientY);shpDraw(snapPt(px,py))}
   if(tool==="point"&&sc&&!PLAYER&&!gest){const[px,py]=toImg(e.clientX,e.clientY);setPtr(px,py);send({t:"ptr",x:px,y:py})}
   if(!gest)return;
   if(gest.t==="pinch"&&ptrs.size>=2){const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),r=view.getBoundingClientRect(),cx=(a.x+b.x)/2-r.left,cy=(a.y+b.y)/2-r.top,z=Math.max(.05,Math.min(10,gest.z*d/gest.d)),px=(gest.cx-r.left-gest.tx)/gest.z,py=(gest.cy-r.top-gest.ty)/gest.z;zoom=z;tx0=cx-px*z;ty0=cy-py*z;manual=true;applyView();return}
+  if(gest.t==="shape"&&shp){const[px,py]=toImg(e.clientX,e.clientY);if(shp.k==="free"){const l=shp.pts[shp.pts.length-1];if(Math.hypot(px-l[0],py-l[1])*zoom>=4)shp.pts.push([px,py])}else shp.b=snapPt(px,py);shpDraw(null);return}
   if(gest.t==="pan"){tx0=gest.tx+e.clientX-gest.x;ty0=gest.ty+e.clientY-gest.y;manual=true;applyView()}
   else if(gest.t==="draw"){const[x,y]=toImg(e.clientX,e.clientY),p=gest.s.pts,l=p[p.length-1];if(Math.hypot(x-l[0],y-l[1])*zoom>=2){p.push([x,y]);applyStroke(fctx,gest.s,p.length-1);send({t:"sp",p:[x,y]})}}
   else if(gest.t==="grid"){const g=sc.grid;g.ox=wrap(gest.ox+(e.clientX-gest.x)/zoom,g.size);g.oy=wrap(gest.oy+(e.clientY-gest.y)/zoom,g.size);applyGrid()}
 });
 function endPtr(e){
   ptrs.delete(e.pointerId);
-  if(gest&&gest.t==="draw"){commit(gest.s)}else if(gest&&gest.t==="grid"){scheduleSave();drawBars()}
+  if(gest&&gest.t==="shape"){const g=shpGeom(null);shpCancel();shpCommit(g);gest=null}
+  else if(gest&&gest.t==="draw"){commit(gest.s)}else if(gest&&gest.t==="grid"){scheduleSave();drawBars()}
   if(ptrs.size<2&&gest&&gest.t==="pinch")gest=null;else if(!ptrs.size)gest=null;
   view.style.cursor="";
 }
@@ -492,32 +555,44 @@ addEventListener("paste",e=>{const t=e.target;if(t&&/^(INPUT|TEXTAREA)$/.test(t.
 
 /* ---------- barra comandi ---------- */
 const topBar=$("#top");
+let vbar=false;try{vbar=localStorage.getItem("tavolo-barra")==="v"}catch(e){}
+document.body.classList.toggle("vbar",vbar);
+function toggleBar(){vbar=!vbar;try{localStorage.setItem("tavolo-barra",vbar?"v":"")}catch(e){}document.body.classList.toggle("vbar",vbar);drawBars();toast(vbar?"Strumenti sul lato":"Strumenti in alto")}
 const TOOLS=[["reveal","eye","Rivela","1"],["cover","cloud","Copri","2"],["cell","cell","Cella","3"],["pan","move","Sposta","4"],["grid","grid","Griglia","5"],["point","pin","Puntatore","6"]];
-function setTool(t){tool=t;if(t!=="point"){ptrOff();send({t:"ptr",off:true})}drawBars();view.style.cursor=t==="pan"?"grab":t==="grid"?"move":t==="cell"?"cell":"crosshair"}
+function setTool(t){shpCancel();tool=t;if(t!=="point"){ptrOff();send({t:"ptr",off:true})}drawBars();view.style.cursor=t==="pan"?"grab":t==="grid"?"move":t==="cell"?"cell":"crosshair"}
 function btn(icon,text,fn,extra={}){return h("button",Object.assign({class:"btn",type:"button",onclick:fn},extra),icon?ico(icon):"",text||"")}
 function drawBars(){
-  const bar=h("div",{class:"bar"},
-    btn("folder","Scene",openScenes,{title:"Le tue mappe salvate"}),
-    btn("image","Carica mappa",()=>$("#file").click()),
+  const bt=(ic,tx,fn,ex={})=>vbar&&ic?btn(ic,"",fn,Object.assign({"aria-label":tx,title:ex.title?tx+" — "+ex.title:tx},ex,{title:ex.title?tx+" — "+ex.title:tx})):btn(ic,tx,fn,ex);
+  const bar=h("div",{class:"bar main"},
+    bt("folder","Scene",openScenes,{title:"Le tue mappe salvate"}),
+    bt("image","Carica mappa",()=>$("#file").click()),
     h("span",{class:"sep"}),
-    ...TOOLS.map(([id,ic,lab,k])=>btn(ic,lab,()=>setTool(id),{"aria-pressed":String(tool===id),title:lab+" ("+k+")"})),
+    ...TOOLS.map(([id,ic,lab,k])=>bt(ic,lab,()=>setTool(id),{"aria-pressed":String(tool===id),title:lab+" ("+k+")"})),
     h("span",{class:"sep"}),
-    btn("undo","Annulla",undo,{title:"Annulla l’ultimo gesto sulla nebbia (Ctrl+Z)"}),
+    bt("undo","Annulla",undo,{title:"Annulla l’ultimo gesto sulla nebbia (Ctrl+Z)"}),
     h("span",{class:"sep"}),
-    btn("eye","Vista giocatori",()=>setPresent(true),{title:"Nasconde i comandi e rende la nebbia opaca (H)"}),
-    btn("tv","Finestra giocatori",openPlayers,{title:"Apre la finestra da portare sulla TV o sul secondo schermo"}),
-    btn("expand","Schermo intero",toggleFs,{title:"Schermo intero (F)"}),
-    btn("film","Palcoscenico",openStage,{title:"Palcoscenico: mostra ai giocatori volti e parole (S)"}),
-    btn("pen","Cronista",openCron,{title:"Collega la pagina dove un giocatore segna battute e momenti salienti, anche da un altro dispositivo"}),
-    btn("book","Diario di sessione",openLog,{title:"Registro della serata (D)"}),
-    btn("help","Guida",openHelp,{title:"Istruzioni e comandi (?)"}),
-    btn("panel","Iniziativa",()=>{document.body.classList.toggle("noini");lsSet("tavolo-noini",document.body.classList.contains("noini")?"1":"");if(!manual)fit()},{title:"Mostra o nascondi il pannello (I)"}));
+    bt("eye","Vista giocatori",()=>setPresent(true),{title:"Nasconde i comandi e rende la nebbia opaca (H)"}),
+    bt("tv","Finestra giocatori",openPlayers,{title:"Apre la finestra da portare sulla TV o sul secondo schermo"}),
+    bt("expand","Schermo intero",toggleFs,{title:"Schermo intero (F)"}),
+    bt("film","Palcoscenico",openStage,{title:"Palcoscenico: mostra ai giocatori volti e parole (S)"}),
+    bt("pen","Cronista",openCron,{title:"Collega la pagina dove un giocatore segna battute e momenti salienti, anche da un altro dispositivo"}),
+    bt("book","Diario di sessione",openLog,{title:"Registro della serata (D)"}),
+    btn(null,vbar?"⇄":"Strumenti a lato",toggleBar,{title:vbar?"Riporta gli strumenti in alto":"Metti gli strumenti in una colonna a lato","aria-label":"Posizione degli strumenti"}),
+    bt("help","Guida",openHelp,{title:"Istruzioni e comandi (?)"}),
+    bt("panel","Iniziativa",()=>{document.body.classList.toggle("noini");lsSet("tavolo-noini",document.body.classList.contains("noini")?"1":"");if(!manual)fit()},{title:"Mostra o nascondi il pannello (I)"}));
   const opt=h("div",{class:"bar opt"});
   if(tool==="reveal"||tool==="cover"){
     const d=h("input",{type:"range",min:20,max:500,step:5,value:brush.d,"aria-label":"Dimensione pennello"}),out=h("span",{class:"msg",textContent:brush.d+" px"});
     d.addEventListener("input",()=>{brush.d=+d.value;out.textContent=brush.d+" px"});
     const sf=h("input",{type:"checkbox",checked:brush.soft});sf.addEventListener("change",()=>brush.soft=sf.checked);
-    opt.append(h("span",{class:"msg"},tool==="reveal"?"Trascina per togliere la nebbia":"Trascina per rimettere la nebbia"),h("label",{},"Pennello",d,out),h("label",{},sf,"Bordo morbido"),h("span",{class:"sep"}),btn("eye","Rivela tutto",()=>fogAll(true)),btn("cloud","Copri tutto",()=>fogAll(false)));
+    const rv=tool==="reveal",hint={brush:rv?"Trascina per togliere la nebbia":"Trascina per rimettere la nebbia",rect:"Trascina da un angolo all’opposto",ell:"Trascina nel riquadro che contiene l’ellisse",circ:"Trascina dal centro verso il bordo",poly:shp&&shp.pts.length?"Tocca per aggiungere un tratto. Per chiudere: tocca il primo punto (bianco) o premi Invio":"Tocca i vertici del perimetro, uno dopo l’altro",free:"Disegna il contorno a mano: al rilascio si chiude da solo"}[shape];
+    const sg=h("span",{style:"display:inline-flex;gap:4px;flex-wrap:wrap"},...SHAPES.map(([k,l])=>btn(null,l,()=>setShape(k),{"aria-pressed":String(shape===k)})));
+    const snp=h("input",{type:"checkbox",checked:snap});snp.addEventListener("change",()=>{snap=snp.checked;if(snap&&sc&&!sc.grid.on)toast("Accendi la griglia (G) per agganciare i punti")});
+    opt.append(sg,h("span",{class:"sep"}),h("span",{class:"msg"},(rv?"Rivela: ":"Copri: ")+hint));
+    if(shape==="brush")opt.append(h("label",{},"Pennello",d,out),h("label",{},sf,"Bordo morbido"));
+    else opt.append(h("label",{},snp,"Aggancia alla griglia"));
+    if(shape==="poly"&&shp&&shp.pts.length)opt.append(btn(null,"Chiudi e applica",polyClose,{class:"btn gold"}),btn(null,"Togli ultimo punto",polyBack),btn(null,"Annulla perimetro",()=>{shpCancel();drawBars()}));
+    opt.append(h("span",{class:"sep"}),btn("eye","Rivela tutto",()=>fogAll(true)),btn("cloud","Copri tutto",()=>fogAll(false)));
   }else if(tool==="cell"){
     opt.append(h("span",{class:"msg"},"Tocca una casella per rivelarla (Maiusc: la ricopre). Serve la griglia attiva."),btn("grid",sc&&sc.grid.on?"Griglia attiva":"Attiva griglia",()=>{if(sc){sc.grid.on=true;applyGrid();scheduleSave();drawBars()}}));
   }else if(tool==="pan"){
@@ -550,7 +625,7 @@ function openHelp(){
     h("div",{class:"guide"},
       h("div",{class:"cols"},
         h("div",{},h("h3",{},"1 · Prepara la serata"),h("ul",{},h("li",{},"Carica le mappe con “Carica mappa”, trascinandole sulla pagina o con Ctrl+V. Ne puoi scegliere molte insieme."),h("li",{},"“Scene” le raccoglie tutte: tocca una miniatura per aprirla. Nebbia e griglia restano salvate per ogni mappa."),h("li",{},"Aggiungi eroi, alleati e nemici nel pannello Iniziativa a destra."))),
-        h("div",{},h("h3",{},"2 · Nebbia"),h("ul",{},h("li",{},h("b",{},"Rivela"),": trascina per togliere la nebbia. “Copri” la rimette."),h("li",{},h("b",{},"Cella"),": un tocco rivela una casella (Maiusc la ricopre). Serve la griglia attiva."),h("li",{},"“Rivela tutto” e “Copri tutto” cambiano l’intera mappa. “Annulla” torna indietro di un gesto."))),
+        h("div",{},h("h3",{},"2 · Nebbia"),h("ul",{},h("li",{},h("b",{},"Rivela"),": trascina per togliere la nebbia. “Copri” la rimette."),h("li",{},h("b",{},"Cella"),": un tocco rivela una casella (Maiusc la ricopre). Serve la griglia attiva."),h("li",{},h("b",{},"Aree"),": con Rivela o Copri scegli la forma (rettangolo, ellisse, cerchio, mano libera) oppure “Poligono a tratti”: tocca un vertice dopo l’altro e chiudi toccando il primo punto o con Invio. “Aggancia alla griglia” allinea i vertici agli incroci."),h("li",{},"“Rivela tutto” e “Copri tutto” cambiano l’intera mappa. “Annulla” torna indietro di un gesto."))),
         h("div",{},h("h3",{},"3 · Griglia"),h("ul",{},h("li",{},"Scegli lo strumento Griglia: regola dimensione, colore e posizione, o trascina sulla mappa per allinearla."),h("li",{},"Quando è giusta, premi “Blocca”: così non si sposta per errore."))),
         h("div",{},h("h3",{},"4 · Iniziative"),h("ul",{},h("li",{},"“Turno successivo” fa avanzare il round."),h("li",{},h("b",{},"PF e CA"),": scrivili quando aggiungi un combattente, o sulla sua scheda. Per un colpo scrivi il numero accanto a ± e tocca − (danno) o + (cura). Solo tu li vedi: non arrivano mai alla finestra giocatori né alla vista giocatori."),h("li",{},"L’occhio sul combattente lo nasconde ai giocatori: gli eroi lo vedono solo quando lo riveli."),h("li",{},"Il teschio lo mette fuori combattimento, il cestino lo toglie. “Nuovo scontro” tiene solo gli eroi."))),
         h("div",{},h("h3",{},"5 · Finestra giocatori"),h("ul",{},h("li",{},"Premi “Finestra giocatori”, trascina la finestra sulla TV e premi F per lo schermo intero."),h("li",{},"Vedono la mappa, la nebbia nera, la griglia e solo le iniziative che hai mostrato. Seguono il tuo zoom."),h("li",{},"In alto nella loro finestra c’è un piccolo selettore (tenue finché non lo sfiori): possono mettere le iniziative a sinistra, a destra o su entrambi i lati."),h("li",{},"Le due finestre devono stare nello stesso browser e nello stesso computer. Consenti i popup."))),
@@ -844,7 +919,8 @@ addEventListener("keydown",e=>{
   const map={"1":"reveal","2":"cover","3":"cell","4":"pan","5":"grid","6":"point"};
   if(map[k]){setTool(map[k]);return}
   if(k==="?"||(e.key==="/"&&e.shiftKey)){openHelp();return}
-  if(e.key==="Escape"){$("#modal").hidden=true;return}
+  if(e.key==="Escape"){if(shp){shpCancel();drawBars();return}$("#modal").hidden=true;return}
+  if(shp&&shp.k==="poly"){if(e.key==="Enter"){e.preventDefault();polyClose();return}if(e.key==="Backspace"){e.preventDefault();polyBack();return}}
   if(k==="d"){openLog();return}
   if(k==="s"){openStage();return}
   if(k==="h")setPresent(!document.body.classList.contains("present"));
