@@ -20,6 +20,7 @@ body.noini #view{right:0}
 #grid{position:absolute;inset:0;pointer-events:none}
 #fog{position:absolute;left:0;top:0;pointer-events:none;opacity:.6}
 #pv{position:absolute;left:0;top:0;pointer-events:none;z-index:3}
+#live{position:absolute;left:0;top:0;border:0;pointer-events:none;display:none;background:#000}
 body.present #pv{display:none}
 body.present #fog{opacity:1}
 #ring{position:fixed;border:2px solid var(--brass);border-radius:50%;pointer-events:none;display:none;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(0,0,0,.7);z-index:5}
@@ -213,7 +214,7 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
 </head>
 <body>
 <div id="view">
-  <div id="stage"><img id="map" alt=""><div id="grid"></div><canvas id="fog"></canvas><canvas id="pv"></canvas><div id="ptr"><i></i></div></div>
+  <div id="stage"><img id="map" alt=""><iframe id="live" title="Mappa animata" tabindex="-1"></iframe><div id="grid"></div><canvas id="fog"></canvas><canvas id="pv"></canvas><div id="ptr"><i></i></div></div>
   <div id="act" aria-live="polite"><div class="shade"></div><div class="cast"></div><div class="cap"><div class="who"></div><p></p></div></div>
   <div id="empty"><div class="card"><h1>Tavolo del Master</h1><p>Carica una o più mappe: copriranno tutto lo schermo. Poi aggiungi griglia e nebbia.</p><div><button class="btn gold big" id="e-load"></button></div><p class="help">Trascina qui le immagini, incollale con Ctrl+V o scegli più file insieme.</p></div></div>
 </div>
@@ -331,6 +332,16 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 /* ---------- stato ---------- */
 const view=$("#view"),stage=$("#stage"),mapEl=$("#map"),gridEl=$("#grid"),fogC=$("#fog"),pvC=$("#pv"),pvx=pvC.getContext("2d"),fctx=fogC.getContext("2d"),ring=$("#ring");
 const ptrEl=$("#ptr");let pp=null;
+/* mappa animata (generata nella Fucina delle mappe): un riquadro che esegue mappe.html in modalità vista */
+const liveF=$("#live");let liveData=null,liveReady=false;
+addEventListener("message",e=>{if(e.source===liveF.contentWindow&&e.data&&e.data.type==="viewer-ready"){liveReady=true;pushLive()}});
+function pushLive(){if(liveReady&&liveData&&liveF.contentWindow)liveF.contentWindow.postMessage({type:"map",data:liveData},"*")}
+function setLive(d){
+  liveData=d||null;
+  if(!d){liveF.style.display="none";if(liveF.getAttribute("src")){liveF.removeAttribute("src");liveF.src="about:blank"}liveReady=false;mapEl.style.visibility="";return}
+  liveF.style.width=iw+"px";liveF.style.height=ih+"px";liveF.style.display="block";mapEl.style.visibility="hidden";
+  if(liveF.getAttribute("src")&&liveF.getAttribute("src")!=="about:blank")pushLive();else{liveReady=false;liveF.src="mappe.html?viewer=1"}
+}
 function placePtr(){if(!pp){ptrEl.style.display="none";return}ptrEl.style.display="block";ptrEl.style.transform="translate("+pp[0]+"px,"+pp[1]+"px) scale("+(1/zoom)+")"}
 function setPtr(x,y,ping){pp=[x,y];placePtr();if(ping){const r=h("span",{class:"pg"});ptrEl.append(r);r.addEventListener("animationend",()=>r.remove())}}
 function ptrOff(){pp=null;placePtr()}
@@ -383,6 +394,7 @@ async function openScene(o){
   if(o.fog){try{const bm=await createImageBitmap(o.fog);bctx.drawImage(bm,0,0,fw,fh);loaded=true}catch(e){}}
   if(!loaded){bctx.fillStyle=FOG;bctx.fillRect(0,0,fw,fh)}
   strokes=[];renderFog();applyGrid();$("#empty").style.display="none";if(!o.th)thumb(o.img).then(t=>{if(t){o.th=t;dbPut(o).catch(()=>{})}});
+  setLive(o.live);
   manual=false;fit(fitMode);lsSet("tavolo-scene",sc.id);drawBars();syncAll();
 }
 function scheduleSave(){clearTimeout(saveT);saveT=setTimeout(saveNow,700)}
@@ -399,7 +411,7 @@ async function syncAll(){
   if(PLAYER)return;sendStage();
   if(!sc){send({t:"empty"});sendIni();return}
   const fb=await new Promise(r=>fogC.toBlob(r,"image/png"));
-  send({t:"scene",img:sc.img,fog:fb,grid:sc.grid});sendIni();sendView();
+  send({t:"scene",img:sc.img,fog:fb,grid:sc.grid,live:sc.live||null});sendIni();sendView();
 }
 async function syncFog(){if(PLAYER||!sc)return;const fb=await new Promise(r=>fogC.toBlob(r,"image/png"));send({t:"fog",b:fb})}
 function pFit(){
@@ -566,6 +578,7 @@ function drawBars(){
   const bar=h("div",{class:"bar main"},
     bt("folder","Scene",openScenes,{title:"Le tue mappe salvate"}),
     bt("image","Carica mappa",()=>$("#file").click()),
+    bt("grid","Fucina mappe",()=>window.open("mappe.html","_blank"),{title:"Genera mappe animate con lava, acqua e oggetti 3D: poi le mandi qui tra le scene"}),
     h("span",{class:"sep"}),
     ...TOOLS.map(([id,ic,lab,k])=>bt(ic,lab,()=>setTool(id),{"aria-pressed":String(tool===id),title:lab+" ("+k+")"})),
     h("span",{class:"sep"}),
@@ -625,7 +638,7 @@ function openHelp(){
     h("div",{class:"guide"},
       h("div",{class:"cols"},
         h("div",{},h("h3",{},"1 · Prepara la serata"),h("ul",{},h("li",{},"Carica le mappe con “Carica mappa”, trascinandole sulla pagina o con Ctrl+V. Ne puoi scegliere molte insieme."),h("li",{},"“Scene” le raccoglie tutte: tocca una miniatura per aprirla. Nebbia e griglia restano salvate per ogni mappa."),h("li",{},"Aggiungi eroi, alleati e nemici nel pannello Iniziativa a destra."))),
-        h("div",{},h("h3",{},"2 · Nebbia"),h("ul",{},h("li",{},h("b",{},"Rivela"),": trascina per togliere la nebbia. “Copri” la rimette."),h("li",{},h("b",{},"Cella"),": un tocco rivela una casella (Maiusc la ricopre). Serve la griglia attiva."),h("li",{},h("b",{},"Aree"),": con Rivela o Copri scegli la forma (rettangolo, ellisse, cerchio, mano libera) oppure “Poligono a tratti”: tocca un vertice dopo l’altro e chiudi toccando il primo punto o con Invio. “Aggancia alla griglia” allinea i vertici agli incroci."),h("li",{},"“Rivela tutto” e “Copri tutto” cambiano l’intera mappa. “Annulla” torna indietro di un gesto."))),
+        h("div",{},h("h3",{},"2 · Nebbia"),h("ul",{},h("li",{},h("b",{},"Rivela"),": trascina per togliere la nebbia. “Copri” la rimette."),h("li",{},h("b",{},"Cella"),": un tocco rivela una casella (Maiusc la ricopre). Serve la griglia attiva."),h("li",{},h("b",{},"Aree"),": con Rivela o Copri scegli la forma (rettangolo, ellisse, cerchio, mano libera) oppure “Poligono a tratti”: tocca un vertice dopo l’altro e chiudi toccando il primo punto o con Invio. “Aggancia alla griglia” allinea i vertici agli incroci."),h("li",{},h("b",{},"Fucina mappe"),": pagina a parte per generare mappe animate (lava e acqua che scorrono, oggetti 3D). Con “Manda al Tavolo” la mappa compare in “Scene”, animata anche per i giocatori, e la nebbia funziona come sempre."),h("li",{},"“Rivela tutto” e “Copri tutto” cambiano l’intera mappa. “Annulla” torna indietro di un gesto."))),
         h("div",{},h("h3",{},"3 · Griglia"),h("ul",{},h("li",{},"Scegli lo strumento Griglia: regola dimensione, colore e posizione, o trascina sulla mappa per allinearla."),h("li",{},"Quando è giusta, premi “Blocca”: così non si sposta per errore."))),
         h("div",{},h("h3",{},"4 · Iniziative"),h("ul",{},h("li",{},"“Turno successivo” fa avanzare il round."),h("li",{},h("b",{},"PF e CA"),": scrivili quando aggiungi un combattente, o sulla sua scheda. Per un colpo scrivi il numero accanto a ± e tocca − (danno) o + (cura). Solo tu li vedi: non arrivano mai alla finestra giocatori né alla vista giocatori."),h("li",{},"L’occhio sul combattente lo nasconde ai giocatori: gli eroi lo vedono solo quando lo riveli."),h("li",{},"Il teschio lo mette fuori combattimento, il cestino lo toglie. “Nuovo scontro” tiene solo gli eroi."))),
         h("div",{},h("h3",{},"5 · Finestra giocatori"),h("ul",{},h("li",{},"Premi “Finestra giocatori”, trascina la finestra sulla TV e premi F per lo schermo intero."),h("li",{},"Vedono la mappa, la nebbia nera, la griglia e solo le iniziative che hai mostrato. Seguono il tuo zoom."),h("li",{},"In alto nella loro finestra c’è un piccolo selettore (tenue finché non lo sfiori): possono mettere le iniziative a sinistra, a destra o su entrambi i lati."),h("li",{},"Le due finestre devono stare nello stesso browser e nello stesso computer. Consenti i popup."))),
@@ -952,7 +965,7 @@ if(PLAYER){
     fctx.globalCompositeOperation="source-over";fctx.clearRect(0,0,fw,fh);
     let ok=false;if(m.fog){try{fctx.drawImage(await createImageBitmap(m.fog),0,0,fw,fh);ok=true}catch(e){}}
     if(!ok){fctx.fillStyle=FOG;fctx.fillRect(0,0,fw,fh)}
-    sc={grid:m.grid};applyGrid();$("#empty").style.display="none";fit();
+    sc={grid:m.grid};applyGrid();setLive(m.live);$("#empty").style.display="none";fit();
   };
   let twT=0,actT=0;
   const act=$("#act"),cast=$("#act .cast"),cap=$("#act .cap"),who=$("#act .who"),pp2=$("#act .cap p");
