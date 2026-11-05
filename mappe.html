@@ -1414,6 +1414,17 @@ function aNoise(w,h,sig,seed){ // rumore a bassa frequenza normalizzato
     const a=g[y0*gw+x0],b=g[y0*gw+x0+1],c=g[(y0+1)*gw+x0],d=g[(y0+1)*gw+x0+1];const val=(a*(1-tx)+b*tx)*(1-ty)+(c*(1-tx)+d*tx)*ty;o[y*w+x]=val;m+=val;v+=val*val}}
   m/=o.length;const sd=Math.sqrt(Math.max(1e-9,v/o.length-m*m));for(let i=0;i<o.length;i++)o[i]=(o[i]-m)/sd;return o}
 
+
+function aGrow(lab,blocked,depth,W,H){
+  const N=lab.length,par=new Int32Array(N).fill(-1),meets=[];let cur=[];
+  for(let i=0;i<N;i++)if(lab[i])cur.push(i);
+  for(let d=0;d<depth&&cur.length;d++){const nxt=[];
+    for(const p of cur){const x=p%W,y=(p/W)|0,l=lab[p];
+      for(let k=0;k<4;k++){let q;if(k===0){if(x===0)continue;q=p-1}else if(k===1){if(x===W-1)continue;q=p+1}else if(k===2){if(y===0)continue;q=p-W}else{if(y===H-1)continue;q=p+W}
+        if(blocked[q])continue;
+        if(!lab[q]){lab[q]=l;par[q]=p;nxt.push(q)}else if(lab[q]!==l)meets.push([p,q])}}
+    cur=nxt}
+  return{par,meets}}
 async function autoSemi(im){
   if(AUTO.busy)return;AUTO.busy=true;const sty=STYLE_PREF==='semireal'?'semireal':'diorama',DIO=sty==='diorama';AUTO.sty=sty;
   try{
@@ -1429,6 +1440,11 @@ async function autoSemi(im){
     green[i]=(g>r*1.06&&g>b*1.12&&sat>.16)?1:0;wcore[i]=(b>r*1.1&&b>=g*.97&&sat>.09)?1:0;wsoft[i]=(b>r*1.03&&b>=g*.94&&sat>.045)?1:0;
     hot[i]=(r>215&&g>135&&b<165&&r-b>85&&r>=g)?1:0}
   let water=aProp(aOpen(wcore,W,H,rr(2)),aDil(wsoft,W,H,rr(2)),W,H);water=aFill(aClose(water,W,H,rr(5)),W,H);
+  let bridge=new Uint8Array(N);{const bm=new Uint8Array(N);for(let i=0;i<N;i++){const r=R[i],g=G[i],b=Bc[i];bm[i]=(r>g*1.06&&g>=b*.98&&r-b>28&&lum[i]>55&&lum[i]<150&&Math.max(r,g,b)-Math.min(r,g,b)>38)?1:0}
+    const bo=aOpen(bm,W,H,rr(2)),bl=aLabel(bo,W,H);const bad=new Uint8Array(bl.n+1);for(let l=1;l<=bl.n;l++)if(bl.sizes[l]<900*K*K)bad[l]=1;
+    for(let i=0;i<N;i++)bridge[i]=(bl.L[i]&&!bad[bl.L[i]])?1:0;bridge=aDil(bridge,W,H,rr(2))}
+  {const nw=aDil(water,W,H,rr(30));for(let i=0;i<N;i++)if(bridge[i]&&nw[i])water[i]=1;water=aFill(aClose(water,W,H,rr(5)),W,H)}
+
   let gl=aFill(aClose(aOpen(green,W,H,1),W,H,rr(7)),W,H);for(let i=0;i<N;i++)if(water[i])gl[i]=0;
   const lumS=aGauss(lum,W,H,1.5),free0=new Uint8Array(N);
   const dark=aDil((()=>{const d=new Uint8Array(N);for(let i=0;i<N;i++)d[i]=lumS[i]<118?1:0;return d})(),W,H,1);
@@ -1440,7 +1456,17 @@ async function autoSemi(im){
   const isF=new Uint8Array(n+1);
   for(let l=1;l<=n;l++){const s=sizes[l];if(s<3000*K*K)continue;const mean=sum[l]/s,sd=Math.sqrt(Math.max(0,sq[l]/s-mean*mean));
     if((sd>=22.5&&!tch[l])||(s<12000*K*K&&sd>=20&&!tch[l]&&mean>150))isF[l]=1}
+    {const lab0=new Int32Array(N);for(let i=0;i<N;i++)if(L[i]&&isF[L[i]])lab0[i]=L[i];
+   const blk=new Uint8Array(N);for(let i=0;i<N;i++)if(water[i]||gl[i])blk[i]=1;
+   aGrow(lab0,blk,rr(10),W,H);const ids=Array.from({length:n+1},()=>null);
+   for(let i=0;i<N;i++){const l=L[i];if(l&&!isF[l]&&lab0[i]){(ids[l]||(ids[l]=new Set())).add(lab0[i])}}
+   for(let l=1;l<=n;l++)if(!isF[l]&&ids[l]&&ids[l].size>=2&&sizes[l]>=300*K*K&&sizes[l]<9000*K*K&&!tch[l])isF[l]=1}
   const floor0=new Uint8Array(N),wallc=new Uint8Array(N);for(let i=0;i<N;i++){if(L[i]&&isF[L[i]])floor0[i]=1;else if(free[i])wallc[i]=1}
+  {const fl=aLabel(floor0,W,H),lab1=Int32Array.from(fl.L),wE=aEro(wallc,W,H,rr(4)),blk=new Uint8Array(N);
+   for(let i=0;i<N;i++)if(water[i]||gl[i]||wE[i])blk[i]=1;
+   const g2=aGrow(lab1,blk,rr(34),W,H),link=new Uint8Array(N);let cnt=0;
+   for(const [p,q] of g2.meets){if(cnt++>600)break;for(const s0 of [p,q]){let c=s0,g=0;while(c>=0&&g++<4000){link[c]=1;c=g2.par[c]}}}
+   const ld=aDil(link,W,H,rr(8));for(let i=0;i<N;i++)if(ld[i]&&!water[i]&&!gl[i]){floor0[i]=1;wallc[i]=0}}
   const mk=new Int32Array(N),fe=aEro(floor0,W,H,rr(4)),we=aEro(wallc,W,H,rr(4)),ge=aEro(gl,W,H,rr(3)),wte=aEro(water,W,H,rr(2));
   for(let i=0;i<N;i++){if(fe[i])mk[i]=1;if(we[i])mk[i]=2;if(ge[i]&&gl[i])mk[i]=3;if(wte[i]&&water[i])mk[i]=4}
   const el0=new Float32Array(N);for(let i=0;i<N;i++)el0[i]=255-lum[i];const elS=aGauss(el0,W,H,1.5),elev=new Uint8Array(N);for(let i=0;i<N;i++)elev[i]=Math.max(0,Math.min(255,elS[i]|0));
@@ -1534,6 +1560,142 @@ function autoSemiFinish(inf){
   toast("Fatto: "+pts.length+" massi, schiuma e corrente sul fiume"+(fires.length?", "+fires.length+" fuochi":"")+". Falò, ponti e tende mettili tu dal tab Oggetti.")
   }catch(e){console.error(e);toast("Rifinitura non riuscita: "+e.message)}}
 function pickAutoSemi(){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>autoSemi(im);im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
+
+async function autoGuide(im){
+  if(AUTO.busy)return;AUTO.busy=true;
+  try{
+  toast("Preparo la mappa guida… qualche secondo");await new Promise(r=>setTimeout(r,60));
+  const iw=im.naturalWidth,ih=im.naturalHeight,W=Math.min(1920,iw),H=Math.round(W*ih/iw),N=W*H,K=W/1830;
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const cx=cv.getContext("2d",{willReadFrequently:true});cx.drawImage(im,0,0,W,H);
+  const D=cx.getImageData(0,0,W,H).data;
+  const lum=new Float32Array(N),R=new Float32Array(N),G=new Float32Array(N),Bc=new Float32Array(N);
+  for(let i=0;i<N;i++){R[i]=D[i*4];G[i]=D[i*4+1];Bc[i]=D[i*4+2];lum[i]=(R[i]+G[i]+Bc[i])/3}
+  const rr=v=>Math.max(1,Math.round(v*K));
+  const green=new Uint8Array(N),wcore=new Uint8Array(N),wsoft=new Uint8Array(N),hot=new Uint8Array(N);
+  for(let i=0;i<N;i++){const r=R[i],g=G[i],b=Bc[i],mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=(mx-mn)/Math.max(mx,1);
+    green[i]=(g>r*1.06&&g>b*1.12&&sat>.16)?1:0;wcore[i]=(b>r*1.1&&b>=g*.97&&sat>.09)?1:0;wsoft[i]=(b>r*1.03&&b>=g*.94&&sat>.045)?1:0;
+    hot[i]=(r>215&&g>135&&b<165&&r-b>85&&r>=g)?1:0}
+  let water=aProp(aOpen(wcore,W,H,rr(2)),aDil(wsoft,W,H,rr(2)),W,H);water=aFill(aClose(water,W,H,rr(5)),W,H);
+  let bridge=new Uint8Array(N);{const bm=new Uint8Array(N);for(let i=0;i<N;i++){const r=R[i],g=G[i],b=Bc[i];bm[i]=(r>g*1.06&&g>=b*.98&&r-b>28&&lum[i]>55&&lum[i]<150&&Math.max(r,g,b)-Math.min(r,g,b)>38)?1:0}
+    const bo=aOpen(bm,W,H,rr(2)),bl=aLabel(bo,W,H);const bad=new Uint8Array(bl.n+1);for(let l=1;l<=bl.n;l++)if(bl.sizes[l]<900*K*K)bad[l]=1;
+    for(let i=0;i<N;i++)bridge[i]=(bl.L[i]&&!bad[bl.L[i]])?1:0;bridge=aDil(bridge,W,H,rr(2))}
+  {const nw=aDil(water,W,H,rr(30));for(let i=0;i<N;i++)if(bridge[i]&&nw[i])water[i]=1;water=aFill(aClose(water,W,H,rr(5)),W,H)}
+
+  let gl=aFill(aClose(aOpen(green,W,H,1),W,H,rr(7)),W,H);for(let i=0;i<N;i++)if(water[i])gl[i]=0;
+  const lumS=aGauss(lum,W,H,1.5),free0=new Uint8Array(N);
+  const dark=aDil((()=>{const d=new Uint8Array(N);for(let i=0;i<N;i++)d[i]=lumS[i]<118?1:0;return d})(),W,H,1);
+  for(let i=0;i<N;i++)free0[i]=(!dark[i]&&!gl[i]&&!water[i])?1:0;
+  const free=aOpen(free0,W,H,rr(3)),{L,n,sizes}=aLabel(free,W,H);
+  // statistiche per componente
+  const sum=new Float64Array(n+1),sq=new Float64Array(n+1),tch=new Uint8Array(n+1);
+  for(let i=0;i<N;i++){const l=L[i];if(!l)continue;sum[l]+=lum[i];sq[l]+=lum[i]*lum[i];const x=i%W,y=(i/W)|0;if(x===0||y===0||x===W-1||y===H-1)tch[l]=1}
+  const isF=new Uint8Array(n+1);
+  for(let l=1;l<=n;l++){const s=sizes[l];if(s<3000*K*K)continue;const mean=sum[l]/s,sd=Math.sqrt(Math.max(0,sq[l]/s-mean*mean));
+    if((sd>=22.5&&!tch[l])||(s<12000*K*K&&sd>=20&&!tch[l]&&mean>150))isF[l]=1}
+    {const lab0=new Int32Array(N);for(let i=0;i<N;i++)if(L[i]&&isF[L[i]])lab0[i]=L[i];
+   const blk=new Uint8Array(N);for(let i=0;i<N;i++)if(water[i]||gl[i])blk[i]=1;
+   aGrow(lab0,blk,rr(10),W,H);const ids=Array.from({length:n+1},()=>null);
+   for(let i=0;i<N;i++){const l=L[i];if(l&&!isF[l]&&lab0[i]){(ids[l]||(ids[l]=new Set())).add(lab0[i])}}
+   for(let l=1;l<=n;l++)if(!isF[l]&&ids[l]&&ids[l].size>=2&&sizes[l]>=300*K*K&&sizes[l]<9000*K*K&&!tch[l])isF[l]=1}
+  const floor0=new Uint8Array(N),wallc=new Uint8Array(N);for(let i=0;i<N;i++){if(L[i]&&isF[L[i]])floor0[i]=1;else if(free[i])wallc[i]=1}
+  {const fl=aLabel(floor0,W,H),lab1=Int32Array.from(fl.L),wE=aEro(wallc,W,H,rr(4)),blk=new Uint8Array(N);
+   for(let i=0;i<N;i++)if(water[i]||gl[i]||wE[i])blk[i]=1;
+   const g2=aGrow(lab1,blk,rr(34),W,H),link=new Uint8Array(N);let cnt=0;
+   for(const [p,q] of g2.meets){if(cnt++>600)break;for(const s0 of [p,q]){let c=s0,g=0;while(c>=0&&g++<4000){link[c]=1;c=g2.par[c]}}}
+   const ld=aDil(link,W,H,rr(8));for(let i=0;i<N;i++)if(ld[i]&&!water[i]&&!gl[i]){floor0[i]=1;wallc[i]=0}}
+  const mk=new Int32Array(N),fe=aEro(floor0,W,H,rr(4)),we=aEro(wallc,W,H,rr(4)),ge=aEro(gl,W,H,rr(3)),wte=aEro(water,W,H,rr(2));
+  for(let i=0;i<N;i++){if(fe[i])mk[i]=1;if(we[i])mk[i]=2;if(ge[i]&&gl[i])mk[i]=3;if(wte[i]&&water[i])mk[i]=4}
+  const el0=new Float32Array(N);for(let i=0;i<N;i++)el0[i]=255-lum[i];const elS=aGauss(el0,W,H,1.5),elev=new Uint8Array(N);for(let i=0;i<N;i++)elev[i]=Math.max(0,Math.min(255,elS[i]|0));
+  const ws=aWatershed(mk,elev,W,H);
+  let floor=new Uint8Array(N),wall=new Uint8Array(N);gl=new Uint8Array(N);water=new Uint8Array(N);
+  for(let i=0;i<N;i++){const l=ws[i];if(l===1)floor[i]=1;else if(l===3)gl[i]=1;else if(l===4)water[i]=1}
+  floor=aFill(aOpen(aClose(floor,W,H,rr(4)),W,H,rr(2)),W,H);
+  for(let i=0;i<N;i++){if(floor[i]&&(gl[i]||water[i]))floor[i]=0;wall[i]=(floor[i]||water[i]||gl[i])?0:1}
+  // alberi: zone verdi scure
+  let tree=new Uint8Array(N);for(let i=0;i<N;i++)tree[i]=(gl[i]&&G[i]>R[i]*1.08&&G[i]>Bc[i]*1.1&&lum[i]<112)?1:0;
+  tree=aOpen(aClose(tree,W,H,rr(3)),W,H,rr(3));tree=aDil(tree,W,H,rr(3));for(let i=0;i<N;i++){if(!gl[i])tree[i]=0;else if(tree[i])gl[i]=0}
+  // colori piatti
+  const C={water:[40,130,255],tree:[26,92,40],grass:[150,215,90],floor:[222,190,120],wall:[118,118,124],bridge:[110,58,28]};
+  const gc=document.createElement("canvas");gc.width=W;gc.height=H;const gx2=gc.getContext("2d"),gd=gx2.createImageData(W,H),G2=gd.data;
+  // classi smussate: ogni zona ha bordi morbidi e senza quadratini
+  const cls=[water,tree,gl,floor,wall,bridge],cols=[C.water,C.tree,C.grass,C.floor,C.wall,C.bridge],sm=cls.map((m,k)=>aGauss(Float32Array.from(k===1?aClose(aOpen(m,W,H,rr(3)),W,H,rr(6)):m),W,H,rr(4)));
+  for(let i=0;i<N;i++){let b=4,bv=-1;for(let k=0;k<6;k++){const v=sm[k][i]*(k===5?1.6:1)+(k===4?.02:0);if(v>bv){bv=v;b=k}}const c=cols[b];G2[i*4]=c[0];G2[i*4+1]=c[1];G2[i*4+2]=c[2];G2[i*4+3]=255}
+  gx2.putImageData(gd,0,0);
+  // formato 16:9: allarga ai lati ripetendo il bordo
+  const TW=Math.max(W,Math.round(H*16/9)),TH=Math.max(H,Math.round(W*9/16)),oc=document.createElement("canvas");oc.width=TW;oc.height=TH;const ox=oc.getContext("2d"),px=Math.round((TW-W)/2),py=Math.round((TH-H)/2);
+  ox.fillStyle="rgb("+C.wall.join(",")+")";ox.fillRect(0,0,TW,TH);ox.drawImage(gc,px,py);
+  oc.toBlob(bl=>{const a=document.createElement("a");a.href=URL.createObjectURL(bl);a.download="mappa-guida.png";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);toast("Mappa guida pronta ("+TW+"×"+TH+"): la trovi nei download")},"image/png");
+  }catch(e){console.error(e);toast("Non sono riuscito a fare la guida: "+e.message)}
+  AUTO.busy=false}
+function pickAutoGuide(){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>autoGuide(im);im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
+/* ---------- Esporta per Gemini: guida a colori + testo con legenda, dai dati della mappa ---------- */
+const GCOL={water:[40,130,255],wall:[118,118,124],floor:[222,190,120],grass:[150,215,90],snow:[235,240,248],lava:[255,110,20],slime:[120,190,40],abyss:[10,10,20]};
+const GOBJ=[
+  {k:"scale",re:/scalin|scala|gradin/i,col:[255,235,60],txt:"scalinata"},
+  {k:"ponte",re:/pont[ei]|passerella|ponticello/i,col:[110,58,28],txt:"ponte di assi di legno"},
+  {k:"fuoco",re:/falò|falo|focolare|braciere|torcia/i,col:[255,40,40],txt:"fuoco da campo"},
+  {k:"cassa",re:/cass[ae]|baule|forziere|botte|barilotto|bancale|sacchi/i,col:[170,60,220],txt:"casse e botti di legno"},
+  {k:"tenda",re:/tend[ae]|bancarella|giaciglio|stuoia|letto/i,col:[255,150,200],txt:"tende e giacigli"},
+  {k:"albero",re:/albero|cespugl|pino|quercia/i,col:[20,80,30],txt:"alberi e cespugli da plastico"},
+  {k:"roccia",re:/roccia|masso|sasso|pila di sassi|mucchio di (massi|sassi)/i,col:[200,200,205],txt:"massi grigio chiaro con muschio"},
+  {k:"mobile",re:/tavolo|sedia|sgabello|libreria|panca/i,col:[190,120,60],txt:"mobili di legno"}];
+function gCat(n){for(const c of GOBJ)if(c.re.test(n))return c;return{k:"altro",col:[255,255,255],txt:"oggetto"}}
+function gPos(x,y,W,H){const c=x<W/3?"a sinistra":x>W*2/3?"a destra":"al centro",r=y<H/3?"in alto":y>H*2/3?"in basso":"a metà altezza";
+  return r==="a metà altezza"&&c==="al centro"?"al centro":(r==="a metà altezza"?"a metà altezza, "+c:r+" "+c)}
+function exportGemini(){
+  if(!S){return}
+  const gw=S.fw,gh=S.fh,MWp=S.gw*CELL,MHp=S.gh*CELL,asp=MWp/MHp;
+  // dimensione di uscita 16:9 con la mappa al centro
+  const OH=1200,OW=Math.round(OH*16/9);let mw=OW,mh=Math.round(OW/asp);if(mh>OH){mh=OH;mw=Math.round(OH*asp)}
+  const ox=Math.round((OW-mw)/2),oy=Math.round((OH-mh)/2),k=mw/MWp;
+  // classi per cella di campo
+  const cls=new Uint8Array(gw*gh); // 0 wall,1 floor,2 grass,3 water,4 snow,5 lava,6 slime,7 abyss
+  for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const i=(y*gw+x)*4;let c=1;
+    if(S.liq[i]>127)c=5;else if(S.liq[i+1]>127)c=3;else if(S.liq[i+2]>127)c=6;else if(S.liq[i+3]>127)c=7;
+    else if(S.terr[i]>127)c=0;else if(S.terr[i+1]>127)c=2;else if(S.terr[i+3]>127)c=4;cls[y*gw+x]=c}
+  const NAMES=["wall","floor","grass","water","snow","lava","slime","abyss"];
+  const cv=document.createElement("canvas");cv.width=OW;cv.height=OH;const cx=cv.getContext("2d");
+  cx.fillStyle="rgb("+GCOL.wall.join(",")+")";cx.fillRect(0,0,OW,OH);
+  // upsample liscio: pesi bilineari per classe, scelta del massimo
+  const im=cx.createImageData(OW,OH),D=im.data;
+  for(let py=0;py<OH;py++)for(let px=0;px<OW;px++){const i=(py*OW+px)*4;
+    if(px<ox||px>=ox+mw||py<oy||py>=oy+mh){const c=GCOL.wall;D[i]=c[0];D[i+1]=c[1];D[i+2]=c[2];D[i+3]=255;continue}
+    const fx=(px-ox)/mw*gw-.5,fy=(py-oy)/mh*gh-.5,x0=Math.floor(fx),y0=Math.floor(fy),tx=fx-x0,ty=fy-y0,w=[0,0,0,0,0,0,0,0];
+    for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){const xx=Math.min(gw-1,Math.max(0,x0+dx)),yy=Math.min(gh-1,Math.max(0,y0+dy));w[cls[yy*gw+xx]]+=(dx?tx:1-tx)*(dy?ty:1-ty)}
+    let b=0;for(let c=1;c<8;c++)if(w[c]>w[b])b=c;const col=GCOL[NAMES[b]];D[i]=col[0];D[i+1]=col[1];D[i+2]=col[2];D[i+3]=255}
+  cx.putImageData(im,0,0);
+  // oggetti: forme colorate
+  const groups={};const objs=S.objs||[];
+  for(const o of objs){const meta=OBJ[o.k]||{},c=meta.custom,n=(meta.n||"Oggetto");if(/schiuma|anello di schiuma/i.test(n))continue;const cat=gCat(n),w=Math.max(18,((c&&c.cells)||1)*CELL*(o.s||1)*k),hh=Math.max(14,w*((c&&c.ar)||1));
+    const X=ox+o.x*k,Y=oy+o.y*k;cx.save();cx.translate(X,Y);cx.rotate(((o.r||0)*Math.PI)/180);cx.fillStyle="rgb("+cat.col.join(",")+")";
+    if(cat.k==="fuoco"||cat.k==="albero"||cat.k==="roccia"){cx.beginPath();cx.ellipse(0,0,w/2,hh/2,0,0,6.283);cx.fill()}
+    else{cx.fillRect(-w/2,-hh/2,w,hh)}
+    let steps=0;
+    if(cat.k==="scale"){steps=Math.max(3,Math.round(Math.max(w,hh)/(CELL*k*.32)));cx.strokeStyle="rgb(30,30,30)";cx.lineWidth=Math.max(2,CELL*k*.05);
+      const along=w>=hh;for(let s=1;s<steps;s++){const t=-.5+s/steps;cx.beginPath();if(along){cx.moveTo(t*w,-hh/2);cx.lineTo(t*w,hh/2)}else{cx.moveTo(-w/2,t*hh);cx.lineTo(w/2,t*hh)}cx.stroke()}}
+    cx.restore();
+    (groups[cat.k]||(groups[cat.k]={cat,items:[]})).items.push({n,pos:gPos(X,Y,OW,OH),steps,X,Y})}
+  // testo
+  const L=[];
+  L.push("Trasforma questa mappa a colori piatti in una foto di un diorama da tavolo fatto a mano, vista perfettamente dall'alto, nello stile di un plastico da wargame fotografato da vicino. Mantieni ESATTAMENTE la stessa forma e le stesse posizioni di ogni zona di colore e di ogni forma colorata: niente deve spostarsi, sparire o cambiare forma. Non scrivere nessun testo.");
+  L.push("");L.push("ZONE:");
+  L.push("- Blu: fiume o laghetto turchese trasparente, con rapide e schiuma bianca vicino ai sassi.");
+  L.push("- Grigio scuro: pareti di roccia a lastre in rilievo, con crepe e un po' di muschio, più alte del pavimento.");
+  L.push("- Beige: pavimento di terra chiara con ghiaia e sassolini.");
+  L.push("- Verde chiaro: prato fitto con tanti fiorellini gialli, bianchi e blu.");
+  const has=c=>cls.includes(c);if(has(4))L.push("- Bianco: neve.");if(has(5))L.push("- Arancione acceso: lava.");if(has(6))L.push("- Verde acido: melma.");if(has(7))L.push("- Nero: abisso.");
+  if(Object.keys(groups).length){L.push("");L.push("OGGETTI (le forme colorate vanno sostituite con l'oggetto vero, nello stesso punto, con la stessa dimensione e lo stesso orientamento):");
+    for(const g of Object.values(groups)){const c=g.cat,cn=c.k==="altro"?"":" ("+({scale:"giallo con righe nere",ponte:"marrone scuro",fuoco:"rosso",cassa:"viola",tenda:"rosa",albero:"verde scuro",roccia:"grigio chiaro",mobile:"arancio scuro"}[c.k]||"")+")";
+      if(c.k==="altro"){const nm=[...new Set(g.items.map(i=>i.n))].join(", ");L.push("- Forme bianche: "+nm+".");continue}
+      const det=g.items.map(i=>c.k==="scale"?i.steps+" gradini, "+i.pos:i.pos).join("; ");
+      L.push("- "+c.txt+cn+": "+g.items.length+" in totale ("+det+").")}}
+  L.push("");L.push((groups.ponte?"":"Se una zona marrone scuro attraversa il blu, è un ponte di assi di legno con corde. ")+"Nessuna griglia, nessun contorno nero, nessun bordo. Alta risoluzione, formato 16:9.");
+  const text=L.join("\n");
+  cv.toBlob(bl=>{const a=document.createElement("a");a.href=URL.createObjectURL(bl);a.download="guida-gemini.png";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)},"image/png");
+  const ta=h("textarea",{style:"width:100%;height:46vh;background:#111;color:#eee;border:1px solid #444;border-radius:8px;padding:8px"},text);ta.value=text;
+  modal(h("h3",{},"Pronto per Gemini"),h("div",{class:"hint"},"1) L’immagine “guida-gemini.png” è nei download: allegala a Gemini. 2) Incolla questo testo."),ta,
+    h("div",{class:"row"},h("button",{class:"btn gold",onclick:()=>{ta.select();try{navigator.clipboard.writeText(text).then(()=>toast("Testo copiato"),()=>{document.execCommand("copy");toast("Testo copiato")})}catch(e){document.execCommand("copy");toast("Testo copiato")}}},"Copia il testo"),h("button",{class:"btn",onclick:()=>{$("#modal").hidden=true}},"Chiudi")));
+  return text}
 /* ---------- interfaccia ---------- */
 const gen={deco:"none",type:"cave",seed:"",floor:"stone",liq:"lava",shape:"both",amount:.5,rock:.5,objects:.5,size:"m"};
 let tab="gen",undoSt=[];
@@ -1706,7 +1868,7 @@ function renderPane(){
         h("div",{class:"row"},h("button",{class:"btn",onclick:()=>{applyWood();renderPane();toast("Pavimento di legno applicato")}},"Pavimento di legno"))),
       h("div",{class:"grp"},h("h3",{},"Immagine di sfondo"),
         h("div",{class:"hint"},"Metti una mappa già disegnata come base: la Fucina ci anima sopra l’acqua (dipingila con il pennello Acqua), le luci, la nebbia e la polvere."),
-        h("div",{class:"row"},h("button",{class:"btn gold",onclick:()=>{if(confirm("Creo una nuova mappa su misura dell’immagine, senza deformarla. La mappa attuale non salvata va persa. Continuo?"))pickNewFromImage()}},"Nuova mappa da immagine…"),h("button",{class:"btn gold",onclick:()=>{if(confirm("Parto da una mappa base e la trasformo da solo nello stile scelto (pareti, pavimento, erba, alberi, acqua con corrente, schiuma e massi). La mappa attuale non salvata va persa. Continuo?"))pickAutoSemi()}},"Auto da mappa base…")),
+        h("div",{class:"row"},h("button",{class:"btn gold",onclick:()=>{if(confirm("Creo una nuova mappa su misura dell’immagine, senza deformarla. La mappa attuale non salvata va persa. Continuo?"))pickNewFromImage()}},"Nuova mappa da immagine…"),h("button",{class:"btn gold",onclick:()=>{if(confirm("Parto da una mappa base e la trasformo da solo nello stile scelto (pareti, pavimento, erba, alberi, acqua con corrente, schiuma e massi). La mappa attuale non salvata va persa. Continuo?"))pickAutoSemi()}},"Auto da mappa base…"),h("button",{class:"btn gold",onclick:pickAutoGuide},"Mappa guida per Gemini…"),h("button",{class:"btn gold",onclick:()=>{closeModal&&0;exportGemini()}},"Esporta questa mappa per Gemini")),
         S.bg?h("div",{class:"grp"},h("h3",{},"Dai vita all’immagine"),
           h("div",{class:"hint"},"Trovo le fiamme già disegnate e ci metto una luce che vibra. Con la spunta aggiungo anche una fiamma animata (utile se le torce dipinte sono spente)."),
           h("label",{},h("input",{type:"checkbox",checked:!!ui.tfl,onchange:e=>ui.tfl=e.target.checked})," Aggiungi anche la fiamma animata"),
