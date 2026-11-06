@@ -1755,12 +1755,13 @@ function areaSimilar(){
   dirtyTex=true;toast("Aree simili riempite: "+n+" caselle di campo. Se è troppo, annulla e abbassa la tolleranza.")}
 function areaClear(mat){pushUndo();for(let y=0;y<S.fh;y++)for(let x=0;x<S.fw;x++)applyMat(mat,x,y);dirtyTex=true}
 let gvCv=null,gvCx=null;
+function gvOn(){return ui.gview==null?!!(S&&S.bg):!!ui.gview}
 function drawGuideView(c){ // vista a colori piatti sopra la mappa (solo per controllare)
-  if(!ui.gview||!S)return;const fw=S.fw,fh=S.fh;
+  if(!gvOn()||!S||!S.bg)return;const fw=S.fw,fh=S.fh;
   if(!gvCv||gvCv.width!==fw||gvCv.height!==fh){gvCv=document.createElement("canvas");gvCv.width=fw;gvCv.height=fh;gvCx=gvCv.getContext("2d")}
   const im=gvCx.createImageData(fw,fh),D=im.data;
   for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){const i=(y*fw+x)*4,col=GV_COL[areaCls(i)]||GV_COL.stone;D[i]=col[0];D[i+1]=col[1];D[i+2]=col[2];D[i+3]=255}
-  gvCx.putImageData(im,0,0);c.save();c.globalAlpha=ui.gva==null?.55:ui.gva;c.imageSmoothingEnabled=true;c.drawImage(gvCv,0,0,MW(),MH());c.restore()}
+  gvCx.putImageData(im,0,0);c.save();c.globalAlpha=ui.gva==null?.6:ui.gva;c.imageSmoothingEnabled=true;c.drawImage(gvCv,0,0,MW(),MH());c.restore()}
 function areaPanel(){
   if(!S.bg)return h("div",{class:"hint"},"Carica prima la mappa base (Nuova mappa da immagine…).");
   return h("div",{class:"grp"},h("h3",{},"Aree: scegli e tocca"),
@@ -1853,6 +1854,10 @@ function renderPane(){
     const mats=h("div",{class:"mats"},...Object.entries(MATS).map(([k,m])=>h("button",{class:"mat","aria-pressed":String(ui.mat===k),onclick:()=>{ui.mat=k;renderPane()}},h("i",{style:"background:"+m.c}),m.n)));
     const shapes=h("div",{class:"row"},...[["brush","Pennello"],["rect","Rettangolo"],["ell","Ellisse"],["circ","Cerchio"],["poly","Poligono a tratti"],["free","Mano libera"]].map(([k,l])=>h("button",{class:"btn sm","aria-pressed":String(ui.shape===k),onclick:()=>{shpCancel();ui.shape=k;renderPane()}},l)));
     p.append(h("div",{class:"grp"},h("h3",{},"Materiale"),mats),
+      S.bg?h("div",{class:"grp"},h("h3",{},"Vedi cosa hai disegnato"),
+        h("div",{class:"hint"},"L’immagine di base copre quello che disegni. Qui accendi la vista a colori: grigio = parete, beige = pavimento, verde = erba, blu = acqua. Con la trasparenza al massimo vedi solo i colori."),
+        h("div",{class:"row"},h("button",{class:"btn","aria-pressed":String(gvOn()),onclick:()=>{ui.gview=!gvOn();renderPane()}},gvOn()?"Vista colori: accesa":"Vista colori: spenta")),
+        gvOn()?slider("Trasparenza dei colori",.2,1,.05,()=>ui.gva==null?.6:ui.gva,v=>ui.gva=v,v=>v>=.95?"solo colori":Math.round(v*100)+"%"):null):null,
       h("div",{class:"grp"},h("h3",{},"Forma"),shapes,ui.shape==="brush"?slider("Dimensione pennello",10,220,5,()=>ui.brush,v=>ui.brush=v,v=>v+" px"):h("label",{},h("input",{type:"checkbox",checked:ui.snap,onchange:e=>ui.snap=e.target.checked})," Aggancia alla griglia"),
         h("div",{class:"hint"},{brush:"Trascina sulla mappa per dipingere.",rect:"Trascina da un angolo all’opposto.",ell:"Trascina nel riquadro che contiene l’ellisse.",circ:"Trascina dal centro verso il bordo.",poly:"Tocca i vertici uno dopo l’altro; chiudi toccando il primo punto bianco, con Invio o col tasto che compare.",free:"Disegna il contorno a mano: al rilascio si chiude."}[ui.shape])),
       h("div",{class:"row"},h("button",{class:"btn",onclick:undo},"Annulla"),h("button",{class:"btn",onclick:()=>{pushUndo();fieldFill(ui.mat);dirtyTex=true;toast("Riempito con "+MATS[ui.mat].n)}},"Riempi tutto")),
@@ -2098,7 +2103,7 @@ function newFromImage(im){
   const ir=im.naturalWidth/im.naturalHeight,L=48;let gw,gh;
   if(ir>=1){gw=L;gh=Math.max(12,Math.round(L/ir))}else{gh=L;gw=Math.max(12,Math.round(L*ir))}
   S=newMap(gw,gh);S.set.rough=.3;S.set.grid=false;S.set.relief=0;S.set.autol=0;S.name="Mappa da immagine";
-  undoSt=[];sel=null;selL=null;sizeCanvases();setBgFromImage(im,.9);applyStyle(STYLE_PREF==='base'?'diorama':STYLE_PREF,{materials:false});S.set.rough=.3;S.set.relief=0;S.set.autol=0;closeModal();renderPane();{let tries=0;const go=()=>{try{const n=waterFromColor();if(n){toast('Acqua trovata: '+n+' caselle. Ora disegna la corrente lungo il fiume.');renderPane()}else if(++tries<8)setTimeout(go,1000)}catch(e){}};setTimeout(go,1200)}
+  undoSt=[];sel=null;selL=null;sizeCanvases();setBgFromImage(im,.9);applyStyle(STYLE_PREF==='base'?'diorama':STYLE_PREF,{materials:false});S.set.rough=.3;S.set.relief=0;S.set.autol=0;closeModal();renderPane();
   toast("Nuova mappa "+gw+"×"+gh+" caselle: l’immagine non è deformata")
 }
 function pickNewFromImage(){const f=document.createElement("input");f.type="file";f.accept="image/*";f.onchange=()=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>newFromImage(im);im.src=fr.result};fr.readAsDataURL(f.files[0])};f.click()}
