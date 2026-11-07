@@ -388,8 +388,29 @@ async function newScenes(files){
   toast(n?(n===1?"Mappa caricata: "+first.name:n+" mappe caricate: le trovi tutte in “Scene”")+(bad?" ("+bad+" non leggibili)":""):"Immagine non leggibile: prova con JPG, PNG o WebP",4000);
 }
 const newScene=f=>newScenes([f]);
+/* ---------- memoria dell'iniziativa per ogni scena ---------- */
+let iniDbT=0;
+const sceneIniSnap=()=>({others:ini.list.filter(c=>c.type!=="pg").map(c=>Object.assign({},c)),pgInit:Object.fromEntries(ini.list.filter(c=>c.type==="pg").map(c=>[c.id,c.init])),turn:ini.turn,round:ini.round});
+const sceneIniEmpty=()=>({others:[],pgInit:{},turn:null,round:1});
+function sceneIniStore(){if(PLAYER||!sc)return;sc.ini=sceneIniSnap();clearTimeout(iniDbT);const o=sc;iniDbT=setTimeout(()=>dbPut(o).catch(()=>{}),800)}
+function sceneIniLoad(o,first){
+  if(!o.ini){if(first){o.ini=sceneIniSnap();dbPut(o).catch(()=>{});return}o.ini=sceneIniEmpty()}
+  const S=o.ini,pgs=ini.list.filter(c=>c.type==="pg");
+  for(const c of pgs)if(S.pgInit&&S.pgInit[c.id]!==undefined)c.init=S.pgInit[c.id];
+  ini.list=pgs.concat((S.others||[]).map(c=>Object.assign({},c)));
+  ini.turn=ini.list.some(c=>c.id===S.turn)?S.turn:null;ini.round=S.round||1;
+  saveIni();drawIni();
+}
+async function sceneIniReset(id){
+  if(sc&&sc.id===id){
+    ini.list=ini.list.filter(c=>c.type==="pg").map(c=>{c.dead=false;c.z=false;c.init=0;hpDead(c);return c});ini.turn=null;ini.round=1;
+    sc.ini=sceneIniEmpty();saveIni();drawIni();logEv("Iniziativa della scena azzerata","scontro");toast("Lista azzerata: restano solo gli eroi",2500);return}
+  const o=await dbGet(id);if(!o)return;o.ini=sceneIniEmpty();await dbPut(o);toast("Lista di “"+o.name+"” azzerata",2500);
+}
 async function openScene(o){
+  const prev=sc;if(prev&&prev.id!==o.id&&!PLAYER){clearTimeout(iniDbT);prev.ini=sceneIniSnap();dbPut(prev).catch(()=>{})}
   sc=o;if(!sc.grid)sc.grid=defGrid();
+  if(!PLAYER&&(!prev||prev.id!==o.id))sceneIniLoad(o,!prev);
   const {im,u}=await readBlob(o.img);
   if(mapEl.dataset.u)URL.revokeObjectURL(mapEl.dataset.u);
   mapEl.src=u;mapEl.dataset.u=u;iw=im.naturalWidth;ih=im.naturalHeight;mapEl.width=iw;mapEl.height=ih;
@@ -680,7 +701,7 @@ async function openScenes(){
     const all=(await dbAll()).sort((a,b)=>b.upd-a.upd);
     m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Le tue mappe"},
       h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap"},h("h2",{style:"flex:1"},"Le tue mappe"),btn("image","Carica mappe",()=>{m.hidden=true;$("#file").click()},{class:"btn gold"}),btn(null,"Chiudi",()=>{m.hidden=true})),
-      h("div",{class:"help"},"Scegli più immagini insieme, oppure trascinale sulla pagina o incollale con Ctrl+V. La nebbia e la griglia di ogni mappa restano salvate su questo dispositivo."),
+      h("div",{class:"help"},"Scegli più immagini insieme, oppure trascinale sulla pagina o incollale con Ctrl+V. Ogni mappa ricorda da sola la sua nebbia, la griglia e la lista iniziative (nemici, alleati, round): quando la riapri ritrovi tutto com’era. Gli eroi restano gli stessi in tutte le scene, con i loro PF."),
       all.length?h("div",{class:"sgrid"},...all.map(o=>{
         const cur=sc&&sc.id===o.id;
         const nm=h("input",{value:o.name,"aria-label":"Nome della mappa"});nm.addEventListener("change",async()=>{o.name=nm.value.trim()||"Mappa";await dbPut(o);if(sc&&sc.id===o.id)sc.name=o.name});
@@ -688,7 +709,11 @@ async function openScenes(){
         del.addEventListener("click",async()=>{if(!armed){armed=true;del.replaceChildren(ico("trash"),"Sicuro?");setTimeout(()=>{armed=false;del.replaceChildren(ico("trash"))},2500);return}await dbDel(o.id);if(sc&&sc.id===o.id){sc=null;iw=0;mapEl.removeAttribute("src");$("#empty").style.display="grid";gridEl.style.display="none";fctx.clearRect(0,0,fogC.width,fogC.height);lsSet("tavolo-scene","");drawBars();send({t:"empty"})}draw()});
         let thEl;if(o.th){const u=URL.createObjectURL(o.th);thUrls.push(u);thEl=h("img",{src:u,alt:""})}else thEl=ico("image");
         const open=async()=>{const f=await dbGet(o.id);m.hidden=true;await openScene(f);logEv("Si passa alla mappa: "+o.name,"mappa")};
-        return h("div",{class:"scard"+(cur?" cur":"")},h("button",{class:"th",type:"button","aria-label":"Apri "+o.name,onclick:open},thEl),nm,h("div",{class:"acts"},btn(null,cur?"Aperta":"Apri",open,{class:"btn"+(cur?" gold":"")}),del))
+        const S=cur?sceneIniSnap():o.ini,nO=S&&S.others?S.others.length:0;
+        const info=h("div",{class:"help",style:"margin:0"},S?(nO?nO+(nO===1?" combattente":" combattenti")+" in lista"+(S.round>1||S.turn?" · round "+S.round:""):"Lista: solo gli eroi"):"Lista non ancora salvata");
+        let rArmed=false;const rst=h("button",{class:"btn ghost",type:"button",title:"Svuota la lista iniziative di questa scena (restano gli eroi)"},"Riazzera lista");
+        rst.addEventListener("click",async()=>{if(!rArmed){rArmed=true;rst.textContent="Sicuro?";setTimeout(()=>{rArmed=false;rst.textContent="Riazzera lista"},2500);return}await sceneIniReset(o.id);draw()});
+        return h("div",{class:"scard"+(cur?" cur":"")},h("button",{class:"th",type:"button","aria-label":"Apri "+o.name,onclick:open},thEl),nm,info,h("div",{class:"acts"},btn(null,cur?"Aperta":"Apri",open,{class:"btn"+(cur?" gold":"")}),del),rst)
       })):h("div",{class:"vide"},"Nessuna mappa salvata: carica la prima.")));
   };
   draw();
@@ -926,7 +951,7 @@ function openPortraits(c){
 const TYPES={pg:["Eroe","var(--pg)"],ne:["Nemico","var(--ne)"],al:["Alleato","var(--al)"]};
 let ini=(()=>{try{const o=JSON.parse(lsGet("tavolo-ini")||"null");if(o&&Array.isArray(o.list))return o}catch(e){}return{list:[],turn:null,round:1}})();
 const sendIni=()=>{const vis=ini.list.filter(c=>!c.hide).map(c=>({id:c.id,name:c.name,init:c.init,type:c.type,dead:c.dead,hide:false,img:portImg(c),icon:iconKey(c)}));send({t:"ini",ini:{list:vis,turn:vis.some(c=>c.id===ini.turn)?ini.turn:null,round:ini.round}})};
-const saveIni=()=>{lsSet("tavolo-ini",JSON.stringify(ini));sendIni()};
+const saveIni=()=>{lsSet("tavolo-ini",JSON.stringify(ini));sendIni();sceneIniStore()};
 const sorted=()=>ini.list.map((c,i)=>[c,i]).sort((a,b)=>(b[0].init-a[0].init)||(a[1]-b[1])).map(x=>x[0]);
 function hpDead(c){
   if(c.hp===0&&!c.dead){c.dead=true;c.z=true}
