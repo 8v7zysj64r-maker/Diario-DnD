@@ -99,6 +99,11 @@ main{padding-bottom:110px}
 .cbl{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--ink)}.cbl input{width:auto}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal[hidden]{display:none}
+.tdot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--mute);margin-right:6px;vertical-align:middle}
+.tdot.on{background:#3fa66a;box-shadow:0 0 0 3px rgba(63,166,106,.25)}
+.tavcode{font:700 1.8rem/1.2 ui-monospace,monospace;letter-spacing:.2em;text-transform:uppercase;text-align:center;width:100%}
+#tavtoast{position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:80;background:var(--panel);color:var(--ink);border:1px solid var(--brass);border-radius:10px;padding:10px 14px;box-shadow:0 6px 24px rgba(0,0,0,.35);max-width:90vw;font-weight:600}
+#tavtoast[hidden]{display:none}
 .mbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:520px;width:100%;max-height:80vh;overflow:auto;padding:18px;display:grid;gap:10px}
 .mbox p{margin:0}
 .status{color:var(--mute);font-size:.85rem;min-height:1.2em}
@@ -684,7 +689,7 @@ function render(){
   vitSync=()=>{vh.replaceChildren(ico("heart"),(o.hpc??o.hp)+" / "+o.hp+(o.hpt?" (+"+o.hpt+")":""));va.replaceChildren(ico("shield"),"CA "+curAC);vi.replaceChildren(ico("star"),o.insp?"Ispirazione":"");vi.style.color=o.insp?"var(--brass)":"";vi.querySelector("svg").style.fill=o.insp?"currentColor":"none";vi.setAttribute("aria-pressed",String(!!o.insp));vc.replaceChildren(...(o.conds||[]).filter(c=>c.t).map(c=>h("span",{class:"chip",textContent:c.t})))};
   const vit=h("div",{class:"vit"},h("div",{class:"r"},vh,va,vi),h("div",{class:"r"},...[[-5,"−5"],[-1,"−1"],[1,"+1"],[5,"+5"]].map(([n,t])=>h("button",{class:"btn ghost","aria-label":(n<0?"Danni ":"Cura ")+Math.abs(n),textContent:t,onclick:()=>hpAct(n)}))),vc);
   vitSync();
-  app.replaceChildren(h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"‹ Eroi",onclick:()=>{sel=null;render()}}),h("h2",{class:"grow"},o.name||"Senza nome"),h("button",{class:"btn ghost",textContent:"Scarica PDF",onclick:()=>act.pdf()}),h("button",{class:"btn ghost",textContent:"Salva file",onclick:()=>act.json()}),h("button",{class:"btn"+(combat?"":" ghost"),kids:combat?["Esci dal combattimento"]:[ico("sword"),"Combattimento"],onclick:()=>{combat=!combat;render();scrollTo(0,0)}})),statusEl,vit,panel);
+  app.replaceChildren(h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"‹ Eroi",onclick:()=>{sel=null;render()}}),h("h2",{class:"grow"},o.name||"Senza nome"),h("button",{class:"btn ghost",textContent:"Scarica PDF",onclick:()=>act.pdf()}),h("button",{class:"btn ghost",textContent:"Salva file",onclick:()=>act.json()}),h("button",{class:"btn"+(combat?"":" ghost"),kids:combat?["Esci dal combattimento"]:[ico("sword"),"Combattimento"],onclick:()=>{combat=!combat;render();scrollTo(0,0)}}),tavBtn(o)),statusEl,vit,panel);
 }
 loadLocal();render();
 /* ---- aspetto: modalità, tema, rifiniture ---- */
@@ -775,6 +780,75 @@ drawBk();
 
 try{if("serviceWorker" in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{})}catch(e){}
 (async()=>{try{if(window.claude)dlApi=await claude.use("downloads")}catch(e){}})();
+
+/* ---- collegamento al Tavolo del Master: codice stanza, aggiornamenti in tempo reale (ntfy) ---- */
+const TAV={base:"https://ntfy.sh",es:null,ok:false,timer:0,retry:0,sent:"",seen:new Set(),pend:false,el:null};
+const tavGet=()=>{try{const v=JSON.parse(localStorage.getItem("dnd-tav")||"null");return v&&v.code&&v.pg?v:null}catch(e){return null}};
+const tavSet=v=>{try{v?localStorage.setItem("dnd-tav",JSON.stringify(v)):localStorage.removeItem("dnd-tav")}catch(e){}};
+const tavTopic=c=>"dnd-tav-"+c.toLowerCase();
+const tavNorm=x=>String(x||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+function tavDot(){document.querySelectorAll(".tdot").forEach(d=>d.classList.toggle("on",TAV.ok&&!!tavGet()))}
+function tavToast(t){if(!t)return;let e=document.getElementById("tavtoast");if(!e){e=h("div",{id:"tavtoast",role:"status"});document.body.append(e)}e.textContent=t;e.hidden=false;clearTimeout(tavToast.t);tavToast.t=setTimeout(()=>{e.hidden=true},3500);try{navigator.vibrate&&navigator.vibrate(60)}catch(err){}}
+function tavState(o){return{t:"st",id:o.id,name:String(o.name||"Eroe").slice(0,60),lvl:+o.lvl||1,cls:String(o.cls||"").slice(0,30),hp:+o.hp||0,hpc:+(o.hpc??o.hp)||0,hpt:+o.hpt||0,ac:+o.acv||0,insp:!!o.insp,conds:(o.conds||[]).filter(c=>c&&c.t).map(c=>String(c.t).slice(0,40)).slice(0,12)}}
+async function tavPost(m){const t=tavGet();if(!t)return false;
+  try{const r=await fetch(TAV.base+"/"+tavTopic(t.code),{method:"POST",body:JSON.stringify(Object.assign({f:"p"},m))});if(!r.ok)throw r.status;return true}catch(e){return false}}
+function tavPush(force){const t=tavGet();if(!t)return;clearTimeout(TAV.timer);
+  TAV.timer=setTimeout(async()=>{const o=data.pg.find(x=>x.id===t.pg);if(!o)return;const st=tavState(o),js=JSON.stringify(st);if(js===TAV.sent&&!force)return;
+    const ok=await tavPost(st);if(ok){TAV.sent=js}else{TAV.sent="";clearTimeout(TAV.retry);TAV.retry=setTimeout(()=>tavPush(true),10000)}},force?0:1500)}
+{const _put=put;put=function(c,o){_put(c,o);const t=tavGet();if(c==="pg"&&t&&o&&o.id===t.pg)tavPush()}}
+function tavRefresh(o){if(sel!==o.id)return;const a=document.activeElement,app=document.getElementById("app");
+  if(a&&app.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){vitSync();if(!TAV.pend){TAV.pend=true;a.addEventListener("blur",()=>{TAV.pend=false;setTimeout(()=>{if(sel===o.id){const y=scrollY;render();scrollTo(0,y)}},0)},{once:true})}return}
+  const y=scrollY;render();scrollTo(0,y)}
+function tavApply(d){const t=tavGet();if(!t||d.to!==t.pg)return;const o=data.pg.find(x=>x.id===t.pg);if(!o)return;
+  if(o.hpc===undefined)o.hpc=o.hp;o.hpc=+o.hpc||0;o.hpt=+o.hpt||0;o.conds=o.conds||[];let msg="";
+  if(d.op==="hp"){const n=Math.round(+d.n||0);if(!n)return;
+    if(n<0){let x=-n;const a=Math.min(o.hpt,x);o.hpt-=a;x-=a;o.hpc=Math.max(0,o.hpc-x);msg="Il Master: subisci "+(-n)+" danni"+(a?" ("+a+" assorbiti dai PF temporanei)":"")}
+    else{o.hpc=Math.min(+o.hp||0,o.hpc+n);msg="Il Master: recuperi "+n+" PF"}}
+  else if(d.op==="set"){o.hpc=Math.max(0,Math.min(+o.hp||0,Math.round(+d.v||0)));msg="Il Master ha corretto i tuoi PF: "+o.hpc}
+  else if(d.op==="insp"){if(!!o.insp===!!d.v)return;o.insp=!!d.v;msg=d.v?"★ Il Master ti assegna l’Ispirazione":"Il Master toglie l’Ispirazione"}
+  else if(d.op==="cadd"){const n=String(d.n||"").slice(0,40);if(!n||o.conds.some(c=>c.t===n))return;const x=COND.find(c=>c[0]===n);o.conds.unshift({t:n,k:x?x[2]||"Condizione":"Condizione",b:x?x[1]:""});msg="Il Master aggiunge: "+n}
+  else if(d.op==="cdel"){const L=o.conds.length;o.conds=o.conds.filter(c=>c.t!==d.n);if(o.conds.length===L)return;msg="Il Master toglie: "+d.n}
+  else return;
+  put("pg",o);tavRefresh(o);tavToast(msg);if(o.hpc===0&&(d.op==="hp"||d.op==="set"))tavToast(msg+" · sei a 0 PF")}
+function tavStart(){
+  if(TAV.es){TAV.es.close();TAV.es=null}TAV.ok=false;tavDot();const t=tavGet();if(!t||typeof EventSource==="undefined")return;
+  const q=t.last?"?since="+encodeURIComponent(t.last):"";
+  try{TAV.es=new EventSource(TAV.base+"/"+tavTopic(t.code)+"/sse"+q)}catch(e){return}
+  const es=TAV.es;
+  es.onopen=()=>{TAV.ok=true;tavDot();tavPush(true)};
+  es.onerror=()=>{TAV.ok=false;tavDot();es.close();if(TAV.es===es){TAV.es=null;setTimeout(()=>{if(!TAV.es&&tavGet())tavStart()},6000)}};
+  es.onmessage=ev=>{try{const e=JSON.parse(ev.data);if(e.event!=="message"||!e.message||TAV.seen.has(e.id))return;TAV.seen.add(e.id);
+    const t2=tavGet();if(!t2)return;t2.last=e.id;tavSet(t2);
+    const d=JSON.parse(e.message);if(!d||d.f!=="m")return;
+    if(d.t==="hello")setTimeout(()=>tavPush(true),200+Math.random()*1800);else if(d.t==="cmd")tavApply(d)}catch(err){}};
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState!=="visible"||!tavGet())return;if(!TAV.es||TAV.es.readyState===2)tavStart();else tavPush(true)});
+function tavBtn(o){const t=tavGet(),mine=t&&t.pg===o.id;
+  return h("button",{class:"btn ghost",title:"Collega questa scheda al Tavolo del Master",onclick:()=>tavOpen(o)},h("span",{class:"tdot"+(mine&&TAV.ok?" on":"")}),mine?"Al Tavolo":"Tavolo")}
+function tavOpen(o){
+  const t=tavGet(),mine=t&&t.pg===o.id,other=t&&!mine?data.pg.find(x=>x.id===t.pg):null;
+  const close=()=>{modal.hidden=true};let body;
+  if(mine){
+    body=[h("p",{},h("span",{class:"tdot"+(TAV.ok?" on":"")}),TAV.ok?"Collegato alla stanza ":"Mi sto collegando alla stanza ",h("b",{},t.code.slice(0,3)+"-"+t.code.slice(3))),
+      h("p",{},"Ogni volta che cambiano PF, PF temporanei, CA, condizioni o livello, il Master li vede subito. Danni, cure, Ispirazione e condizioni decisi dal Master compaiono qui da soli."),
+      h("p",{class:"status"},"Il resto della scheda (note, diario, zaino) resta solo tuo."),
+      h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"Rimanda la scheda",onclick:()=>{tavPush(true);tavToast("Scheda inviata al Tavolo")}}),
+        h("button",{class:"btn",textContent:"Scollega",onclick:()=>{tavPost({t:"bye",id:o.id});tavSet(null);tavStart();close();render()}}))];
+  }else{
+    const inp=h("input",{class:"tavcode",placeholder:"ABC-123",maxlength:8,autocomplete:"off",autocapitalize:"characters",spellcheck:false,"aria-label":"Codice della stanza"});
+    const err=h("p",{class:"status"});
+    const go=()=>{const c=tavNorm(inp.value);if(c.length!==6){err.textContent="Il codice ha 6 caratteri: te lo detta il Master (es. K7P-M2X).";inp.focus();return}
+      if(t&&t.code!==c)tavPost({t:"bye",id:t.pg});tavSet({code:c,pg:o.id,last:""});TAV.sent="";TAV.seen.clear();tavStart();close();render();tavToast("Collegamento al Tavolo in corso…")};
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
+    body=[h("p",{},"Il Master apre la stanza dal Tavolo e ti detta un codice. Inseriscilo qui: "+(o.name||"questo eroe")+" comparirà in tempo reale nella sua lista iniziative."),
+      other?h("p",{class:"status"},"Ora è collegato "+(other.name||"un altro eroe")+": collegando questa scheda, l’altra si scollega."):"",
+      inp,err,h("div",{class:"bar"},h("button",{class:"btn",textContent:"Collegati",onclick:go}))];
+    setTimeout(()=>inp.focus(),50);
+  }
+  modal.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Tavolo del Master"},h("div",{class:"bar"},h("h2",{class:"grow"},"Tavolo del Master"),h("button",{class:"btn ghost",textContent:"Chiudi",onclick:close})),...body));
+  modal.hidden=false;
+}
+tavStart();
 </script>
 </body>
 </html>

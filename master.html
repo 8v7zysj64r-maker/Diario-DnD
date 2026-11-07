@@ -145,6 +145,13 @@ body.player #empty .card{pointer-events:none}
 .stats .sl{color:var(--mute)}
 .stats .btn{padding:3px 9px;font-weight:700}
 .stats .dm{display:flex;gap:5px;margin-left:auto}
+.lk{grid-column:1/3;display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:.82rem}
+.lk .dot{width:8px;height:8px;border-radius:50%;background:var(--mute);display:inline-block}
+.lk .dot.on{background:var(--pg)}
+.lk .cd{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:999px;padding:1px 4px 1px 8px}
+.lk .cd button{background:none;border:0;color:var(--mute);cursor:pointer;font-size:1rem;line-height:1;padding:0 3px}
+.lk select{max-width:160px}
+.rcode{font:700 2.4rem/1.1 ui-monospace,monospace;letter-spacing:.18em;color:var(--brass);text-align:center;padding:8px 0}
 .hb{grid-column:1/3;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
 .hb i{display:block;height:100%;transition:width .2s}
 #add .two{grid-column:1/4;display:flex;gap:6px}
@@ -589,6 +596,7 @@ function drawBars(){
     bt("tv","Finestra giocatori",openPlayers,{title:"Apre la finestra da portare sulla TV o sul secondo schermo"}),
     bt("expand","Schermo intero",toggleFs,{title:"Schermo intero (F)"}),
     bt("film","Palcoscenico",openStage,{title:"Palcoscenico: mostra ai giocatori volti e parole (S)"}),
+    bt("user","Stanza",()=>window.openRoom&&window.openRoom(),{title:"Collega le schede del Diario dei giocatori: PF, CA, condizioni e Ispirazione in tempo reale"}),
     bt("pen","Cronista",openCron,{title:"Collega la pagina dove un giocatore segna battute e momenti salienti, anche da un altro dispositivo"}),
     bt("swords","Registra",openReg,{title:"Racconta cosa succede (chi fa cosa a chi): finisce nel diario in ordine, senza numeri (R)"}),
     bt("book","Diario di sessione",openLog,{title:"Registro della serata (D)"}),
@@ -929,12 +937,13 @@ function statsRows(c){
   const d=h("input",{class:"st",type:"number",min:0,placeholder:"±","aria-label":"Valore di danni o cure",title:"Scrivi un numero e poi tocca − (danno) o + (cura)"});
   const apply=sg=>()=>{const n=Math.abs(parseFloat(d.value));if(!n){d.focus();return}if(c.hp===undefined){toast("Scrivi prima i PF di "+c.name);return}
     let v=c.hp+sg*n;v=Math.max(0,v);if(c.mx!==undefined)v=Math.min(c.mx,v);{const d0=v-c.hp;if(d0<0)logEv(c.name+" subisce "+(-d0)+" danni"+(c.mx!==undefined?" ("+v+"/"+c.mx+" PF)":""),"pf");else if(d0>0)logEv(c.name+" recupera "+d0+" PF","pf");if(v===0&&c.hp>0)logEv(c.name+" cade a 0 PF","pf")}
-    c.hp=v;hpDead(c);saveIni();drawIni();if(v===0)toast(c.name+" è a 0 PF: fuori combattimento")};
+    c.hp=v;hpDead(c);if(c.lid&&window.tavCmd)tavCmd(c,{op:"hp",n:sg*n});saveIni();drawIni();if(v===0)toast(c.name+" è a 0 PF: fuori combattimento")};
   const minus=h("button",{class:"btn",type:"button","aria-label":"Danno",title:"Danno"},"−"),plus=h("button",{class:"btn",type:"button","aria-label":"Cura",title:"Cura"},"+");
   minus.addEventListener("click",apply(-1));plus.addEventListener("click",apply(1));
   d.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();apply(-1)()}});
-  const out=[h("div",{class:"stats"},ico("heart"),num(c.hp,"hp","PF attuali di "+c.name,v=>{c.hp=v;if(v!==undefined&&c.mx===undefined)c.mx=v}),h("span",{class:"sl"},"/"),num(c.mx,"mx","PF massimi di "+c.name,v=>c.mx=v),ico("shield"),num(c.ac,"ac","CA di "+c.name,v=>c.ac=v),h("span",{class:"dm"},d,minus,plus))];
+  const out=[h("div",{class:"stats"},ico("heart"),num(c.hp,"hp","PF attuali di "+c.name,v=>{c.hp=v;if(v!==undefined&&c.mx===undefined)c.mx=v;if(v!==undefined&&c.lid&&window.tavCmd)tavCmd(c,{op:"set",v})}),h("span",{class:"sl"},"/"),num(c.mx,"mx","PF massimi di "+c.name,v=>c.mx=v),ico("shield"),num(c.ac,"ac","CA di "+c.name,v=>c.ac=v),h("span",{class:"dm"},d,minus,plus))];
   if(c.hp!==undefined&&c.mx>0){const p=Math.max(0,Math.min(1,c.hp/c.mx));out.push(h("div",{class:"hb"},h("i",{style:"width:"+Math.round(p*100)+"%;background:"+(p>.5?"var(--pg)":p>.25?"var(--brass)":"var(--ne)")})))}
+  if(c.lid&&window.tavRow)out.push(tavRow(c));
   return out;
 }
 function drawIni(){
@@ -1001,7 +1010,7 @@ $("#impf").addEventListener("change",async e=>{
       if(!pid){const p0=PORT.find(x=>x.name.toLowerCase()===name.toLowerCase());if(p0)pid=p0.id}
       let c=ini.list.find(x=>x.type==="pg"&&x.name.toLowerCase()===name.toLowerCase());
       if(!c){c={id:uid(),name,init:0,type:"pg",dead:false,hide:false};ini.list.push(c)}
-      c.mx=mx;c.hp=hp;if(ac)c.ac=ac;if(pid)c.pid=pid;hpDead(c);n++;
+      c.mx=mx;c.hp=hp;if(ac)c.ac=ac;if(pid)c.pid=pid;if(ch.id)c.lid=ch.id;hpDead(c);n++;
     }
     if(!n)throw 0;logEv("Compagnia importata: "+n+(n===1?" eroe":" eroi"),"scena");savePort();saveIni();drawIni();
     toast(n+(n===1?" eroe importato":" eroi importati")+": scrivi l’iniziativa di ciascuno."+(noac?" Per la CA apri e richiudi la scheda nel diario e salva di nuovo.":""),6500);
@@ -1140,6 +1149,82 @@ function openCron(){
   draw();
 }
 window.openCron=openCron;
+
+/* ---------- stanza del tavolo: schede del Diario in tempo reale (ntfy, codice stanza) ---------- */
+const TAV_COND=["Accecato","Affascinato","Afferrato","Assordato","Avvelenato","Incapacitato","Invisibile","Paralizzato","Pietrificato","Privo di sensi","Prono","Spaventato","Stordito","Trattenuto","Indebolimento livello 1","Indebolimento livello 2","Indebolimento livello 3","Indebolimento livello 4","Indebolimento livello 5","Indebolimento livello 6"];
+const roomGet=()=>lsGet("tavolo-stanza")||"";
+function roomNew(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",r=crypto.getRandomValues(new Uint8Array(6));const c=Array.from(r,b=>A[b%A.length]).join("");lsSet("tavolo-stanza",c);return c}
+const roomTopic=c=>"dnd-tav-"+c.toLowerCase();
+const roomFmt=c=>c.slice(0,3)+"-"+c.slice(3);
+let roomES=null,roomOK=false,roomRetry=0,roomPanel=null,roomPend=false;const roomSeen={};
+async function roomPost(m,again){const c=roomGet();if(!c)return false;
+  try{const r=await fetch(ntfyBase()+"/"+roomTopic(c),{method:"POST",body:JSON.stringify(Object.assign({f:"m"},m))});if(!r.ok)throw r.status;return true}
+  catch(e){if(!again){toast("Rete lenta: riprovo a mandarlo tra pochi secondi",3000);setTimeout(()=>roomPost(m,true),11000)}else toast("Messaggio al giocatore non partito: controlla la connessione",4000);return false}}
+window.tavCmd=(c,m)=>{if(c&&c.lid&&roomGet())roomPost(Object.assign({t:"cmd",to:c.lid},m))};
+function roomRedraw(){saveIni();const a=document.activeElement,L=$("#list");
+  if(a&&L&&L.contains(a)&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)){if(!roomPend){roomPend=true;a.addEventListener("blur",()=>{roomPend=false;setTimeout(drawIni,0)},{once:true})}return}
+  drawIni()}
+function roomState(d){
+  const nuovo=!roomSeen[d.id];roomSeen[d.id]={name:String(d.name||"Eroe"),t:Date.now(),d};
+  let c=ini.list.find(x=>x.lid===d.id);
+  if(!c){const nm=String(d.name||"").trim().toLowerCase();c=ini.list.find(x=>!x.lid&&x.type==="pg"&&x.name.trim().toLowerCase()===nm);if(c)c.lid=d.id}
+  if(nuovo)toast(roomSeen[d.id].name+" è collegato al Tavolo"+(c?"":": aprilo da “Stanza” per metterlo in iniziativa"),3500);
+  if(c){const was=c.hp;c.hp=Math.max(0,Math.round(+d.hpc||0));if(+d.hp>0)c.mx=+d.hp;if(+d.ac>0)c.ac=+d.ac;c.thp=Math.max(0,+d.hpt||0);c.insp=!!d.insp;c.conds=Array.isArray(d.conds)?d.conds.map(String).slice(0,12):[];c.lvl=+d.lvl||c.lvl;
+    hpDead(c);if(was>0&&c.hp===0)toast(c.name+" è a 0 PF: fuori combattimento");roomRedraw()}
+  if(roomPanel)roomPanel();
+}
+function startRoom(){
+  if(roomES){roomES.close();roomES=null}roomOK=false;clearTimeout(roomRetry);const code=roomGet();if(!code||typeof EventSource==="undefined"){if(roomPanel)roomPanel();return}
+  try{roomES=new EventSource(ntfyBase()+"/"+roomTopic(code)+"/sse")}catch(e){return}
+  roomES.onopen=()=>{roomOK=true;if(roomPanel)roomPanel();roomPost({t:"hello"},true)};
+  roomES.onerror=()=>{roomOK=false;if(roomPanel)roomPanel();if(roomES&&roomES.readyState===2){roomES=null;roomRetry=setTimeout(startRoom,6000)}};
+  roomES.onmessage=ev=>{try{const e=JSON.parse(ev.data);if(e.event!=="message"||!e.message)return;const d=JSON.parse(e.message);if(!d||d.f!=="p"||!d.id)return;
+    if(d.t==="st")roomState(d);else if(d.t==="bye"){const n=(roomSeen[d.id]||{}).name;delete roomSeen[d.id];if(n)toast(n+" ha lasciato il Tavolo",2500);roomRedraw();if(roomPanel)roomPanel()}}catch(err){}};
+}
+function tavRow(c){
+  const on=!!roomSeen[c.lid];
+  const ins=btn(null,(c.insp?"★":"☆")+" Ispirazione",()=>{if(!on){toast(c.name+" non è collegato: l’Ispirazione la vedrà quando si ricollega",3500)}c.insp=!c.insp;tavCmd(c,{op:"insp",v:c.insp});saveIni();drawIni()},{class:"btn "+(c.insp?"gold":"ghost"),"aria-pressed":String(!!c.insp),title:"Assegna o togli l’Ispirazione sulla scheda del giocatore"});
+  const chips=(c.conds||[]).map(n=>h("span",{class:"cd"},n,h("button",{type:"button","aria-label":"Togli "+n+" a "+c.name,title:"Togli dalla scheda del giocatore",onclick:()=>{c.conds=(c.conds||[]).filter(x=>x!==n);tavCmd(c,{op:"cdel",n});saveIni();drawIni()}},"×")));
+  const sel=h("select",{"aria-label":"Aggiungi una condizione a "+c.name},h("option",{value:"",textContent:"+ Condizione…"}),...TAV_COND.filter(n=>!(c.conds||[]).includes(n)).map(n=>h("option",{value:n,textContent:n})));
+  sel.addEventListener("change",()=>{const n=sel.value;if(!n)return;c.conds=(c.conds||[]).concat(n);tavCmd(c,{op:"cadd",n});saveIni();drawIni()});
+  return h("div",{class:"lk"},h("span",{class:"dot"+(on?" on":""),title:on?"Scheda collegata in tempo reale":"Scheda non collegata ora"}),c.thp?h("span",{},"+"+c.thp+" PF temp"):"",ins,...chips,sel);
+}
+function openRoom(){
+  const m=$("#modal");m.hidden=false;m.dataset.k="room";
+  const close=()=>{m.hidden=true;roomPanel=null;delete m.dataset.k};
+  const draw=()=>{
+    if(m.hidden||m.dataset.k!=="room"||(m.firstChild&&!m.querySelector('[aria-label="Stanza del tavolo"]'))){roomPanel=null;return}
+    const code=roomGet();let body;
+    if(!code)body=[h("div",{class:"help"},"Apri una stanza e detta il codice ai giocatori. Dal Diario, ognuno tocca “Tavolo” sulla sua scheda e lo inserisce: da quel momento PF, PF temporanei, CA, condizioni e livello arrivano qui da soli, e quello che cambi tu (danni, cure, Ispirazione, condizioni) arriva sul loro telefono. Nella finestra giocatori sulla TV PF e CA non compaiono mai."),
+      btn("plus","Apri la stanza",()=>{roomNew();startRoom();draw()},{class:"btn gold"})];
+    else{
+      const ids=Object.keys(roomSeen);
+      const rows=ids.length?ids.map(id=>{const p=roomSeen[id],c=ini.list.find(x=>x.lid===id),d=p.d;
+        const info=h("span",{style:"flex:1"},h("b",{},p.name),(d.cls?" · "+d.cls:"")+" · liv. "+(d.lvl||1)+" · PF "+(d.hpc??"–")+"/"+(d.hp??"–")+(d.hpt?" (+"+d.hpt+")":"")+" · CA "+(d.ac||"–"));
+        let act;
+        if(c)act=h("span",{class:"help"},"In iniziativa come “"+c.name+"”");
+        else{const free=ini.list.filter(x=>x.type==="pg"&&!x.lid);
+          const s=h("select",{"aria-label":"Collega "+p.name+" a un eroe già in lista"},h("option",{value:"",textContent:"Collega a…"}),...free.map(x=>h("option",{value:x.id,textContent:x.name})));
+          s.addEventListener("change",()=>{const x=ini.list.find(y=>y.id===s.value);if(x){x.lid=id;roomState(d)}});
+          act=h("span",{style:"display:flex;gap:6px;flex-wrap:wrap"},btn("plus","Metti in iniziativa",()=>{const pid=(PORT.find(q=>q.name.toLowerCase()===p.name.toLowerCase())||{}).id;ini.list.push({id:uid(),name:p.name,pid,init:0,type:"pg",dead:false,hide:false,lid:id});roomState(d);toast("Scrivi l’iniziativa di "+p.name,3000)}),free.length?s:"")}
+        return h("div",{style:"display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:6px"},h("span",{class:"lk"},h("span",{class:"dot on"})),info,act)}):[h("div",{class:"vide"},"Ancora nessun giocatore collegato.")];
+      body=[h("div",{class:"help"},"Codice della stanza: dettalo ai giocatori. Lo inseriscono dal Diario, toccando “Tavolo” sulla loro scheda."),
+        h("div",{class:"rcode"},roomFmt(code)),
+        h("div",{class:"help",style:"text-align:center"},roomOK?"Stanza aperta ✓":"Collegamento in corso…"),
+        h("h3",{},"Giocatori collegati"),...rows,
+        h("div",{style:"display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"},
+          btn(null,"Chiedi di nuovo le schede",()=>{roomPost({t:"hello"});toast("Richiesta inviata",1800)}),
+          btn(null,"Nuovo codice",()=>{if(confirm("I giocatori dovranno inserire il nuovo codice. Procedo?")){for(const k in roomSeen)delete roomSeen[k];roomNew();startRoom();draw()}}),
+          btn(null,"Chiudi la stanza",()=>{if(confirm("Chiudo la stanza? Le schede smettono di aggiornarsi qui.")){for(const k in roomSeen)delete roomSeen[k];lsSet("tavolo-stanza","");startRoom();drawIni();draw()}})),
+        h("div",{class:"help",style:"margin-top:8px"},"Il collegamento passa da un canale pubblico gratuito: chi conosce il codice può leggere i PF della compagnia, quindi tienilo al tavolo. Se un telefono si spegne o va in standby, quando torna si ricollega e rimanda la scheda da solo.")];
+    }
+    m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Stanza del tavolo"},
+      h("div",{style:"display:flex;gap:8px;align-items:center"},h("h2",{style:"flex:1"},"Stanza del tavolo"),btn(null,"Chiudi",close)),...body));
+  };
+  roomPanel=draw;draw();
+}
+window.openRoom=openRoom;window.tavRow=tavRow;
+startRoom();
 if(BC)BC.onmessage=ev=>{const d=ev.data;if(!d)return;if(d.t==="hello")syncAll();else if(d.t==="cron"&&d.x){logEv(d.x,"nota");try{BC.postMessage({t:"cron-ok",id:d.id})}catch(e){}}};
 startCron();
 if(lsGet("tavolo-noini"))document.body.classList.add("noini");
