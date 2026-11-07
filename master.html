@@ -1206,7 +1206,7 @@ const sheetBuf={};
 const sheetGet=id=>{try{return JSON.parse(localStorage.getItem("dnd-vista-"+id)||"null")}catch(e){return null}};
 const sheetPut=(id,v)=>{try{localStorage.setItem("dnd-vista-"+id,JSON.stringify(v))}catch(e){toast("Scheda troppo grande per questo browser",3000)}};
 async function sheetDecode(b64,z){const bin=Uint8Array.from(atob(b64),ch=>ch.charCodeAt(0));if(!z)return new TextDecoder().decode(bin);return await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text()}
-function sheetPart(d){if(typeof d.k!=="string"||!(d.n>0&&d.n<=15)||!(d.i>=0&&d.i<d.n))return;
+function sheetPart(d){if(typeof d.k!=="string"||!(d.n>0&&d.n<=30)||!(d.i>=0&&d.i<d.n))return;
   const b=sheetBuf[d.k]||(sheetBuf[d.k]={n:d.n,p:new Array(d.n),got:0,z:!!d.z,id:d.id});if(b.p[d.i]==null){b.p[d.i]=String(d.d||"");b.got++}if(b.got<b.n)return;delete sheetBuf[d.k];
   sheetDecode(b.p.join(""),b.z).then(txt=>{const o=JSON.parse(txt);if(!o||o.id!==b.id)throw 0;sheetPut(b.id,{t:Date.now(),o});toast("Scheda di "+(o.name||"eroe")+" aggiornata",2000)}).catch(()=>toast("La scheda è arrivata incompleta: premi di nuovo “Scheda”",3500))}
 async function diarioUrl(){let u=localStorage.getItem("tavolo-diario-url");if(u)return u;

@@ -830,14 +830,13 @@ function tavStart(){
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState!=="visible"||!tavGet())return;if(!TAV.es||TAV.es.readyState===2)tavStart();else tavPush(true)});
 async function tavSheet(){const t=tavGet();if(!t||TAV.sheet)return;const o=data.pg.find(x=>x.id===t.pg);if(!o)return;TAV.sheet=true;
   try{
-    const js=JSON.stringify(o,(k,v)=>k==="diary"||k==="imgs"?undefined:(typeof v==="string"&&v.startsWith("data:")?undefined:v));
+    const js=JSON.stringify(o,(k,v)=>k==="imgs"?undefined:(typeof v==="string"&&v.startsWith("data:")?undefined:v));
     let bytes=new TextEncoder().encode(js),z=false;
     if(typeof CompressionStream!=="undefined"){try{bytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer());z=true}catch(e){}}
     let bin="";for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));const b64=btoa(bin);
     const P=3000,n=Math.ceil(b64.length/P),k=Math.random().toString(36).slice(2,8);
-    if(n>15){tavToast("La scheda è troppo grande da mandare al Master");return}
+    if(n>30){tavToast("La scheda è troppo grande da mandare al Master");return}
     for(let i=0;i<n;i++){const part={t:"sh",id:o.id,k,i,n,z,d:b64.slice(i*P,(i+1)*P)};let ok=await tavPost(part);if(!ok){await new Promise(r=>setTimeout(r,10000));ok=await tavPost(part)}if(!ok){tavToast("Scheda non arrivata al Master: rete lenta");return}}
-    say("Il Master ha aperto la tua scheda (sola lettura, senza diario né immagini)");
   }finally{TAV.sheet=false}}
 function tavBtn(o){if(VISTA)return"";const t=tavGet(),mine=t&&t.pg===o.id;
   return h("button",{class:"btn ghost",title:"Collega questa scheda al Tavolo del Master",onclick:()=>tavOpen(o)},h("span",{class:"tdot"+(mine&&TAV.ok?" on":"")}),mine?"Al Tavolo":"Tavolo")}
@@ -847,7 +846,7 @@ function tavOpen(o){
   if(mine){
     body=[h("p",{},h("span",{class:"tdot"+(TAV.ok?" on":"")}),TAV.ok?"Collegato alla stanza ":"Mi sto collegando alla stanza ",h("b",{},t.code.slice(0,3)+"-"+t.code.slice(3))),
       h("p",{},"Ogni volta che cambiano PF, PF temporanei, CA, condizioni o livello, il Master li vede subito. Danni, cure, Ispirazione e condizioni decisi dal Master compaiono qui da soli."),
-      h("p",{class:"status"},"Il resto della scheda (note, diario, zaino) resta solo tuo."),
+      h("p",{class:"status"},"Il Master può aprire anche la scheda completa, diario compreso, in sola lettura."),
       h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"Rimanda la scheda",onclick:()=>{tavPush(true);tavToast("Scheda inviata al Tavolo")}}),
         h("button",{class:"btn",textContent:"Scollega",onclick:()=>{tavPost({t:"bye",id:o.id});tavSet(null);tavStart();close();render()}}))];
   }else{
@@ -875,9 +874,7 @@ if(VISTA){
     bar.replaceChildren(h("span",{style:"flex:1"},nm?h("b",{},"Scheda di "+nm):"",nm?" · sola lettura · completa delle "+fT(v.t)+(v.live?", PF e condizioni aggiornati alle "+fT(v.live):""):"In attesa della scheda…"),
       h("button",{class:"btn ghost",textContent:"Aggiorna scheda",onclick:()=>{try{localStorage.setItem("dnd-vista-req",JSON.stringify({id:VISTA,t:Date.now()}))}catch(e){}say("Richiesta mandata al giocatore…")}}))};
   const lock=()=>{document.querySelectorAll("#app input,#app textarea,#app select").forEach(e=>{if(!e.disabled)e.disabled=true});
-    document.querySelectorAll("#app button").forEach(b=>{const t=b.textContent.trim();if(/^(‹ Eroi|Salva file|Tavolo|Al Tavolo|[−+][0-9]+|Danni|Cura|PF al massimo|Usa|Recupera|Scegli|Aggiungi|Elimina|Rimuovi|Togli|Equipaggia|\+)/.test(t)||/(Riposo|Sali di livello|Elimina|Rimuovi)/.test(t)||/^(Danni|Cura)/.test(b.getAttribute("aria-label")||""))b.hidden=true;if(b.getAttribute("aria-label")==="Ispirazione")b.disabled=true});
-    document.querySelectorAll("#bnav button").forEach(b=>{if(b.textContent.trim()==="Diario")b.hidden=true})};
-  new MutationObserver(lock).observe(document.getElementById("bnav"),{childList:true,subtree:true});
+    document.querySelectorAll("#app button").forEach(b=>{const t=b.textContent.trim();if(/^(‹ Eroi|Salva file|Tavolo|Al Tavolo|[−+][0-9]+|Danni|Cura|PF al massimo|Usa|Recupera|Scegli|Aggiungi|Elimina|Rimuovi|Togli|Equipaggia|\+)/.test(t)||/(Riposo|Sali di livello|Elimina|Rimuovi)/.test(t)||/^(Danni|Cura)/.test(b.getAttribute("aria-label")||""))b.hidden=true;if(b.getAttribute("aria-label")==="Ispirazione")b.disabled=true});};
   new MutationObserver(lock).observe(document.getElementById("app"),{childList:true,subtree:true});
   addEventListener("storage",e=>{if(e.key!=="dnd-vista-"+VISTA)return;const y=scrollY,tab=ctab,cb=combat;loadLocal();ctab=tab;combat=cb;render();scrollTo(0,y);drawBar();say("Scheda aggiornata")});
   drawBar();render();lock();
