@@ -99,6 +99,9 @@ main{padding-bottom:110px}
 .cbl{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--ink)}.cbl input{width:auto}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal[hidden]{display:none}
+.vista header,.vista #bk{display:none!important}
+#vbar{position:sticky;top:0;z-index:40;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--brass);padding:8px 12px;font-size:.9rem}
+#vbar b{color:var(--brass)}
 .tdot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--mute);margin-right:6px;vertical-align:middle}
 .tdot.on{background:#3fa66a;box-shadow:0 0 0 3px rgba(63,166,106,.25)}
 .tavcode{font:700 1.8rem/1.2 ui-monospace,monospace;letter-spacing:.2em;text-transform:uppercase;text-align:center;width:100%}
@@ -167,6 +170,7 @@ header{position:relative;padding-right:56px}
 <main id="app"></main>
 <nav id="bnav" hidden></nav>
 <script>
+const VISTA=new URLSearchParams(location.search).get("vista");if(VISTA)document.documentElement.classList.add("vista");
 const h=(t,p={},...k)=>{const e=document.createElement(t);for(const[a,v]of Object.entries(p)){if(a.startsWith("on"))e.addEventListener(a.slice(2),v);else if(a==="kids")e.append(...v);else if(a in e)e[a]=v;else e.setAttribute(a,v)}e.append(...k);return e};
 
 const ICONS={
@@ -231,8 +235,8 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const okUrl=u=>/^https?:\/\//i.test(u);
 let combat=false,curO=null,curAC=10,vitSync=()=>{},hpAct=()=>{},inspAct=()=>{},favDraw=()=>{},dlApi=null,ctab=0,act={},tab="pg",sel=null,data={pg:[],nt:[]},timers={},statusEl=null;
 
-function loadLocal(){for(const c of["pg","nt"]){try{data[c]=JSON.parse(localStorage.getItem("dnd-"+c)||"[]")}catch(e){data[c]=[]}}}
-function saveLocal(c){try{localStorage.setItem("dnd-"+c,JSON.stringify(data[c]));return true}catch(e){return false}}
+function loadLocal(){if(VISTA){let v=null;try{v=JSON.parse(localStorage.getItem("dnd-vista-"+VISTA)||"null")}catch(e){}data.pg=v&&v.o?[v.o]:[];data.nt=[];sel=v&&v.o?v.o.id:null;return}for(const c of["pg","nt"]){try{data[c]=JSON.parse(localStorage.getItem("dnd-"+c)||"[]")}catch(e){data[c]=[]}}}
+function saveLocal(c){if(VISTA)return true;try{localStorage.setItem("dnd-"+c,JSON.stringify(data[c]));return true}catch(e){return false}}
 function put(c,o){
   o.upd=Date.now();
   const i=data[c].findIndex(x=>x.id===o.id);
@@ -680,6 +684,7 @@ function home(){
 function render(){
   const app=document.getElementById("app"),nav=document.getElementById("bnav");
   const o=data.pg.find(c=>c.id===sel);
+  if(!o&&VISTA){sel=null;nav.hidden=true;app.replaceChildren(h("div",{class:"list"},h("h2",{},"Scheda in arrivo…"),h("p",{class:"status"},"Il Tavolo ha chiesto la scheda al giocatore: compare qui appena arriva. Il telefono del giocatore deve essere collegato al Tavolo.")));return}
   if(!o){sel=null;nav.hidden=true;app.replaceChildren(home());return}
   nav.hidden=false;
   nav.replaceChildren(...[["person","Eroe"],["book","Diario"],["spark","Abilità"],["pack","Zaino"]].map(([i,l],k)=>h("button",{"aria-current":ctab===k&&!combat,onclick:()=>{ctab=k;combat=false;render();scrollTo(0,0)}},h("span",{class:"ni"},ico(i)),l)));
@@ -820,10 +825,21 @@ function tavStart(){
   es.onmessage=ev=>{try{const e=JSON.parse(ev.data);if(e.event!=="message"||!e.message||TAV.seen.has(e.id))return;TAV.seen.add(e.id);
     const t2=tavGet();if(!t2)return;t2.last=e.id;tavSet(t2);
     const d=JSON.parse(e.message);if(!d||d.f!=="m")return;
-    if(d.t==="hello")setTimeout(()=>tavPush(true),200+Math.random()*1800);else if(d.t==="cmd")tavApply(d)}catch(err){}};
+    if(d.t==="hello")setTimeout(()=>tavPush(true),200+Math.random()*1800);else if(d.t==="cmd")tavApply(d);else if(d.t==="req"&&d.to===t2.pg)tavSheet()}catch(err){}};
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState!=="visible"||!tavGet())return;if(!TAV.es||TAV.es.readyState===2)tavStart();else tavPush(true)});
-function tavBtn(o){const t=tavGet(),mine=t&&t.pg===o.id;
+async function tavSheet(){const t=tavGet();if(!t||TAV.sheet)return;const o=data.pg.find(x=>x.id===t.pg);if(!o)return;TAV.sheet=true;
+  try{
+    const js=JSON.stringify(o,(k,v)=>k==="diary"||k==="imgs"?undefined:(typeof v==="string"&&v.startsWith("data:")?undefined:v));
+    let bytes=new TextEncoder().encode(js),z=false;
+    if(typeof CompressionStream!=="undefined"){try{bytes=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer());z=true}catch(e){}}
+    let bin="";for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));const b64=btoa(bin);
+    const P=3000,n=Math.ceil(b64.length/P),k=Math.random().toString(36).slice(2,8);
+    if(n>15){tavToast("La scheda è troppo grande da mandare al Master");return}
+    for(let i=0;i<n;i++){const part={t:"sh",id:o.id,k,i,n,z,d:b64.slice(i*P,(i+1)*P)};let ok=await tavPost(part);if(!ok){await new Promise(r=>setTimeout(r,10000));ok=await tavPost(part)}if(!ok){tavToast("Scheda non arrivata al Master: rete lenta");return}}
+    say("Il Master ha aperto la tua scheda (sola lettura, senza diario né immagini)");
+  }finally{TAV.sheet=false}}
+function tavBtn(o){if(VISTA)return"";const t=tavGet(),mine=t&&t.pg===o.id;
   return h("button",{class:"btn ghost",title:"Collega questa scheda al Tavolo del Master",onclick:()=>tavOpen(o)},h("span",{class:"tdot"+(mine&&TAV.ok?" on":"")}),mine?"Al Tavolo":"Tavolo")}
 function tavOpen(o){
   const t=tavGet(),mine=t&&t.pg===o.id,other=t&&!mine?data.pg.find(x=>x.id===t.pg):null;
@@ -848,7 +864,24 @@ function tavOpen(o){
   modal.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Tavolo del Master"},h("div",{class:"bar"},h("h2",{class:"grow"},"Tavolo del Master"),h("button",{class:"btn ghost",textContent:"Chiudi",onclick:close})),...body));
   modal.hidden=false;
 }
-tavStart();
+if(!VISTA)tavStart();
+/* ---- vista del Master: scheda ricevuta dal Tavolo, sola lettura ---- */
+if(VISTA){
+  tavStart=()=>{};tavPush=()=>{};
+  const bar=h("div",{id:"vbar"});document.body.prepend(bar);
+  const fT=t=>t?new Date(t).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}):"";
+  const drawBar=()=>{let v=null;try{v=JSON.parse(localStorage.getItem("dnd-vista-"+VISTA)||"null")}catch(e){}
+    const nm=v&&v.o?v.o.name||"Eroe":"";document.title=nm?"Scheda di "+nm:"Scheda in arrivo";
+    bar.replaceChildren(h("span",{style:"flex:1"},nm?h("b",{},"Scheda di "+nm):"",nm?" · sola lettura · completa delle "+fT(v.t)+(v.live?", PF e condizioni aggiornati alle "+fT(v.live):""):"In attesa della scheda…"),
+      h("button",{class:"btn ghost",textContent:"Aggiorna scheda",onclick:()=>{try{localStorage.setItem("dnd-vista-req",JSON.stringify({id:VISTA,t:Date.now()}))}catch(e){}say("Richiesta mandata al giocatore…")}}))};
+  const lock=()=>{document.querySelectorAll("#app input,#app textarea,#app select").forEach(e=>{if(!e.disabled)e.disabled=true});
+    document.querySelectorAll("#app button").forEach(b=>{const t=b.textContent.trim();if(/^(‹ Eroi|Salva file|Tavolo|Al Tavolo|[−+][0-9]+|Danni|Cura|PF al massimo|Usa|Recupera|Scegli|Aggiungi|Elimina|Rimuovi|Togli|Equipaggia|\+)/.test(t)||/(Riposo|Sali di livello|Elimina|Rimuovi)/.test(t)||/^(Danni|Cura)/.test(b.getAttribute("aria-label")||""))b.hidden=true;if(b.getAttribute("aria-label")==="Ispirazione")b.disabled=true});
+    document.querySelectorAll("#bnav button").forEach(b=>{if(b.textContent.trim()==="Diario")b.hidden=true})};
+  new MutationObserver(lock).observe(document.getElementById("bnav"),{childList:true,subtree:true});
+  new MutationObserver(lock).observe(document.getElementById("app"),{childList:true,subtree:true});
+  addEventListener("storage",e=>{if(e.key!=="dnd-vista-"+VISTA)return;const y=scrollY,tab=ctab,cb=combat;loadLocal();ctab=tab;combat=cb;render();scrollTo(0,y);drawBar();say("Scheda aggiornata")});
+  drawBar();render();lock();
+}
 </script>
 </body>
 </html>

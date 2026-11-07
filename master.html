@@ -1196,15 +1196,36 @@ function roomState(d){
   if(nuovo)toast(roomSeen[d.id].name+" è collegato al Tavolo"+(c?"":": aprilo da “Stanza” per metterlo in iniziativa"),3500);
   if(c){const was=c.hp;c.hp=Math.max(0,Math.round(+d.hpc||0));if(+d.hp>0)c.mx=+d.hp;if(+d.ac>0)c.ac=+d.ac;c.thp=Math.max(0,+d.hpt||0);c.insp=!!d.insp;c.conds=Array.isArray(d.conds)?d.conds.map(String).slice(0,12):[];c.lvl=+d.lvl||c.lvl;
     hpDead(c);if(was>0&&c.hp===0)toast(c.name+" è a 0 PF: fuori combattimento");roomRedraw()}
+  const sh=sheetGet(d.id);
+  if(sh&&sh.o){const o=sh.o,lvlCh=+d.lvl&&+o.lvl!==+d.lvl,old=o.conds||[];o.hp=+d.hp;o.hpc=+d.hpc;o.hpt=+d.hpt||0;o.insp=!!d.insp;if(+d.ac)o.acv=+d.ac;
+    o.conds=old.filter(x=>!x.t&&x.b).concat((d.conds||[]).map(n=>old.find(x=>x.t===n)||{t:n,k:"Condizione",b:""}));sheetPut(d.id,{t:sh.t,o,live:Date.now()});if(lvlCh)roomPost({t:"req",to:d.id},true)}
   if(roomPanel)roomPanel();
 }
+/* ---------- scheda completa del giocatore (sola lettura, si apre nel Diario) ---------- */
+const sheetBuf={};
+const sheetGet=id=>{try{return JSON.parse(localStorage.getItem("dnd-vista-"+id)||"null")}catch(e){return null}};
+const sheetPut=(id,v)=>{try{localStorage.setItem("dnd-vista-"+id,JSON.stringify(v))}catch(e){toast("Scheda troppo grande per questo browser",3000)}};
+async function sheetDecode(b64,z){const bin=Uint8Array.from(atob(b64),ch=>ch.charCodeAt(0));if(!z)return new TextDecoder().decode(bin);return await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text()}
+function sheetPart(d){if(typeof d.k!=="string"||!(d.n>0&&d.n<=15)||!(d.i>=0&&d.i<d.n))return;
+  const b=sheetBuf[d.k]||(sheetBuf[d.k]={n:d.n,p:new Array(d.n),got:0,z:!!d.z,id:d.id});if(b.p[d.i]==null){b.p[d.i]=String(d.d||"");b.got++}if(b.got<b.n)return;delete sheetBuf[d.k];
+  sheetDecode(b.p.join(""),b.z).then(txt=>{const o=JSON.parse(txt);if(!o||o.id!==b.id)throw 0;sheetPut(b.id,{t:Date.now(),o});toast("Scheda di "+(o.name||"eroe")+" aggiornata",2000)}).catch(()=>toast("La scheda è arrivata incompleta: premi di nuovo “Scheda”",3500))}
+async function diarioUrl(){let u=localStorage.getItem("tavolo-diario-url");if(u)return u;
+  for(const c of["index.html","../Diario-DnD/index.html","/Diario-DnD/index.html"]){try{const r=await fetch(c,{cache:"no-store"});if(r.ok&&(await r.text()).includes("dnd-vista")){localStorage.setItem("tavolo-diario-url",c);return c}}catch(e){}}return null}
+function openSheet(c){const id=c.lid;if(!id)return;const on=!!roomSeen[id],have=sheetGet(id);
+  if(!on&&!have){toast(c.name+" non è collegato al Tavolo e non ho ancora la sua scheda",3500);return}
+  const w=window.open("","scheda-"+id);
+  diarioUrl().then(u=>{if(!u){if(w)w.close();toast("Non trovo il Diario (index.html) accanto al Tavolo su GitHub",4500);return}
+    const full=new URL(u,location.href);full.searchParams.set("vista",id);if(w)w.location.href=full.href;else toast("Il browser ha bloccato la finestra: consenti i popup per questo sito",4500)});
+  if(on)roomPost({t:"req",to:id},true);else toast("Giocatore non collegato: apro l’ultima scheda ricevuta",3000)}
+window.openSheet=openSheet;
+addEventListener("storage",e=>{if(e.key!=="dnd-vista-req"||!e.newValue)return;try{const r=JSON.parse(e.newValue);if(r.id&&roomSeen[r.id])roomPost({t:"req",to:r.id},true);else toast("Quel giocatore non è collegato ora",2500)}catch(err){}});
 function startRoom(){
   if(roomES){roomES.close();roomES=null}roomOK=false;clearTimeout(roomRetry);const code=roomGet();if(!code||typeof EventSource==="undefined"){if(roomPanel)roomPanel();return}
   try{roomES=new EventSource(ntfyBase()+"/"+roomTopic(code)+"/sse")}catch(e){return}
   roomES.onopen=()=>{roomOK=true;if(roomPanel)roomPanel();roomPost({t:"hello"},true)};
   roomES.onerror=()=>{roomOK=false;if(roomPanel)roomPanel();if(roomES&&roomES.readyState===2){roomES=null;roomRetry=setTimeout(startRoom,6000)}};
   roomES.onmessage=ev=>{try{const e=JSON.parse(ev.data);if(e.event!=="message"||!e.message)return;const d=JSON.parse(e.message);if(!d||d.f!=="p"||!d.id)return;
-    if(d.t==="st")roomState(d);else if(d.t==="bye"){const n=(roomSeen[d.id]||{}).name;delete roomSeen[d.id];if(n)toast(n+" ha lasciato il Tavolo",2500);roomRedraw();if(roomPanel)roomPanel()}}catch(err){}};
+    if(d.t==="st")roomState(d);else if(d.t==="sh")sheetPart(d);else if(d.t==="bye"){const n=(roomSeen[d.id]||{}).name;delete roomSeen[d.id];if(n)toast(n+" ha lasciato il Tavolo",2500);roomRedraw();if(roomPanel)roomPanel()}}catch(err){}};
 }
 function tavRow(c){
   const on=!!roomSeen[c.lid];
@@ -1212,7 +1233,8 @@ function tavRow(c){
   const chips=(c.conds||[]).map(n=>h("span",{class:"cd"},n,h("button",{type:"button","aria-label":"Togli "+n+" a "+c.name,title:"Togli dalla scheda del giocatore",onclick:()=>{c.conds=(c.conds||[]).filter(x=>x!==n);tavCmd(c,{op:"cdel",n});saveIni();drawIni()}},"×")));
   const sel=h("select",{"aria-label":"Aggiungi una condizione a "+c.name},h("option",{value:"",textContent:"+ Condizione…"}),...TAV_COND.filter(n=>!(c.conds||[]).includes(n)).map(n=>h("option",{value:n,textContent:n})));
   sel.addEventListener("change",()=>{const n=sel.value;if(!n)return;c.conds=(c.conds||[]).concat(n);tavCmd(c,{op:"cadd",n});saveIni();drawIni()});
-  return h("div",{class:"lk"},h("span",{class:"dot"+(on?" on":""),title:on?"Scheda collegata in tempo reale":"Scheda non collegata ora"}),c.thp?h("span",{},"+"+c.thp+" PF temp"):"",ins,...chips,sel);
+  const shb=btn("book","Scheda",()=>openSheet(c),{class:"btn ghost",title:"Apri la scheda completa di "+c.name+" (sola lettura)"});
+  return h("div",{class:"lk"},h("span",{class:"dot"+(on?" on":""),title:on?"Scheda collegata in tempo reale":"Scheda non collegata ora"}),shb,c.thp?h("span",{},"+"+c.thp+" PF temp"):"",ins,...chips,sel);
 }
 function openRoom(){
   const m=$("#modal");m.hidden=false;m.dataset.k="room";
