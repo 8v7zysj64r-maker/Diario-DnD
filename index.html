@@ -96,6 +96,7 @@ main{padding-bottom:110px}
 .rbar{height:12px;border-radius:6px;background:var(--line);overflow:hidden}.rbar i{display:block;height:100%;background:var(--brass)}
 .fbtn{background:none;border:0;border-bottom:1px dashed var(--brass);padding:0;color:var(--ink);font:inherit;cursor:pointer}
 .chip.fbtn{border:1px solid var(--line);padding:3px 12px;border-radius:999px}
+.qbox{display:grid;gap:3px;justify-items:center}.qrow{display:flex;gap:4px;align-items:center}.qrow input{width:4.2em;text-align:center}.qrow .btn{padding:4px 8px;min-width:0}
 .cbl{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--ink)}.cbl input{width:auto}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal[hidden]{display:none}
@@ -330,7 +331,7 @@ async function buildPdf(o,d){
   if(!d.spBox.hidden){add("Incantesimi e slot",13,true);add(join(d.spc),10);add("Slot: "+(d.cur().rows.map(([lv,n])=>"livello "+lv+": "+n).join(", ")||"nessuno"),10,false,3)}
   add("Privilegi di classe"+(o.arch?" - "+o.arch:""),13,true);for(const x of d.featEl.querySelectorAll(".feat"))add(x.children[0].textContent+": "+x.children[1].textContent,10,false,0.5);y+=2;
   add("Attacchi",13,true);for(const x of d.atkEl.children)add("- "+x.textContent,10,false,0.5);y+=2;
-  const eqn=Object.values(o.eq||{}).filter(x=>typeof x==="string"&&x);if(eqn.length)add("Equipaggiato: "+eqn.join(", "),10,false,3);
+  o.eq=o.eq||{};const eqn=[o.eq.armor,o.eq.shield,eqLabel(o,"w1"),eqLabel(o,"w2")].filter(Boolean);if(eqn.length)add("Equipaggiato: "+eqn.join(", "),10,false,3);
   const fsn=(o.fs||[]).filter(Boolean);if(fsn.length)add("Stile di combattimento: "+fsn.join(", "),10,false,3);
   const items=(o.inv||[]).filter(i=>i.n);
   add("Inventario e carico",13,true);
@@ -354,6 +355,15 @@ importInp.addEventListener("change",async()=>{
   catch(e){alert("File non valido: scegli un file salvato con “Salva file”.")}
 });
 document.body.append(importInp);
+/* armi da lancio e armi con munizioni: quantità nello slot (Manuale cap. 5, proprietà Lancio e Munizioni) */
+const AMMO=[["Arco","Frecce (20)","frecce",20],["Balestra","Quadrelli da balestra (20)","quadrelli",20],["Fionda","Proiettili da fionda (20)","proiettili",20],["Cerbottana","Aghi da cerbottana (50)","aghi",50]];
+const wThrow=n=>{const W=WPN[n];return!!(W&&W.p&&/Lancio/.test(W.p)&&!/Munizioni/.test(W.p))};
+const wAmmo=n=>{const W=WPN[n];if(!W||!W.p||!/Munizioni/.test(W.p))return null;const a=AMMO.find(x=>n.startsWith(x[0]));return a?{item:a[1],nm:a[2],w:(ITEMS[a[1]]||0)/a[3]}:null};
+const eqQty=(o,k)=>{const v=o.eq["q"+k];return v===undefined||v===""?1:Math.max(0,Math.round(+v||0))};
+const eqAmmo=(o,k)=>Math.max(0,Math.round(+o.eq["a"+k]||0));
+const eqWeight=o=>{const e=o.eq||{};let t=(ITEMS[e.armor]||0)+(ITEMS[e.shield]||0);
+  for(const k of["w1","w2"]){const n=e[k];if(!n)continue;t+=(ITEMS[n]||0)*(wThrow(n)?eqQty(o,k):1);const a=wAmmo(n);if(a)t+=a.w*eqAmmo(o,k)}return t};
+const eqLabel=(o,k)=>{const n=o.eq[k];if(!n)return"";if(wThrow(n)){const q=eqQty(o,k);return q===1?n:n+" ×"+q}const a=wAmmo(n);return a?n+" ("+eqAmmo(o,k)+" "+a.nm+")":n};
 function renderChar(o){
   o.sub=o.sub||"";o.he=o.he||["",""];o.imgs=o.imgs||[];o.skills=o.skills||{};o.bg=o.bg||"";o.links=o.links||[];o.asi=o.asi||{};o.used=o.used||{};o.inv=o.inv||[];o.coins=+o.coins||0;o.eq=o.eq||{armor:"",shield:"",w1:"",w2:""};o.align=o.align||"";o.acb=+o.acb||0;o.arch=o.arch||"";o.fs=o.fs||["",""];o.res=o.res||{};o.diary=o.diary||{};if(o.arch==="Negromanzia")o.arch="Necromanzia";if(o.cls==="Ladro"&&o.arch==="Ladro")o.arch="Furfante";if(o.arch==="Negromanzia")o.arch="Necromanzia";
   const ui={},sk={},chips=h("div",{class:"chips"});
@@ -424,7 +434,7 @@ function renderChar(o){
   const invBox=h("div",{class:"list"}),meter=h("div",{class:"meter"}),verdict=h("div",{class:"verdict"}),lim=h("div",{class:"chips"}),rowsEl=h("div",{class:"list"});
   const dl=h("datalist",{id:"items"},...Object.keys(ITEMS).map(n=>h("option",{value:n})));
   const invCalc=T=>{
-    const f=T("FOR"),tot=o.inv.reduce((a,i)=>a+(+i.w||0)*(+i.q||0),0)+(+o.coins||0)/100+Object.values(o.eq).reduce((a,n)=>a+(ITEMS[n]||0),0);
+    const f=T("FOR"),tot=o.inv.reduce((a,i)=>a+(+i.w||0)*(+i.q||0),0)+(+o.coins||0)/100+eqWeight(o);
     const a=2.5*f,b=5*f,c=7.5*f,r=R[o.race]||{},v=((r.s||{})[o.sub]||{}).v||r.v;
     let st,col,dv=0;
     if(tot>c){st="Oltre la capacità di trasporto: non puoi portare altro peso.";col="#b2483c";dv=6}
@@ -454,7 +464,15 @@ function renderChar(o){
     sl.value=flat.includes(o.eq[key])?o.eq[key]:"";
     sl.addEventListener("change",()=>{o.eq[key]=sl.value;calc();later("pg",o)});
     const kids=[h("span",{class:"ico"},h("span",{class:"ring"},ico(icon))),h("small",{},label),sl];
-    if(key[0]==="w"){const cb=h("input",{type:"checkbox",checked:o.eq["p"+key]!==false});cb.addEventListener("change",()=>{o.eq["p"+key]=cb.checked;calc();later("pg",o)});kids.push(h("label",{class:"cbl"},cb,"Competente"))}
+    const qBox=h("div",{class:"qbox"});
+    if(key[0]==="w"){const cb=h("input",{type:"checkbox",checked:o.eq["p"+key]!==false});cb.addEventListener("change",()=>{o.eq["p"+key]=cb.checked;calc();later("pg",o)});kids.push(h("label",{class:"cbl"},cb,"Competente"),qBox);
+      const drawQ=()=>{const n=o.eq[key],a=wAmmo(n),th=wThrow(n);if(!th&&!a){qBox.replaceChildren();return}
+        const fk=(th?"q":"a")+key,get=()=>th?eqQty(o,key):eqAmmo(o,key),lab=th?"Quantità":"Munizioni ("+a.nm+")";
+        const inp=h("input",{type:"number",min:0,inputMode:"numeric",value:get(),"aria-label":lab+" – "+label});
+        const set=v=>{o.eq[fk]=Math.max(0,Math.round(+v||0));inp.value=o.eq[fk];calc();later("pg",o)};
+        inp.addEventListener("input",()=>{if(inp.value!=="")set(inp.value)});
+        qBox.replaceChildren(h("small",{},lab),h("div",{class:"qrow"},h("button",{class:"btn ghost",type:"button",textContent:"−1","aria-label":(th?"Lanciato":"Usata")+": togli 1",onclick:()=>set(get()-1)}),inp,h("button",{class:"btn ghost",type:"button",textContent:"+1","aria-label":(th?"Recuperato":"Recuperata")+": aggiungi 1",onclick:()=>set(get()+1)})))};
+      sl.addEventListener("change",drawQ);drawQ()}
     return h("div",{class:"slot"},...kids);
   };
   eqBox.append(slotSel("w1","Mano principale",wOpts,"sword"),h("div",{class:"hero"},ico("swords")),slotSel("shield","Scudo",["Scudo"],"shield"),slotSel("armor","Armatura",Object.keys(ARM),"armor"),slotSel("w2","Seconda arma",wOpts,"dagger"));
@@ -483,6 +501,7 @@ function renderChar(o){
       if((W.two||W.v)&&fl.includes("Combattere con Armi Possenti"))t+="; ripeti 1 e 2 sui dadi di danno a due mani";
       if(off&&dm===0&&m>0)t+="; seconda arma: senza modificatore";
       if(W.p)t+=" ["+W.p+"]";
+      {const k=pk.slice(1);if(wThrow(name))t+=" · "+eqQty(o,k)+" da lanciare";else{const am=wAmmo(name);if(am){const c=eqAmmo(o,k);t+=" · "+c+" "+am.nm+(c?"":" (finite!)")}}}
       rows.push(t);
     };
     if(w1)line(o.eq.w1,w1,false,"pw1");
