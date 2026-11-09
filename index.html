@@ -978,6 +978,7 @@ if(VISTA){
   drawBar();render();lock();
 }
 
+const DIARIO_VER="9 nov · ispirazioni";
 /* ===================== Account, sezione personale e campagne (Firebase) ===================== */
 var CLOUD={cfg:{apiKey:"AIzaSyA6lEC272cvlH1uenlFE7jyAVlrsFfCq70",authDomain:"diario-dnd.firebaseapp.com",projectId:"diario-dnd",storageBucket:"diario-dnd.firebasestorage.app",messagingSenderId:"436731541748",appId:"1:436731541748:web:c6a2c969dea1cb296546a1"},
   url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,ready:false,err:"",user:null,name:"",camps:[],campInfo:{},cur:"",cards:[],unsubs:[],campUnsubs:{},cardUnsub:null,memUnsub:null,statUnsub:null,stats:{},members:[],timers:{},lastCard:{},htab:"mine",first:true};
@@ -1188,8 +1189,8 @@ function cloudHead(){const on=cloudMode()!=="local";document.documentElement.cla
   const acct=h("div",{class:"acct"},h("span",{class:"grow"},"Ciao, ",h("b",{},CLOUD.name||"avventuriero")),
     h("button",{class:"btn ghost",textContent:"Esci",onclick:async()=>{cloudFlush();try{await CLOUD.fb.u.signOut(CLOUD.fb.auth)}catch(e){}}}));
   const tabs=h("div",{class:"htabs",role:"tablist"},...[["mine","I miei eroi"],["camp","Campagne"]].map(([k,l])=>h("button",{class:"btn ghost",role:"tab","aria-current":String(CLOUD.htab===k),textContent:l,onclick:()=>{CLOUD.htab=k;render()}})));
-  if(CLOUD.htab==="camp")return h("div",{class:"list"},acct,tabs,joinBanner(),...campaignView());
-  return h("div",{class:"list"},acct,tabs,joinBanner(),importBanner(),campPicker(),_home())}}
+  if(CLOUD.htab==="camp")return h("div",{class:"list"},acct,tabs,joinBanner(),...campaignView(),h("p",{class:"status",style:"text-align:center;opacity:.6"},"Versione del Diario: "+DIARIO_VER));
+  return h("div",{class:"list"},acct,tabs,joinBanner(),importBanner(),campPicker(),_home(),h("p",{class:"status",style:"text-align:center;opacity:.6"},"Versione del Diario: "+DIARIO_VER))}}
 if(!VISTA&&cloudMode()!=="local")render();
 cloudBoot();
 {const _r=render;render=function(){_r();document.documentElement.classList.toggle("insheet",!!sel||!!VISTA)}}
