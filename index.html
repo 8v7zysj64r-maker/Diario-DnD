@@ -100,7 +100,18 @@ main{padding-bottom:110px}
 .cbl{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--ink)}.cbl input{width:auto}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal[hidden]{display:none}
-.vista header,.vista #bk{display:none!important}
+.acct{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.9rem}.acct b{color:var(--brass)}.acct .grow{flex:1}
+.htabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.htabs button[aria-current="true"]{background:var(--brass);color:var(--panel);border-color:var(--brass)}
+.login label{display:grid;gap:4px}.login input{font-size:1.05rem}
+.ccards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.ccard{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:start;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--ink);font:inherit}
+.ccard.own{border-color:var(--brass)}button.ccard{cursor:pointer}
+.ccard .cimg{width:64px;height:64px;border-radius:50%;object-fit:cover;background:var(--line);border:2px solid var(--brass)}
+.ccard .ci{display:grid;gap:3px;min-width:0}.ccard small{color:var(--mute)}
+.hpb{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.hpb i{display:block;height:100%}
+.cchips{display:flex;gap:4px;flex-wrap:wrap}.cchips span{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.owner{font-size:.85rem;color:var(--mute);margin:8px 0 0}
+.vista header,.vista #bk,.cloud #bk{display:none!important}
 #vbar{position:sticky;top:0;z-index:40;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--brass);padding:8px 12px;font-size:.9rem}
 #vbar b{color:var(--brass)}
 .tdot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--mute);margin-right:6px;vertical-align:middle}
@@ -171,7 +182,7 @@ header{position:relative;padding-right:56px}
 <main id="app"></main>
 <nav id="bnav" hidden></nav>
 <script>
-const VISTA=new URLSearchParams(location.search).get("vista");if(VISTA)document.documentElement.classList.add("vista");
+const VISTA=new URLSearchParams(location.search).get("vista"),VISTA_DA=new URLSearchParams(location.search).get("da");if(VISTA)document.documentElement.classList.add("vista");
 const h=(t,p={},...k)=>{const e=document.createElement(t);for(const[a,v]of Object.entries(p)){if(a.startsWith("on"))e.addEventListener(a.slice(2),v);else if(a==="kids")e.append(...v);else if(a in e)e[a]=v;else e.setAttribute(a,v)}e.append(...k);return e};
 
 const ICONS={
@@ -236,8 +247,9 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const okUrl=u=>/^https?:\/\//i.test(u);
 let combat=false,curO=null,curAC=10,vitSync=()=>{},hpAct=()=>{},inspAct=()=>{},favDraw=()=>{},dlApi=null,ctab=0,act={},tab="pg",sel=null,data={pg:[],nt:[]},timers={},statusEl=null;
 
-function loadLocal(){if(VISTA){let v=null;try{v=JSON.parse(localStorage.getItem("dnd-vista-"+VISTA)||"null")}catch(e){}data.pg=v&&v.o?[v.o]:[];data.nt=[];sel=v&&v.o?v.o.id:null;return}for(const c of["pg","nt"]){try{data[c]=JSON.parse(localStorage.getItem("dnd-"+c)||"[]")}catch(e){data[c]=[]}}}
-function saveLocal(c){if(VISTA)return true;try{localStorage.setItem("dnd-"+c,JSON.stringify(data[c]));return true}catch(e){return false}}
+function loadLocal(){if(VISTA){let v=null;try{v=JSON.parse(localStorage.getItem("dnd-vista-"+VISTA)||"null")}catch(e){}data.pg=v&&v.o?[v.o]:[];data.nt=[];sel=v&&v.o?v.o.id:null;return}for(const c of["pg","nt"]){try{data[c]=JSON.parse(localStorage.getItem(lsKey(c))||"[]")}catch(e){data[c]=[]}}}
+function lsKey(c){return c==="pg"&&typeof CLOUD!=="undefined"&&CLOUD&&CLOUD.user?"dnd-u-"+CLOUD.user.uid+"-pg":"dnd-"+c}
+function saveLocal(c){if(VISTA)return true;try{localStorage.setItem(lsKey(c),JSON.stringify(data[c]));return true}catch(e){return false}}
 function put(c,o){
   o.upd=Date.now();
   const i=data[c].findIndex(x=>x.id===o.id);
@@ -904,7 +916,7 @@ function tavOpen(o){
     const inp=h("input",{class:"tavcode",placeholder:"ABC-123",maxlength:8,autocomplete:"off",autocapitalize:"characters",spellcheck:false,"aria-label":"Codice della stanza"});
     const err=h("p",{class:"status"});
     const go=()=>{const c=tavNorm(inp.value);if(c.length!==6){err.textContent="Il codice ha 6 caratteri: te lo detta il Master (es. K7P-M2X).";inp.focus();return}
-      if(t&&t.code!==c)tavPost({t:"bye",id:t.pg});tavSet({code:c,pg:o.id,last:""});TAV.sent="";TAV.seen.clear();tavStart();close();render();tavToast("Collegamento al Tavolo in corso…")};
+      if(t&&t.code!==c)tavPost({t:"bye",id:t.pg});tavSet({code:c,pg:o.id,last:""});if(!o.tavLinked){o.tavLinked=true;put("pg",o)}TAV.sent="";TAV.seen.clear();tavStart();close();render();tavToast("Collegamento al Tavolo in corso…")};
     inp.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
     body=[h("p",{},"Il Master apre la stanza dal Tavolo e ti detta un codice. Inseriscilo qui: "+(o.name||"questo eroe")+" comparirà in tempo reale nella sua lista iniziative."),
       other?h("p",{class:"status"},"Ora è collegato "+(other.name||"un altro eroe")+": collegando questa scheda, l’altra si scollega."):"",
@@ -922,14 +934,149 @@ if(VISTA){
   const fT=t=>t?new Date(t).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}):"";
   const drawBar=()=>{let v=null;try{v=JSON.parse(localStorage.getItem("dnd-vista-"+VISTA)||"null")}catch(e){}
     const nm=v&&v.o?v.o.name||"Eroe":"";document.title=nm?"Scheda di "+nm:"Scheda in arrivo";
-    bar.replaceChildren(h("span",{style:"flex:1"},nm?h("b",{},"Scheda di "+nm):"",nm?" · sola lettura · completa delle "+fT(v.t)+(v.live?", PF e condizioni aggiornati alle "+fT(v.live):""):"In attesa della scheda…"),
-      h("button",{class:"btn ghost",textContent:"Aggiorna scheda",onclick:()=>{try{localStorage.setItem("dnd-vista-req",JSON.stringify({id:VISTA,t:Date.now()}))}catch(e){}say("Richiesta mandata al giocatore…")}}))};
+    bar.replaceChildren(h("span",{style:"flex:1"},nm?h("b",{},"Scheda di "+nm):"",nm?" · sola lettura · "+(VISTA_DA?(v.who?"di "+v.who+" · ":"")+"aggiornata in tempo reale":"completa delle "+fT(v.t))+(v.live&&!VISTA_DA?", PF e condizioni aggiornati alle "+fT(v.live):""):"In attesa della scheda…"),
+      VISTA_DA?"":h("button",{class:"btn ghost",textContent:"Aggiorna scheda",onclick:()=>{try{localStorage.setItem("dnd-vista-req",JSON.stringify({id:VISTA,t:Date.now()}))}catch(e){}say("Richiesta mandata al giocatore…")}}))};
   const lock=()=>{document.querySelectorAll("#app input,#app textarea,#app select").forEach(e=>{if(!e.disabled)e.disabled=true});
     document.querySelectorAll("#app button").forEach(b=>{const t=b.textContent.trim();if(/^(‹ Eroi|Salva file|Tavolo|Al Tavolo|[−+][0-9]+|Danni|Cura|PF al massimo|Usa|Recupera|Scegli|Aggiungi|Elimina|Rimuovi|Togli|Equipaggia|\+)/.test(t)||/(Riposo|Sali di livello|Elimina|Rimuovi)/.test(t)||/^(Danni|Cura)/.test(b.getAttribute("aria-label")||""))b.hidden=true;if(b.getAttribute("aria-label")==="Ispirazione")b.disabled=true});};
   new MutationObserver(lock).observe(document.getElementById("app"),{childList:true,subtree:true});
-  addEventListener("storage",e=>{if(e.key!=="dnd-vista-"+VISTA)return;const y=scrollY,tab=ctab,cb=combat;loadLocal();ctab=tab;combat=cb;render();scrollTo(0,y);drawBar();say("Scheda aggiornata")});
+  window.vistaReload=()=>{const y=scrollY,tab=ctab,cb=combat;loadLocal();ctab=tab;combat=cb;render();scrollTo(0,y);drawBar()};
+  window.vistaBar=drawBar;
+  addEventListener("storage",e=>{if(e.key!=="dnd-vista-"+VISTA)return;vistaReload();say("Scheda aggiornata")});
   drawBar();render();lock();
 }
+
+/* ===================== Account e pagina di campagna (Firebase) ===================== */
+var CLOUD={cfg:{apiKey:"AIzaSyA6lEC272cvlH1uenlFE7jyAVlrsFfCq70",authDomain:"diario-dnd.firebaseapp.com",projectId:"diario-dnd",storageBucket:"diario-dnd.firebasestorage.app",messagingSenderId:"436731541748",appId:"1:436731541748:web:c6a2c969dea1cb296546a1"},
+  url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,ready:false,err:"",user:null,name:"",roles:null,cards:[],unsubs:[],timers:{},lastCard:{},htab:"mine",first:true};
+const cloudMode=()=>{try{return localStorage.getItem("dnd-mode")||""}catch(e){return""}};
+const cloudSetMode=v=>{try{v?localStorage.setItem("dnd-mode",v):localStorage.removeItem("dnd-mode")}catch(e){}};
+const cloudSlug=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const cloudErr=e=>{const c=(e&&e.code)||"";return /invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)?"Nome utente o password sbagliati.":/email-already-in-use/.test(c)?"Questo nome utente è già preso: scegline un altro.":/weak-password/.test(c)?"La password deve avere almeno 6 caratteri.":/too-many-requests/.test(c)?"Troppi tentativi: riprova tra qualche minuto.":/network|unavailable/.test(c)?"Nessuna connessione: riprova quando sei online.":/permission/.test(c)?"Permesso negato.":"Qualcosa non ha funzionato ("+(c||"errore")+")."};
+async function cloudLoad(){
+  if(CLOUD.fb)return CLOUD.fb;
+  const[a,u,f]=await Promise.all([import(CLOUD.url+"firebase-app.js"),import(CLOUD.url+"firebase-auth.js"),import(CLOUD.url+"firebase-firestore.js")]);
+  const app=a.initializeApp(CLOUD.cfg);let db;
+  try{db=f.initializeFirestore(app,{localCache:f.persistentLocalCache({tabManager:f.persistentMultipleTabManager()})})}catch(e){db=f.getFirestore(app)}
+  CLOUD.fb={u,f,auth:u.getAuth(app),db};return CLOUD.fb}
+/* immagini più leggere per il cloud (i documenti hanno un limite di 1 MB) */
+const shrinkCache=new Map();
+function shrinkImg(src,max,q){const k=src.length+":"+src.slice(-48)+":"+max+":"+q;if(shrinkCache.has(k))return shrinkCache.get(k);
+  const p=new Promise(res=>{const im=new Image();im.onload=()=>{const r=Math.min(1,max/Math.max(im.naturalWidth||1,im.naturalHeight||1)),c=document.createElement("canvas");c.width=Math.max(1,Math.round(im.naturalWidth*r));c.height=Math.max(1,Math.round(im.naturalHeight*r));c.getContext("2d").drawImage(im,0,0,c.width,c.height);try{res(c.toDataURL("image/jpeg",q))}catch(e){res(src)}};im.onerror=()=>res("");im.src=src});
+  shrinkCache.set(k,p);return p}
+function imgRefs(x,out=[]){if(Array.isArray(x))x.forEach((v,i)=>{if(typeof v==="string"&&v.startsWith("data:image"))out.push([x,i,v]);else if(v&&typeof v==="object")imgRefs(v,out)});else if(x&&typeof x==="object")for(const k in x){const v=x[k];if(typeof v==="string"&&v.startsWith("data:image"))out.push([x,k,v]);else if(v&&typeof v==="object")imgRefs(v,out)}return out}
+async function heroJSON(o){let js=JSON.stringify(o);if(js.length<900000)return js;
+  for(const[max,q]of[[1280,.8],[900,.72],[640,.65],[420,.6]]){const c=JSON.parse(JSON.stringify(o)),refs=imgRefs(c);for(const[p,k,v]of refs)p[k]=await shrinkImg(v,max,q);js=JSON.stringify(c);if(js.length<900000)return js}
+  const c=JSON.parse(js);const refs=imgRefs(c);for(let i=refs.length-1;i>0&&JSON.stringify(c).length>=900000;i--){const[p,k]=refs[i];p[k]=""}
+  say("Alcune immagini sono troppo pesanti per il cloud: restano solo su questo telefono");return JSON.stringify(c)}
+async function heroCard(o){
+  let img="";const s0=o.imgs&&o.imgs[0]&&o.imgs[0].d;if(s0)img=await shrinkImg(s0,160,.72);
+  return{owner:CLOUD.user.uid,ownerName:CLOUD.name||"",name:String(o.name||"Senza nome").slice(0,80),race:o.race||"",cls:o.cls||"",arch:o.arch||"",lvl:+o.lvl||1,hp:+o.hp||0,hpc:+(o.hpc??o.hp)||0,hpt:+o.hpt||0,insp:!!o.insp,
+    conds:(o.conds||[]).filter(c=>c&&c.t).map(c=>String(c.t).slice(0,40)).slice(0,12),img,linked:!!o.tavLinked}}
+function cloudQueue(o){if(!CLOUD.user||!CLOUD.fb)return;clearTimeout(CLOUD.timers[o.id]);CLOUD.timers[o.id]=setTimeout(()=>{delete CLOUD.timers[o.id];cloudSave(o)},1500)}
+async function cloudSave(o){const{f,db}=CLOUD.fb||{};if(!f||!CLOUD.user)return;const uid=CLOUD.user.uid;
+  try{const js=await heroJSON(o);if(!CLOUD.user||CLOUD.user.uid!==uid)return;
+    await f.setDoc(f.doc(db,"users",uid,"heroes",o.id),{d:js,upd:+o.upd||Date.now(),linked:!!o.tavLinked});
+    const card=await heroCard(o),cj=JSON.stringify(card);
+    if(CLOUD.lastCard[o.id]!==cj){CLOUD.lastCard[o.id]=cj;await f.setDoc(f.doc(db,"campaign","main","cards",o.id),Object.assign(card,{upd:Date.now()}))}
+    cloudKnown(o.id,true)}
+  catch(e){say("Non salvato online: "+cloudErr(e)+" Resta salvato su questo telefono.")}}
+function cloudFlush(){for(const id in CLOUD.timers){clearTimeout(CLOUD.timers[id]);delete CLOUD.timers[id];const o=data.pg.find(x=>x.id===id);if(o)cloudSave(o)}}
+addEventListener("pagehide",cloudFlush);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")cloudFlush()});
+function cloudKnown(id,add){if(!CLOUD.user)return false;const k="dnd-u-"+CLOUD.user.uid+"-known";let a=[];try{a=JSON.parse(localStorage.getItem(k)||"[]")}catch(e){}
+  if(add===undefined)return a.includes(id);if(add&&!a.includes(id))a.push(id);if(add===false)a=a.filter(x=>x!==id);try{localStorage.setItem(k,JSON.stringify(a))}catch(e){}return true}
+async function cloudDelete(id){const{f,db}=CLOUD.fb||{};if(!f||!CLOUD.user)return;clearTimeout(CLOUD.timers[id]);delete CLOUD.timers[id];
+  try{await f.deleteDoc(f.doc(db,"users",CLOUD.user.uid,"heroes",id));await f.deleteDoc(f.doc(db,"campaign","main","cards",id));cloudKnown(id,false)}catch(e){say("Eliminazione online non riuscita: "+cloudErr(e))}}
+{const _p=put;put=function(c,o){_p(c,o);if(c==="pg"&&CLOUD.user&&!VISTA)cloudQueue(o)}}
+{const _r=remove;remove=function(c,id){_r(c,id);if(c==="pg"&&CLOUD.user&&!VISTA)cloudDelete(id)}}
+function cloudRedraw(){if(VISTA)return;if(sel){return}const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&document.getElementById("app").contains(a))return;const y=scrollY;render();scrollTo(0,y)}
+function cloudStop(){CLOUD.unsubs.forEach(u=>{try{u()}catch(e){}});CLOUD.unsubs=[];CLOUD.cards=[];CLOUD.roles=null;CLOUD.lastCard={}}
+function cloudStart(){const{f,db}=CLOUD.fb,uid=CLOUD.user.uid;cloudStop();CLOUD.first=true;
+  CLOUD.unsubs.push(f.onSnapshot(f.collection(db,"users",uid,"heroes"),snap=>{
+    const remote=new Map();snap.forEach(d=>{const x=d.data();if(!x||!x.d)return;try{remote.set(d.id,{o:JSON.parse(x.d),upd:+x.upd||0,pend:d.metadata&&d.metadata.hasPendingWrites})}catch(e){}});
+    let changed=false;
+    for(const[id,r]of remote){if(r.pend)continue;const i=data.pg.findIndex(x=>x.id===id),l=data.pg[i];cloudKnown(id,true);
+      if(!l){data.pg.push(r.o);changed=true}
+      else if(r.upd>(+l.upd||0)&&!CLOUD.timers[id]&&!timers[id]){data.pg[i]=r.o;changed=true;if(sel===id&&typeof tavRefresh==="function")tavRefresh(r.o)}
+      else if((+l.upd||0)>r.upd&&!CLOUD.timers[id])cloudQueue(l)}
+    if(!snap.metadata.fromCache){for(const l of data.pg.slice()){if(remote.has(l.id))continue;if(cloudKnown(l.id)){data.pg=data.pg.filter(x=>x.id!==l.id);cloudKnown(l.id,false);changed=true;if(sel===l.id){sel=null;render()}}else cloudQueue(l)}}
+    if(changed){saveLocal("pg");cloudRedraw()}
+    if(CLOUD.first&&!snap.metadata.fromCache){CLOUD.first=false;for(const l of data.pg)if(!CLOUD.lastCard[l.id])cloudQueue(l)}
+  },e=>say("Archivio online non raggiungibile: "+cloudErr(e))));
+  CLOUD.unsubs.push(f.onSnapshot(f.collection(db,"campaign","main","cards"),snap=>{CLOUD.cards=[];snap.forEach(d=>CLOUD.cards.push(Object.assign({id:d.id},d.data())));if(CLOUD.htab==="camp")cloudRedraw()},e=>{}));
+  CLOUD.unsubs.push(f.onSnapshot(f.doc(db,"config","roles"),d=>{CLOUD.roles=d.exists()?d.data():{};cloudRedraw()},e=>{CLOUD.roles={}}));
+}
+async function cloudBoot(){
+  if(VISTA&&!VISTA_DA)return;
+  if(CLOUD.booted&&CLOUD.fb){CLOUD.ready=true;render();return}
+  if(!VISTA&&cloudMode()==="local"){CLOUD.ready=true;return}
+  try{await cloudLoad()}catch(e){CLOUD.ready=true;CLOUD.err="Non riesco a raggiungere l’archivio online (sei offline?).";render();return}
+  const{u,f,auth,db}=CLOUD.fb;CLOUD.booted=true;
+  u.onAuthStateChanged(auth,async user=>{
+    CLOUD.ready=true;
+    if(VISTA){if(!user){document.getElementById("app").replaceChildren(h("div",{class:"list"},h("h2",{},"Accedi prima come master"),h("p",{class:"status"},"Apri il Diario in un’altra scheda, entra con l’account del master e poi riapri questa scheda.")));return}
+      f.onSnapshot(f.doc(db,"users",VISTA_DA,"heroes",VISTA),d=>{if(!d.exists())return;try{const o=JSON.parse(d.data().d);const c=CLOUD.cards.find(x=>x.id===VISTA);localStorage.setItem("dnd-vista-"+VISTA,JSON.stringify({t:Date.now(),o,who:c?c.ownerName:""}));vistaReload()}catch(e){}},
+        e=>document.getElementById("app").replaceChildren(h("div",{class:"list"},h("h2",{},"Scheda non disponibile"),h("p",{class:"status"},"Il master può aprire solo le schede degli eroi collegati almeno una volta al Tavolo."))));
+      f.onSnapshot(f.collection(db,"campaign","main","cards"),snap=>{CLOUD.cards=[];snap.forEach(d=>CLOUD.cards.push(Object.assign({id:d.id},d.data())));if(window.vistaBar){try{const v=JSON.parse(localStorage.getItem("dnd-vista-"+VISTA)||"null");const c=CLOUD.cards.find(x=>x.id===VISTA);if(v&&c&&v.who!==c.ownerName){v.who=c.ownerName;localStorage.setItem("dnd-vista-"+VISTA,JSON.stringify(v));vistaBar()}}catch(e){}}},()=>{});
+      return}
+    if(!user){cloudStop();CLOUD.user=null;sel=null;loadLocal();render();return}
+    CLOUD.user=user;try{localStorage.setItem("dnd-last-uid",user.uid)}catch(e){}
+    CLOUD.name=(user.email||"").split("@")[0];
+    try{const p=await f.getDoc(f.doc(db,"users",user.uid));if(p.exists()&&p.data().name)CLOUD.name=p.data().name}catch(e){}
+    loadLocal();cloudStart();render();
+  });
+}
+async function cloudAuth(name,pw,isNew){const{u,f,auth,db}=await cloudLoad();const slug=cloudSlug(name);
+  if(slug.length<3)throw{code:"nome-corto"};const email=slug+"@diario-dnd.app";
+  if(isNew){const r=await u.createUserWithEmailAndPassword(auth,email,pw);CLOUD.name=String(name).trim().slice(0,40);await f.setDoc(f.doc(db,"users",r.user.uid),{name:CLOUD.name,since:Date.now()})}
+  else await u.signInWithEmailAndPassword(auth,email,pw)}
+function loginView(){
+  const u=h("input",{autocomplete:"username",autocapitalize:"words",placeholder:"es. Mario","aria-label":"Nome utente"}),p=h("input",{type:"password",autocomplete:"current-password",placeholder:"almeno 6 caratteri","aria-label":"Password"}),err=h("p",{class:"status",role:"alert",style:"color:var(--acc)"});
+  let busy=false;const go=async isNew=>{if(busy)return;err.textContent="";if(cloudSlug(u.value).length<3){err.textContent="Il nome utente deve avere almeno 3 lettere o numeri.";u.focus();return}if(p.value.length<6){err.textContent="La password deve avere almeno 6 caratteri.";p.focus();return}
+    busy=true;err.textContent=isNew?"Creo l’account…":"Entro…";try{await cloudAuth(u.value,p.value,isNew);cloudSetMode("")}catch(e){err.textContent=cloudErr(e)}busy=false};
+  p.addEventListener("keydown",e=>{if(e.key==="Enter")go(false)});
+  return h("div",{class:"list login"},h("img",{class:"cover",src:"copertina.jpg",alt:"",onerror:e=>{e.target.hidden=true}}),h("h2",{},"Entra nella campagna"),
+    h("p",{class:"status"},"Ognuno ha il suo account: dentro trovi i tuoi eroi, solo tuoi. Nella pagina Campagna vedi gli eroi di tutta la compagnia."),
+    CLOUD.err?h("p",{class:"status",style:"color:var(--acc)"},CLOUD.err):"",
+    h("label",{},"Nome utente",u),h("label",{},"Password",p),err,
+    h("div",{class:"bar"},h("button",{class:"btn",textContent:"Entra",onclick:()=>go(false)}),h("button",{class:"btn ghost",textContent:"Crea un account",onclick:()=>go(true)})),
+    h("p",{class:"status"},"Il nome utente è quello che vedono gli altri. Se dimentichi la password, chiedi a chi gestisce l’archivio di azzerarti l’account."),
+    h("button",{class:"btn ghost",textContent:"Continua senza account (solo su questo telefono)",onclick:()=>{cloudSetMode("local");CLOUD.ready=true;render()}}))}
+function hpColor(r){return r>.5?"#4f8a5b":r>.25?"#c08a2a":"#b2483c"}
+function openMasterSheet(c){const url=new URL(location.href);url.search="";url.searchParams.set("vista",c.id);url.searchParams.set("da",c.owner);window.open(url.href,"scheda-"+c.id)}
+function campaignView(){
+  const isM=CLOUD.roles&&CLOUD.roles.master===CLOUD.user.uid;
+  const cards=CLOUD.cards.slice().sort((a,b)=>(a.ownerName||"").localeCompare(b.ownerName||"")||(a.name||"").localeCompare(b.name||""));
+  if(!cards.length)return[h("div",{class:"empty"},"La compagnia è ancora vuota: gli eroi compaiono qui appena ognuno entra con il suo account.")];
+  const out=[];let last=null;const grid=()=>{const g=h("div",{class:"ccards"});out.push(g);return g};let g=null;
+  for(const c of cards){if(c.ownerName!==last){last=c.ownerName;out.push(h("p",{class:"owner"},"Eroi di "+(c.ownerName||"—")+(CLOUD.roles&&CLOUD.roles.master===c.owner?" (master)":"")));g=grid()}
+    const own=c.owner===CLOUD.user.uid,can=own||(isM&&c.linked),r=c.hp?Math.max(0,Math.min(1,c.hpc/c.hp)):0;
+    const body=[c.img?h("img",{class:"cimg",src:c.img,alt:""}):h("span",{class:"cimg"}),
+      h("div",{class:"ci"},h("b",{},(c.insp?"★ ":"")+(c.name||"Senza nome")),h("small",{},[c.race,c.cls,c.arch,"liv. "+(c.lvl||1)].filter(Boolean).join(" · ")),
+        h("small",{},"PF "+c.hpc+" / "+c.hp+(c.hpt?" (+"+c.hpt+" temp.)":"")+(c.hpc<=0&&c.hp?" · a terra":"")),h("div",{class:"hpb"},h("i",{style:"width:"+(r*100)+"%;background:"+hpColor(r)})),
+        c.conds&&c.conds.length?h("div",{class:"cchips"},...c.conds.map(t=>h("span",{},t))):"",
+        h("small",{},own?"Il tuo eroe · tocca per aprire":isM?(c.linked?"Collegato al Tavolo · tocca per la scheda":"Mai collegato al Tavolo: scheda privata"):(c.linked?"Collegato al Tavolo":"")))];
+    g.append(can?h("button",{class:"ccard"+(own?" own":""),onclick:()=>{if(own){sel=c.id;ctab=0;render();scrollTo(0,0)}else openMasterSheet(c)}},...body):h("div",{class:"ccard"},...body))}
+  return out}
+function importBanner(){if(!CLOUD.user)return"";const fk="dnd-imp-"+CLOUD.user.uid;let loc=[];try{if(localStorage.getItem(fk))return"";loc=JSON.parse(localStorage.getItem("dnd-pg")||"[]")}catch(e){}
+  const nuovi=loc.filter(x=>x&&x.id&&!data.pg.some(y=>y.id===x.id));if(!nuovi.length)return"";
+  return h("div",{class:"empty",style:"border-style:solid;border-color:var(--brass);color:var(--ink)"},h("b",{},"Su questo telefono hai "+nuovi.length+(nuovi.length===1?" eroe salvato":" eroi salvati")+" senza account: "),nuovi.map(x=>x.name||"Senza nome").join(", "),
+    h("div",{class:"bar",style:"margin-top:8px"},h("button",{class:"btn",textContent:"Caricali nel mio account",onclick:()=>{for(const x of nuovi)put("pg",x);try{localStorage.setItem(fk,"1")}catch(e){}render();say("Eroi caricati nel tuo account")}}),
+      h("button",{class:"btn ghost",textContent:"No, lasciali qui",onclick:()=>{try{localStorage.setItem(fk,"1")}catch(e){}render()}})))}
+function cloudHead(){const on=cloudMode()!=="local";document.documentElement.classList.toggle("cloud",on);const sb=document.querySelector("header .sub");if(sb){if(!sb.dataset.orig)sb.dataset.orig=sb.textContent;sb.textContent=on?"Cronache di eroi e di imprese, secondo il Manuale del giocatore 5e. I tuoi eroi sono salvati nel tuo account e restano anche su questo dispositivo.":sb.dataset.orig}}
+{const _home=home;home=function(){
+  if(VISTA)return _home();cloudHead();
+  if(cloudMode()==="local")return h("div",{class:"list"},_home(),h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"Entra con un account (pagina di campagna)",onclick:()=>{cloudSetMode("");CLOUD.ready=false;CLOUD.err="";render();cloudBoot()}})));
+  if(!CLOUD.ready)return h("div",{class:"list"},h("h2",{},"Apro il diario…"),h("p",{class:"status"},"Mi collego all’archivio della campagna."));
+  if(!CLOUD.user)return loginView();
+  const isM=CLOUD.roles&&CLOUD.roles.master===CLOUD.user.uid,noM=CLOUD.roles&&!CLOUD.roles.master;
+  const acct=h("div",{class:"acct"},h("span",{class:"grow"},"Ciao, ",h("b",{},CLOUD.name||"avventuriero"),isM?" · Master":""),
+    noM?confirmBtn("Sono il master",async()=>{try{await CLOUD.fb.f.setDoc(CLOUD.fb.f.doc(CLOUD.fb.db,"config","roles"),{master:CLOUD.user.uid,masterName:CLOUD.name});say("Ora sei il master della campagna")}catch(e){alert("Non riesco: "+cloudErr(e)+" Forse un master c’è già.")}}):"",
+    h("button",{class:"btn ghost",textContent:"Esci",onclick:async()=>{cloudFlush();try{await CLOUD.fb.u.signOut(CLOUD.fb.auth)}catch(e){}}}));
+  const tabs=h("div",{class:"htabs",role:"tablist"},...[["mine","I miei eroi"],["camp","Campagna"]].map(([k,l])=>h("button",{class:"btn ghost",role:"tab","aria-current":String(CLOUD.htab===k),textContent:l,onclick:()=>{CLOUD.htab=k;render()}})));
+  if(CLOUD.htab==="camp")return h("div",{class:"list"},acct,tabs,h("h2",{},"La compagnia"),...campaignView());
+  return h("div",{class:"list"},acct,tabs,importBanner(),_home())}}
+if(!VISTA&&cloudMode()!=="local")render();
+cloudBoot();
 </script>
 </body>
 </html>
