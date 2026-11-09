@@ -283,7 +283,7 @@ function say(t){if(statusEl)statusEl.textContent=t}
 function later(c,o){say("Scrivo nel diario…");clearTimeout(timers[o.id]);timers[o.id]=setTimeout(()=>put(c,o),500)}
 
 const COND=[["Accecato","Non vedi e fallisci automaticamente le prove di caratteristica che richiedono la vista. I tiri per colpire contro di te hanno vantaggio, i tuoi tiri per colpire hanno svantaggio.","Malus"],["Affascinato","Non puoi attaccare né bersagliare con capacità o effetti magici dannosi chi ti ha affascinato. Chi ti ha affascinato ha vantaggio a qualsiasi prova di caratteristica per interagire socialmente con te.","Condizione"],["Afferrato","La tua velocità diventa 0 e non puoi beneficiare di bonus alla velocità. Termina se chi ti ha afferrato è incapacitato o se un effetto ti allontana dalla sua portata.","Malus"],["Assordato","Non senti e fallisci automaticamente le prove di caratteristica che richiedono l’udito.","Malus"],["Avvelenato","Svantaggio ai tiri per colpire e alle prove di caratteristica.","Malus"],["Incapacitato","Non puoi effettuare azioni né reazioni.","Malus"],["Invisibile","Sei impossibile da vedere senza magia o sensi speciali (agli effetti del nascondersi sei pesantemente oscurato). I tiri per colpire contro di te hanno svantaggio, i tuoi tiri per colpire hanno vantaggio.","Bonus"],["Paralizzato","Sei incapacitato, non puoi muoverti né parlare. Fallisci automaticamente i tiri salvezza su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio. Ogni attacco che ti colpisce da entro 1,5 m è un colpo critico.","Malus"],["Pietrificato","Sei trasformato in sostanza solida inanimata (peso ×10), non invecchi. Sei incapacitato, non puoi muoverti né parlare e non percepisci l’esterno. I tiri per colpire contro di te hanno vantaggio. Fallisci automaticamente i TS su Forza e Destrezza. Hai resistenza a tutti i danni e sei immune a veleni e malattie (sospesi, non curati).","Malus"],["Privo di sensi","Sei incapacitato, non puoi muoverti né parlare e non percepisci l’esterno. Lasci cadere ciò che impugni e cadi prono. Fallisci automaticamente i TS su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio. Ogni attacco che ti colpisce da entro 1,5 m è un colpo critico.","Malus"],["Prono","Puoi solo strisciare (finché non ti rialzi). Svantaggio ai tuoi tiri per colpire. I tiri per colpire contro di te hanno vantaggio se l’attaccante è entro 1,5 m, altrimenti svantaggio.","Malus"],["Spaventato","Svantaggio alle prove di caratteristica e ai tiri per colpire finché la fonte della paura è in linea di vista. Non puoi avvicinarti volontariamente alla fonte della paura.","Malus"],["Stordito","Sei incapacitato, non puoi muoverti e parli solo a fatica. Fallisci automaticamente i TS su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio.","Malus"],["Trattenuto","La tua velocità diventa 0 e non hai bonus alla velocità. I tiri per colpire contro di te hanno vantaggio, i tuoi tiri per colpire hanno svantaggio. Svantaggio ai TS su Destrezza.","Malus"],["Indebolimento livello 1","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 2","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 3","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 4","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 5","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. (5) Velocità ridotta a 0. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 6","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. (5) Velocità ridotta a 0. (6) Morte. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"]];
-function newChar(){return{id:uid(),name:"Nuovo personaggio",player:"",race:"",sub:"",he:["",""],cls:"",bg:"",lvl:1,hp:10,ac:10,stats:{FOR:10,DES:10,COS:10,INT:10,SAG:10,CAR:10},skills:{},asi:{},used:{},inv:[],coins:0,money:{mr:0,ma:0,me:0,mo:0,mp:0},align:"",arch:"",fs:["",""],res:{},diary:{},spellUrl:"",acb:0,eq:{armor:"",shield:"",w1:"",w2:""},backstory:"",hpc:10,hpt:0,insp:false,conds:[],dnote:"",traits:"",notes:"",links:[],imgs:[]}}
+function newChar(){return{id:uid(),name:"Nuovo personaggio",player:"",race:"",sub:"",he:["",""],cls:"",bg:"",lvl:1,hp:10,ac:10,stats:{FOR:10,DES:10,COS:10,INT:10,SAG:10,CAR:10},skills:{},asi:{},used:{},inv:[],coins:0,money:{mr:0,ma:0,me:0,mo:0,mp:0},align:"",arch:"",fs:["",""],res:{},diary:{},spellUrl:"",acb:0,eq:{armor:"",shield:"",w1:"",w2:""},backstory:"",hpc:10,hpt:0,insp:false,insp2:false,conds:[],dnote:"",traits:"",notes:"",links:[],imgs:[]}}
 function newNote(){return{id:uid(),title:"Nuova sessione",body:"",date:new Date().toLocaleDateString("it-IT"),imgs:[]}}
 
 function confirmBtn(label,fn,cls="btn ghost danger"){
@@ -351,7 +351,7 @@ async function buildPdf(o,d){
   add(o.name||"Personaggio",20,true,2);
   add([o.sub||o.race,o.cls,"livello "+(o.lvl||1),o.bg].filter(Boolean).join(" - "),12,false,1);
   if(o.player)add("Giocatore: "+o.player,11);if(o.align)add("Allineamento: "+o.align,11);
-  add("Punti ferita "+(o.hpc??o.hp)+" / "+o.hp+(o.hpt?" (temporanei "+o.hpt+")":"")+(o.insp?" - Ispirazione disponibile":""),11,true,2);
+  add("Punti ferita "+(o.hpc??o.hp)+" / "+o.hp+(o.hpt?" (temporanei "+o.hpt+")":"")+(o.insp?" - Ispirazione base (vantaggio)":"")+(o.insp2?" - Ispirazione migliorata (ritira il dado)":""),11,true,2);
   add(join(d.chips),10,false,1);add(join(d.acEl),10,false,3);
   for(const m of o.imgs||[]){if(!m.d)continue;const w=60,hh=w*((m.h/m.w)||1);if(y+hh>284){doc.addPage();y=16}try{doc.addImage(m.d,"JPEG",15,y,w,hh);y+=hh+3}catch(e){}}
   add("Punteggi di caratteristica",13,true);
@@ -650,9 +650,10 @@ function renderChar(o){
   const[hpL,hpE]=hpField("PF attuali","hpc",()=>hpSync()),[tL,tE]=hpField("PF temporanei","hpt",()=>hpSync()),[mL,mE]=hpField("PF massimi","hp",()=>hpSync());
   const hpChange=n=>{if(n<0){let d=-n;const a=Math.min(o.hpt,d);o.hpt-=a;d-=a;o.hpc=Math.max(0,o.hpc-d)}else o.hpc=Math.min(o.hp,o.hpc+n);hpSync();later("pg",o)};
   const hpBtns=h("div",{class:"bar"},...[[-5,"Danni −5"],[-1,"Danni −1"],[1,"Cura +1"],[5,"Cura +5"]].map(([n,t])=>h("button",{class:"btn ghost",textContent:t,onclick:()=>hpChange(n)})),h("button",{class:"btn ghost",textContent:"PF al massimo",onclick:()=>{o.hpc=o.hp;hpSync();later("pg",o)}}));
-  const inspB=h("button",{class:"btn ghost",onclick:()=>{o.insp=!o.insp;inspDraw();later("pg",o)}});
-  const inspDraw=()=>{inspB.textContent=o.insp?"★ Ispirazione: disponibile":"☆ Ispirazione: non assegnata";inspB.setAttribute("aria-pressed",String(!!o.insp));vitSync()};
-  curO=o;o.fav=o.fav||{};inspDraw();hpSync();hpAct=hpChange;inspAct=()=>{o.insp=!o.insp;inspDraw();later("pg",o)};
+  const inspB=h("button",{class:"btn ghost",onclick:()=>{o.insp=!o.insp;inspDraw();later("pg",o)}}),inspB2=h("button",{class:"btn ghost",onclick:()=>{o.insp2=!o.insp2;inspDraw();later("pg",o)}});
+  const inspDraw=()=>{inspB.textContent=(o.insp?"★":"☆")+" Ispirazione base"+(o.insp?": disponibile":"");inspB.setAttribute("aria-pressed",String(!!o.insp));
+    inspB2.textContent=(o.insp2?"✦":"✧")+" Ispirazione migliorata"+(o.insp2?": disponibile":"");inspB2.setAttribute("aria-pressed",String(!!o.insp2));vitSync()};
+  curO=o;o.fav=o.fav||{};inspDraw();hpSync();hpAct=hpChange;inspAct=k=>{if(k===2)o.insp2=!o.insp2;else o.insp=!o.insp;inspDraw();later("pg",o)};
   const condEl=h("div",{class:"list"});
   const drawConds=()=>condEl.replaceChildren(...o.conds.map((c,i)=>{
     const t=h("input",{value:c.t||"",placeholder:"Nome (es. Avvelenato, Benedizione, Maledizione)","aria-label":"Nome"});
@@ -713,7 +714,7 @@ function renderChar(o){
     h("div",{class:"row"},bound("Nome",o,"name","pg"),bound("Giocatore",o,"player","pg"),sel_("Allineamento",AL,o.align,v=>{o.align=v;later("pg",o)})),
     raceBox,
     h("div",{class:"row"},sel_("Classe",Object.keys(C),o.cls,v=>{o.cls=v;o.arch="";o.fs=["",""];drawArch();drawFS();calc();later("pg",o)}),bgSel,archBox,bound("Livello (1–20)",o,"lvl","pg",{type:"number",after:calc})),
-    h("div",{class:"row"},hpL,tL,mL),hpTxt,hpBtns,h("div",{class:"row"},bound("Bonus alla CA (magia, altro)",o,"acb","pg",{type:"number",after:calc})),h("div",{class:"bar"},inspB,h("span",{class:"status"},"La assegna il master: tocca per segnarla o consumarla.")),
+    h("div",{class:"row"},hpL,tL,mL),hpTxt,hpBtns,h("div",{class:"row"},bound("Bonus alla CA (magia, altro)",o,"acb","pg",{type:"number",after:calc})),h("div",{class:"bar"},inspB,inspB2),h("p",{class:"status",style:"margin:0"},"Le assegna il master; tocca per segnarle o consumarle. Base: vantaggio a un tiro. Migliorata: ritiri il dado."),
     chips,acEl,newEl,
     h("h3",{},"Punteggi di caratteristica"),h("p",{class:"status"},"Scrivi i punteggi nel campo “Base”. Il campo “Aumenti di livello” serve solo ai livelli 4, 8, 12, 16 e 19 (guerriero anche 6 e 14, ladro anche 10): ogni volta hai 2 punti da aggiungere ai punteggi che scegli."),stats,
     h("h3",{},"Competenze nelle abilità"),skills,
@@ -779,9 +780,10 @@ function render(){
   nav.replaceChildren(...[["person","Eroe"],["book","Diario"],["spark","Abilità"],["pack","Zaino"]].map(([i,l],k)=>h("button",{"aria-current":ctab===k&&!combat,onclick:()=>{ctab=k;combat=false;render();scrollTo(0,0)}},h("span",{class:"ni"},ico(i)),l)));
   const panel=renderChar(o);
   const vh=h("span",{class:"big"}),va=h("span",{class:"big"}),vc=h("div",{class:"vc"});
-  const vi=h("button",{class:"btn ghost","aria-label":"Ispirazione",onclick:()=>inspAct()});
-  vitSync=()=>{vh.replaceChildren(ico("heart"),(o.hpc??o.hp)+" / "+o.hp+(o.hpt?" (+"+o.hpt+")":""));va.replaceChildren(ico("shield"),"CA "+curAC);vi.replaceChildren(ico("star"),o.insp?"Ispirazione":"");vi.style.color=o.insp?"var(--brass)":"";vi.querySelector("svg").style.fill=o.insp?"currentColor":"none";vi.setAttribute("aria-pressed",String(!!o.insp));vc.replaceChildren(...(o.conds||[]).filter(c=>c.t).map(c=>h("span",{class:"chip",textContent:c.t})))};
-  const vit=h("div",{class:"vit"},h("div",{class:"r"},vh,va,vi),h("div",{class:"r"},...[[-5,"−5"],[-1,"−1"],[1,"+1"],[5,"+5"]].map(([n,t])=>h("button",{class:"btn ghost","aria-label":(n<0?"Danni ":"Cura ")+Math.abs(n),textContent:t,onclick:()=>hpAct(n)}))),vc);
+  const vi=h("button",{class:"btn ghost","aria-label":"Ispirazione base (vantaggio)",title:"Ispirazione base: vantaggio a un tiro",onclick:()=>inspAct(1)}),vi2=h("button",{class:"btn ghost","aria-label":"Ispirazione migliorata (ritira il dado)",title:"Ispirazione migliorata: ritiri il dado",onclick:()=>inspAct(2)});
+  vitSync=()=>{vh.replaceChildren(ico("heart"),(o.hpc??o.hp)+" / "+o.hp+(o.hpt?" (+"+o.hpt+")":""));va.replaceChildren(ico("shield"),"CA "+curAC);vi.replaceChildren(ico("star"),o.insp?"Base":"");vi.style.color=o.insp?"var(--brass)":"";vi.querySelector("svg").style.fill=o.insp?"currentColor":"none";vi.setAttribute("aria-pressed",String(!!o.insp));
+    vi2.replaceChildren(ico("spark"),o.insp2?"Migliorata":"");vi2.style.color=o.insp2?"var(--brass)":"";vi2.setAttribute("aria-pressed",String(!!o.insp2));vc.replaceChildren(...(o.conds||[]).filter(c=>c.t).map(c=>h("span",{class:"chip",textContent:c.t})))};
+  const vit=h("div",{class:"vit"},h("div",{class:"r"},vh,va,vi,vi2),h("div",{class:"r"},...[[-5,"−5"],[-1,"−1"],[1,"+1"],[5,"+5"]].map(([n,t])=>h("button",{class:"btn ghost","aria-label":(n<0?"Danni ":"Cura ")+Math.abs(n),textContent:t,onclick:()=>hpAct(n)}))),vc);
   vitSync();
   const more=h("details",{class:"more"},h("summary",{class:"btn ghost","aria-label":"Altre azioni"},ico("more")),
     h("div",{class:"menu",role:"menu"},h("button",{class:"btn ghost",role:"menuitem",textContent:"Scarica PDF",onclick:()=>{more.open=false;act.pdf()}}),h("button",{class:"btn ghost",role:"menuitem",textContent:"Salva file",onclick:()=>{more.open=false;act.json()}})));
@@ -887,7 +889,7 @@ const tavTopic=c=>"dnd-tav-"+c.toLowerCase();
 const tavNorm=x=>String(x||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
 function tavDot(){document.querySelectorAll(".tdot").forEach(d=>d.classList.toggle("on",TAV.ok&&!!tavGet()))}
 function tavToast(t){if(!t)return;let e=document.getElementById("tavtoast");if(!e){e=h("div",{id:"tavtoast",role:"status"});document.body.append(e)}e.textContent=t;e.hidden=false;clearTimeout(tavToast.t);tavToast.t=setTimeout(()=>{e.hidden=true},3500);try{navigator.vibrate&&navigator.vibrate(60)}catch(err){}}
-function tavState(o){return{t:"st",id:o.id,name:String(o.name||"Eroe").slice(0,60),lvl:+o.lvl||1,cls:String(o.cls||"").slice(0,30),hp:+o.hp||0,hpc:+(o.hpc??o.hp)||0,hpt:+o.hpt||0,ac:+o.acv||0,insp:!!o.insp,conds:(o.conds||[]).filter(c=>c&&c.t).map(c=>String(c.t).slice(0,40)).slice(0,12)}}
+function tavState(o){return{t:"st",id:o.id,name:String(o.name||"Eroe").slice(0,60),lvl:+o.lvl||1,cls:String(o.cls||"").slice(0,30),hp:+o.hp||0,hpc:+(o.hpc??o.hp)||0,hpt:+o.hpt||0,ac:+o.acv||0,insp:!!o.insp,insp2:!!o.insp2,conds:(o.conds||[]).filter(c=>c&&c.t).map(c=>String(c.t).slice(0,40)).slice(0,12)}}
 async function tavPost(m){const t=tavGet();if(!t)return false;
   try{const r=await fetch(TAV.base+"/"+tavTopic(t.code),{method:"POST",body:JSON.stringify(Object.assign({f:"p"},m))});if(!r.ok)throw r.status;return true}catch(e){return false}}
 function tavPush(force){const t=tavGet();if(!t)return;clearTimeout(TAV.timer);
@@ -903,7 +905,8 @@ function tavApply(d){const t=tavGet();if(!t||d.to!==t.pg)return;const o=data.pg.
     if(n<0){let x=-n;const a=Math.min(o.hpt,x);o.hpt-=a;x-=a;o.hpc=Math.max(0,o.hpc-x);msg="Il Master: subisci "+(-n)+" danni"+(a?" ("+a+" assorbiti dai PF temporanei)":"")}
     else{o.hpc=Math.min(+o.hp||0,o.hpc+n);msg="Il Master: recuperi "+n+" PF"}}
   else if(d.op==="set"){o.hpc=Math.max(0,Math.min(+o.hp||0,Math.round(+d.v||0)));msg="Il Master ha corretto i tuoi PF: "+o.hpc}
-  else if(d.op==="insp"){if(!!o.insp===!!d.v)return;o.insp=!!d.v;msg=d.v?"★ Il Master ti assegna l’Ispirazione":"Il Master toglie l’Ispirazione"}
+  else if(d.op==="insp"){if(!!o.insp===!!d.v)return;o.insp=!!d.v;msg=d.v?"★ Il Master ti assegna l’Ispirazione base (vantaggio)":"Il Master toglie l’Ispirazione base"}
+  else if(d.op==="insp2"){if(!!o.insp2===!!d.v)return;o.insp2=!!d.v;msg=d.v?"✦ Il Master ti assegna l’Ispirazione migliorata (ritiri il dado)":"Il Master toglie l’Ispirazione migliorata"}
   else if(d.op==="cadd"){const n=String(d.n||"").slice(0,40);if(!n||o.conds.some(c=>c.t===n))return;const x=COND.find(c=>c[0]===n);o.conds.unshift({t:n,k:x?x[2]||"Condizione":"Condizione",b:x?x[1]:""});msg="Il Master aggiunge: "+n}
   else if(d.op==="cdel"){const L=o.conds.length;o.conds=o.conds.filter(c=>c.t!==d.n);if(o.conds.length===L)return;msg="Il Master toglie: "+d.n}
   else return;
@@ -967,7 +970,7 @@ if(VISTA){
     bar.replaceChildren(h("span",{style:"flex:1"},nm?h("b",{},"Scheda di "+nm):"",nm?" · sola lettura · "+(VISTA_DA?(v.who?"di "+v.who+" · ":"")+"aggiornata in tempo reale":"completa delle "+fT(v.t))+(v.live&&!VISTA_DA?", PF e condizioni aggiornati alle "+fT(v.live):""):"In attesa della scheda…"),
       VISTA_DA?"":h("button",{class:"btn ghost",textContent:"Aggiorna scheda",onclick:()=>{try{localStorage.setItem("dnd-vista-req",JSON.stringify({id:VISTA,t:Date.now()}))}catch(e){}say("Richiesta mandata al giocatore…")}}))};
   const lock=()=>{document.querySelectorAll("#app input,#app textarea,#app select").forEach(e=>{if(!e.disabled)e.disabled=true});
-    document.querySelectorAll("#app button").forEach(b=>{const t=b.textContent.trim();if(/^(‹ Eroi|Salva file|Tavolo|Al Tavolo|[−+][0-9]+|Danni|Cura|PF al massimo|Usa|Recupera|Scegli|Aggiungi|Elimina|Rimuovi|Togli|Equipaggia|\+)/.test(t)||/(Riposo|Sali di livello|Elimina|Rimuovi)/.test(t)||/^(Danni|Cura|Rimuovi)/.test(b.getAttribute("aria-label")||""))b.hidden=true;if(b.getAttribute("aria-label")==="Ispirazione")b.disabled=true});};
+    document.querySelectorAll("#app button").forEach(b=>{const t=b.textContent.trim();if(/^(‹ Eroi|Salva file|Tavolo|Al Tavolo|[−+][0-9]+|Danni|Cura|PF al massimo|Usa|Recupera|Scegli|Aggiungi|Elimina|Rimuovi|Togli|Equipaggia|\+)/.test(t)||/(Riposo|Sali di livello|Elimina|Rimuovi)/.test(t)||/^(Danni|Cura|Rimuovi)/.test(b.getAttribute("aria-label")||""))b.hidden=true;if(/^Ispirazione/.test(b.getAttribute("aria-label")||"")||/Ispirazione (base|migliorata)/.test(b.textContent))b.disabled=true});};
   new MutationObserver(lock).observe(document.getElementById("app"),{childList:true,subtree:true});
   window.vistaReload=()=>{const y=scrollY,tab=ctab,cb=combat;loadLocal();ctab=tab;combat=cb;render();scrollTo(0,y);drawBar()};
   window.vistaBar=drawBar;
@@ -977,7 +980,7 @@ if(VISTA){
 
 /* ===================== Account, sezione personale e campagne (Firebase) ===================== */
 var CLOUD={cfg:{apiKey:"AIzaSyA6lEC272cvlH1uenlFE7jyAVlrsFfCq70",authDomain:"diario-dnd.firebaseapp.com",projectId:"diario-dnd",storageBucket:"diario-dnd.firebasestorage.app",messagingSenderId:"436731541748",appId:"1:436731541748:web:c6a2c969dea1cb296546a1"},
-  url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,ready:false,err:"",user:null,name:"",camps:[],campInfo:{},cur:"",cards:[],unsubs:[],campUnsubs:{},cardUnsub:null,memUnsub:null,members:[],timers:{},lastCard:{},htab:"mine",first:true};
+  url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,ready:false,err:"",user:null,name:"",camps:[],campInfo:{},cur:"",cards:[],unsubs:[],campUnsubs:{},cardUnsub:null,memUnsub:null,statUnsub:null,stats:{},members:[],timers:{},lastCard:{},htab:"mine",first:true};
 const cloudMode=()=>{try{return localStorage.getItem("dnd-mode")||""}catch(e){return""}};
 const cloudSetMode=v=>{try{v?localStorage.setItem("dnd-mode",v):localStorage.removeItem("dnd-mode")}catch(e){}};
 const cloudSlug=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
@@ -1002,16 +1005,19 @@ async function heroJSON(o){let js=JSON.stringify(o);if(js.length<900000)return j
   say("Alcune immagini sono troppo pesanti per il cloud: restano solo su questo telefono");return JSON.stringify(c)}
 async function heroCard(o){
   let img="";const s0=o.ritr||(o.imgs&&o.imgs[0]&&o.imgs[0].d);if(s0)img=await shrinkImg(s0,160,.72);
-  return{owner:CLOUD.user.uid,ownerName:CLOUD.name||"",name:String(o.name||"Senza nome").slice(0,80),race:o.race||"",cls:o.cls||"",arch:o.arch||"",lvl:+o.lvl||1,hp:+o.hp||0,hpc:+(o.hpc??o.hp)||0,hpt:+o.hpt||0,insp:!!o.insp,
-    conds:(o.conds||[]).filter(c=>c&&c.t).map(c=>String(c.t).slice(0,40)).slice(0,12),img,ac:+o.acv||0,linked:!!o.tavLinked}}
+  return{owner:CLOUD.user.uid,ownerName:CLOUD.name||"",name:String(o.name||"Senza nome").slice(0,80),race:o.race||"",cls:o.cls||"",arch:o.arch||"",lvl:+o.lvl||1,img,linked:!!o.tavLinked}}
+/* dati riservati (PF, CA, condizioni, Ispirazione): li leggono solo il proprietario e il master */
+const heroStats=o=>({owner:CLOUD.user.uid,hp:+o.hp||0,hpc:+(o.hpc??o.hp)||0,hpt:+o.hpt||0,ac:+o.acv||0,insp:!!o.insp,insp2:!!o.insp2,conds:(o.conds||[]).filter(c=>c&&c.t).map(c=>String(c.t).slice(0,40)).slice(0,12)});
 const heroCamp=o=>o.camp&&CLOUD.camps.includes(o.camp)?o.camp:"";
 function cloudQueue(o){if(!CLOUD.user||!CLOUD.fb)return;clearTimeout(CLOUD.timers[o.id]);CLOUD.timers[o.id]=setTimeout(()=>{delete CLOUD.timers[o.id];cloudSave(o)},1500)}
 async function cloudSave(o){const{f,db}=CLOUD.fb||{};if(!f||!CLOUD.user)return;const uid=CLOUD.user.uid;
   try{const js=await heroJSON(o);if(!CLOUD.user||CLOUD.user.uid!==uid)return;const camp=heroCamp(o);
     await f.setDoc(f.doc(db,"users",uid,"heroes",o.id),{d:js,upd:+o.upd||Date.now(),linked:!!(o.tavLinked&&camp),camp:camp||null});
     const prev=CLOUD.lastCard[o.id];
-    if(prev&&prev.camp&&prev.camp!==camp){try{await f.deleteDoc(f.doc(db,"campaigns",prev.camp,"cards",o.id))}catch(e){}}
-    if(camp){const card=await heroCard(o),cj=JSON.stringify(card);if(!prev||prev.camp!==camp||prev.js!==cj){CLOUD.lastCard[o.id]={camp,js:cj};await f.setDoc(f.doc(db,"campaigns",camp,"cards",o.id),Object.assign(card,{upd:Date.now()}))}}
+    if(prev&&prev.camp&&prev.camp!==camp){try{await f.deleteDoc(f.doc(db,"campaigns",prev.camp,"cards",o.id));await f.deleteDoc(f.doc(db,"campaigns",prev.camp,"stats",o.id))}catch(e){}}
+    if(camp){const card=await heroCard(o),st=heroStats(o),cj=JSON.stringify(card),sj=JSON.stringify(st);
+      if(!prev||prev.camp!==camp||prev.js!==cj){CLOUD.lastCard[o.id]=Object.assign(CLOUD.lastCard[o.id]||{},{camp,js:cj});await f.setDoc(f.doc(db,"campaigns",camp,"cards",o.id),Object.assign(card,{upd:Date.now()}))}
+      const p2=CLOUD.lastCard[o.id];if(p2.sj!==sj){p2.sj=sj;await f.setDoc(f.doc(db,"campaigns",camp,"stats",o.id),Object.assign(st,{upd:Date.now()}))}}
     else CLOUD.lastCard[o.id]={camp:"",js:""};
     cloudKnown(o.id,true)}
   catch(e){say("Non salvato online: "+cloudErr(e)+" Resta salvato su questo telefono.")}}
@@ -1020,17 +1026,20 @@ addEventListener("pagehide",cloudFlush);document.addEventListener("visibilitycha
 function cloudKnown(id,add){if(!CLOUD.user)return false;const k="dnd-u-"+CLOUD.user.uid+"-known";let a=[];try{a=JSON.parse(localStorage.getItem(k)||"[]")}catch(e){}
   if(add===undefined)return a.includes(id);if(add&&!a.includes(id))a.push(id);if(add===false)a=a.filter(x=>x!==id);try{localStorage.setItem(k,JSON.stringify(a))}catch(e){}return true}
 async function cloudDelete(id,camp){const{f,db}=CLOUD.fb||{};if(!f||!CLOUD.user)return;clearTimeout(CLOUD.timers[id]);delete CLOUD.timers[id];
-  try{await f.deleteDoc(f.doc(db,"users",CLOUD.user.uid,"heroes",id));const c=camp||(CLOUD.lastCard[id]||{}).camp;if(c)await f.deleteDoc(f.doc(db,"campaigns",c,"cards",id));cloudKnown(id,false)}catch(e){say("Eliminazione online non riuscita: "+cloudErr(e))}}
+  try{await f.deleteDoc(f.doc(db,"users",CLOUD.user.uid,"heroes",id));const c=camp||(CLOUD.lastCard[id]||{}).camp;if(c){await f.deleteDoc(f.doc(db,"campaigns",c,"cards",id));await f.deleteDoc(f.doc(db,"campaigns",c,"stats",id))}cloudKnown(id,false)}catch(e){say("Eliminazione online non riuscita: "+cloudErr(e))}}
 {const _p=put;put=function(c,o){_p(c,o);if(c==="pg"&&CLOUD.user&&!VISTA)cloudQueue(o)}}
 {const _r=remove;remove=function(c,id){const o=c==="pg"?data.pg.find(x=>x.id===id):null,camp=o&&o.camp;_r(c,id);if(c==="pg"&&CLOUD.user&&!VISTA)cloudDelete(id,camp)}}
 function cloudRedraw(){if(VISTA)return;if(sel)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&document.getElementById("app").contains(a))return;const y=scrollY;render();scrollTo(0,y)}
-function cloudStop(){CLOUD.unsubs.forEach(u=>{try{u()}catch(e){}});CLOUD.unsubs=[];for(const k in CLOUD.campUnsubs){try{CLOUD.campUnsubs[k]()}catch(e){}}CLOUD.campUnsubs={};if(CLOUD.cardUnsub){try{CLOUD.cardUnsub()}catch(e){}}if(CLOUD.memUnsub){try{CLOUD.memUnsub()}catch(e){}}CLOUD.cardUnsub=CLOUD.memUnsub=null;CLOUD.members=[];CLOUD.cards=[];CLOUD.camps=[];CLOUD.campInfo={};CLOUD.cur="";CLOUD.lastCard={}}
+function cloudStop(){CLOUD.unsubs.forEach(u=>{try{u()}catch(e){}});CLOUD.unsubs=[];for(const k in CLOUD.campUnsubs){try{CLOUD.campUnsubs[k]()}catch(e){}}CLOUD.campUnsubs={};if(CLOUD.cardUnsub){try{CLOUD.cardUnsub()}catch(e){}}if(CLOUD.memUnsub){try{CLOUD.memUnsub()}catch(e){}}if(CLOUD.statUnsub){try{CLOUD.statUnsub()}catch(e){}}CLOUD.cardUnsub=CLOUD.memUnsub=CLOUD.statUnsub=null;CLOUD.members=[];CLOUD.stats={};CLOUD.cards=[];CLOUD.camps=[];CLOUD.campInfo={};CLOUD.cur="";CLOUD.lastCard={}}
 /* campagne seguite: info (nome, master, codice) sempre aggiornate */
 function campWatch(){const{f,db}=CLOUD.fb;
   for(const k in CLOUD.campUnsubs)if(!CLOUD.camps.includes(k)){try{CLOUD.campUnsubs[k]()}catch(e){}delete CLOUD.campUnsubs[k];delete CLOUD.campInfo[k]}
-  for(const c of CLOUD.camps)if(!CLOUD.campUnsubs[c])CLOUD.campUnsubs[c]=f.onSnapshot(f.doc(db,"campaigns",c),d=>{CLOUD.campInfo[c]=d.exists()?d.data():{gone:true};cloudRedraw()},()=>{CLOUD.campInfo[c]={gone:true};cloudRedraw()});
+  for(const c of CLOUD.camps)if(!CLOUD.campUnsubs[c])CLOUD.campUnsubs[c]=f.onSnapshot(f.doc(db,"campaigns",c),d=>{CLOUD.campInfo[c]=d.exists()?d.data():{gone:true};if(CLOUD.cur===c){if(CLOUD.statUnsub&&CLOUD.campInfo[c].master!==CLOUD.user.uid){try{CLOUD.statUnsub()}catch(e){}CLOUD.statUnsub=null;CLOUD.stats={}}campStatsWatch(c)}cloudRedraw()},()=>{CLOUD.campInfo[c]={gone:true};cloudRedraw()});
   if(CLOUD.cur&&!CLOUD.camps.includes(CLOUD.cur))CLOUD.cur="";if(!CLOUD.cur&&CLOUD.camps.length)campOpen(CLOUD.camps[0])}
-function campOpen(cid){const{f,db}=CLOUD.fb;if(CLOUD.cardUnsub){try{CLOUD.cardUnsub()}catch(e){}}if(CLOUD.memUnsub){try{CLOUD.memUnsub()}catch(e){}}CLOUD.cardUnsub=CLOUD.memUnsub=null;CLOUD.cur=cid;CLOUD.cards=[];CLOUD.members=[];if(!cid)return;
+function campStatsWatch(cid){const{f,db}=CLOUD.fb;if(CLOUD.statUnsub)return;const info=CLOUD.campInfo[cid];if(!info||info.master!==CLOUD.user.uid)return;
+  CLOUD.statUnsub=f.onSnapshot(f.collection(db,"campaigns",cid,"stats"),snap=>{if(CLOUD.cur!==cid)return;CLOUD.stats={};snap.forEach(d=>CLOUD.stats[d.id]=d.data());if(CLOUD.htab==="camp")cloudRedraw()},()=>{CLOUD.stats={}})}
+function campOpen(cid){const{f,db}=CLOUD.fb;if(CLOUD.cardUnsub){try{CLOUD.cardUnsub()}catch(e){}}if(CLOUD.memUnsub){try{CLOUD.memUnsub()}catch(e){}}if(CLOUD.statUnsub){try{CLOUD.statUnsub()}catch(e){}}CLOUD.cardUnsub=CLOUD.memUnsub=CLOUD.statUnsub=null;CLOUD.cur=cid;CLOUD.cards=[];CLOUD.members=[];CLOUD.stats={};if(!cid)return;
+  campStatsWatch(cid);
   CLOUD.memUnsub=f.onSnapshot(f.collection(db,"campaigns",cid,"members"),snap=>{if(CLOUD.cur!==cid)return;CLOUD.members=[];snap.forEach(d=>CLOUD.members.push(Object.assign({uid:d.id},d.data())));if(CLOUD.htab==="camp")cloudRedraw()},()=>{CLOUD.members=[]});
   CLOUD.cardUnsub=f.onSnapshot(f.collection(db,"campaigns",cid,"cards"),snap=>{if(CLOUD.cur!==cid)return;CLOUD.cards=[];snap.forEach(d=>CLOUD.cards.push(Object.assign({id:d.id},d.data())));if(CLOUD.htab==="camp")cloudRedraw()},e=>{CLOUD.cards=[];cloudRedraw()})}
 async function profSave(extra){const{f,db}=CLOUD.fb;await f.setDoc(f.doc(db,"users",CLOUD.user.uid),Object.assign({name:CLOUD.name,camps:CLOUD.camps},extra||{}),{merge:true})}
@@ -1141,11 +1150,13 @@ function campaignView(){
     if(!cards.length)out.push(h("div",{class:"empty"},"Ancora nessun eroe in questa campagna: ognuno lo sceglie dalla sezione «I miei eroi»."));
     let last=null,g=null;
     for(const c of cards){if(c.ownerName!==last){last=c.ownerName;out.push(h("p",{class:"owner"},"Eroi di "+(c.ownerName||"—")+(info.master===c.owner?" (master)":"")));g=h("div",{class:"ccards"});out.push(g)}
-      const own=c.owner===CLOUD.user.uid,can=own||(isM&&c.linked),r=c.hp?Math.max(0,Math.min(1,c.hpc/c.hp)):0;
+      const own=c.owner===CLOUD.user.uid,can=own||(isM&&c.linked),mine=own?data.pg.find(x=>x.id===c.id):null;
+      const st=mine?{hp:+mine.hp||0,hpc:+(mine.hpc??mine.hp)||0,hpt:+mine.hpt||0,ac:+mine.acv||0,insp:!!mine.insp,insp2:!!mine.insp2,conds:(mine.conds||[]).filter(x=>x&&x.t).map(x=>x.t)}:isM?CLOUD.stats[c.id]:null;
+      const r=st&&st.hp?Math.max(0,Math.min(1,st.hpc/st.hp)):0;
       const body=[c.img?h("img",{class:"cimg",src:c.img,alt:""}):h("span",{class:"cimg"}),
-        h("div",{class:"ci"},h("b",{},(c.insp?"★ ":"")+(c.name||"Senza nome")),h("small",{},[c.race,c.cls,c.arch,"liv. "+(c.lvl||1)].filter(Boolean).join(" · ")),
-          h("small",{},"PF "+c.hpc+" / "+c.hp+(c.hpt?" (+"+c.hpt+" temp.)":"")+(c.hpc<=0&&c.hp?" · a terra":"")),h("div",{class:"hpb"},h("i",{style:"width:"+(r*100)+"%;background:"+hpColor(r)})),
-          c.conds&&c.conds.length?h("div",{class:"cchips"},...c.conds.map(t=>h("span",{},t))):"",
+        h("div",{class:"ci"},h("b",{},(st&&st.insp?"★ ":"")+(st&&st.insp2?"✦ ":"")+(c.name||"Senza nome")),h("small",{},[c.race,c.cls,c.arch,"liv. "+(c.lvl||1)].filter(Boolean).join(" · ")),
+          st?h("small",{},"PF "+st.hpc+" / "+st.hp+(st.hpt?" (+"+st.hpt+" temp.)":"")+(st.ac?" · CA "+st.ac:"")+(st.hpc<=0&&st.hp?" · a terra":"")):"",st?h("div",{class:"hpb"},h("i",{style:"width:"+(r*100)+"%;background:"+hpColor(r)})):"",
+          st&&st.conds&&st.conds.length?h("div",{class:"cchips"},...st.conds.map(t=>h("span",{},t))):"",
           h("small",{},own?"Il tuo eroe · "+(c.linked?"il master può aprire la scheda":"scheda privata")+" · tocca per aprire":isM?(c.linked?"Tocca per aprire la scheda":"Scheda privata: il giocatore non l’ha ancora resa visibile"):""))];
       g.append(can?h("button",{class:"ccard"+(own?" own":""),onclick:()=>{if(own){sel=c.id;ctab=0;render();scrollTo(0,0)}else openMasterSheet(c)}},...body):h("div",{class:"ccard"},...body))}
   }else out.push(h("div",{class:"empty"},"Non sei ancora in nessuna campagna. Se sei il master creane una e dai il codice ai giocatori; se sei un giocatore, inserisci il codice che ti dà il master."));

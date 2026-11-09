@@ -1209,7 +1209,7 @@ function roomState(d){
   let c=ini.list.find(x=>x.lid===d.id);
   if(!c){const nm=String(d.name||"").trim().toLowerCase();c=ini.list.find(x=>!x.lid&&x.type==="pg"&&x.name.trim().toLowerCase()===nm);if(c)c.lid=d.id}
   if(nuovo)toast(roomSeen[d.id].name+" è collegato al Tavolo"+(c?"":": aprilo da “Stanza” per metterlo in iniziativa"),3500);
-  if(c){const was=c.hp;c.hp=Math.max(0,Math.round(+d.hpc||0));if(+d.hp>0)c.mx=+d.hp;if(+d.ac>0)c.ac=+d.ac;c.thp=Math.max(0,+d.hpt||0);c.insp=!!d.insp;c.conds=Array.isArray(d.conds)?d.conds.map(String).slice(0,12):[];c.lvl=+d.lvl||c.lvl;
+  if(c){const was=c.hp;c.hp=Math.max(0,Math.round(+d.hpc||0));if(+d.hp>0)c.mx=+d.hp;if(+d.ac>0)c.ac=+d.ac;c.thp=Math.max(0,+d.hpt||0);c.insp=!!d.insp;c.insp2=!!d.insp2;c.conds=Array.isArray(d.conds)?d.conds.map(String).slice(0,12):[];c.lvl=+d.lvl||c.lvl;
     hpDead(c);if(was>0&&c.hp===0)toast(c.name+" è a 0 PF: fuori combattimento");roomRedraw()}
   const sh=sheetGet(d.id);
   if(sh&&sh.o){const o=sh.o,lvlCh=+d.lvl&&+o.lvl!==+d.lvl,old=o.conds||[];o.hp=+d.hp;o.hpc=+d.hpc;o.hpt=+d.hpt||0;o.insp=!!d.insp;if(+d.ac)o.acv=+d.ac;
@@ -1244,12 +1244,13 @@ function startRoom(){
 }
 function tavRow(c){
   const on=!!roomSeen[c.lid];
-  const ins=btn(null,(c.insp?"★":"☆")+" Ispirazione",()=>{if(!on){toast(c.name+" non è collegato: l’Ispirazione la vedrà quando si ricollega",3500)}c.insp=!c.insp;tavCmd(c,{op:"insp",v:c.insp});saveIni();drawIni()},{class:"btn "+(c.insp?"gold":"ghost"),"aria-pressed":String(!!c.insp),title:"Assegna o togli l’Ispirazione sulla scheda del giocatore"});
+  const insB=(k,lab,sym0,sym1,tip)=>{const key=k===2?"insp2":"insp",v=!!c[key];return btn(null,(v?sym1:sym0)+" "+lab,()=>{if(!on){toast(c.name+" non è collegato: la vedrà quando si ricollega",3500)}c[key]=!c[key];tavCmd(c,{op:key,v:c[key]});saveIni();drawIni()},{class:"btn "+(v?"gold":"ghost"),"aria-pressed":String(v),title:tip})};
+  const ins=insB(1,"Base","☆","★","Ispirazione base: vantaggio a un tiro"),ins2=insB(2,"Migliorata","✧","✦","Ispirazione migliorata: il giocatore ritira il dado");
   const chips=(c.conds||[]).map(n=>h("span",{class:"cd"},n,h("button",{type:"button","aria-label":"Togli "+n+" a "+c.name,title:"Togli dalla scheda del giocatore",onclick:()=>{c.conds=(c.conds||[]).filter(x=>x!==n);tavCmd(c,{op:"cdel",n});saveIni();drawIni()}},"×")));
   const sel=h("select",{"aria-label":"Aggiungi una condizione a "+c.name},h("option",{value:"",textContent:"+ Condizione…"}),...TAV_COND.filter(n=>!(c.conds||[]).includes(n)).map(n=>h("option",{value:n,textContent:n})));
   sel.addEventListener("change",()=>{const n=sel.value;if(!n)return;c.conds=(c.conds||[]).concat(n);tavCmd(c,{op:"cadd",n});saveIni();drawIni()});
   const shb=btn("book","Scheda",()=>openSheet(c),{class:"btn ghost",title:"Apri la scheda completa di "+c.name+" (sola lettura)"});
-  return h("div",{class:"lk"},h("span",{class:"dot"+(on?" on":""),title:on?"Scheda collegata in tempo reale":"Scheda non collegata ora"}),shb,c.thp?h("span",{},"+"+c.thp+" PF temp"):"",ins,...chips,sel);
+  return h("div",{class:"lk"},h("span",{class:"dot"+(on?" on":""),title:on?"Scheda collegata in tempo reale":"Scheda non collegata ora"}),shb,c.thp?h("span",{},"+"+c.thp+" PF temp"):"",ins,ins2,...chips,sel);
 }
 function openRoom(){
   const m=$("#modal");m.hidden=false;m.dataset.k="room";
@@ -1290,17 +1291,18 @@ startRoom();
 
 /* ---------- campagna online (stesso archivio del Diario): eroi, ritratti e schede ---------- */
 const FB={cfg:{apiKey:"AIzaSyA6lEC272cvlH1uenlFE7jyAVlrsFfCq70",authDomain:"diario-dnd.firebaseapp.com",projectId:"diario-dnd",storageBucket:"diario-dnd.firebasestorage.app",messagingSenderId:"436731541748",appId:"1:436731541748:web:c6a2c969dea1cb296546a1"},
-  url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,user:null,name:"",ready:false,err:"",camps:[],info:{},cid:lsGet("tavolo-camp")||"",cards:[],unsub:null,panel:null};
+  url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,user:null,name:"",ready:false,err:"",camps:[],info:{},cid:lsGet("tavolo-camp")||"",cards:[],stats:{},unsub:null,sunsub:null,panel:null};
 const fbErr=e=>{const c=(e&&e.code)||"";return /invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)?"Nome utente o password sbagliati.":/too-many-requests/.test(c)?"Troppi tentativi: riprova tra qualche minuto.":/network|unavailable/.test(c)?"Nessuna connessione.":/permission/.test(c)?"Permesso negato (le regole di Firestore sono aggiornate?).":"Errore ("+(c||"sconosciuto")+")."};
 async function fbLoad(){if(FB.fb)return FB.fb;const[a,u,f]=await Promise.all([import(FB.url+"firebase-app.js"),import(FB.url+"firebase-auth.js"),import(FB.url+"firebase-firestore.js")]);
   const app=a.initializeApp(FB.cfg);let db;try{db=f.initializeFirestore(app,{localCache:f.persistentLocalCache({tabManager:f.persistentMultipleTabManager()})})}catch(e){db=f.getFirestore(app)}
   FB.fb={u,f,auth:u.getAuth(app),db};return FB.fb}
 const campRedraw=()=>{if(FB.panel)FB.panel()};
-function campApplyCard(cd){
-  let c=ini.list.find(x=>x.lid===cd.id);if(!c)return false;
-  const was=c.hp;c.hp=Math.max(0,+cd.hpc||0);if(+cd.hp>0)c.mx=+cd.hp;if(+cd.ac>0)c.ac=+cd.ac;c.thp=Math.max(0,+cd.hpt||0);c.insp=!!cd.insp;c.conds=Array.isArray(cd.conds)?cd.conds.slice(0,12):[];c.lvl=+cd.lvl||c.lvl;c.owner=cd.owner;c.cid=FB.cid;
+function campApplyCard(cd0){
+  let c=ini.list.find(x=>x.lid===cd0.id);if(!c)return false;const st=FB.stats[cd0.id];if(!st)return false;const cd=Object.assign({},cd0,st);
+  const was=c.hp;c.hp=Math.max(0,+cd.hpc||0);if(+cd.hp>0)c.mx=+cd.hp;if(+cd.ac>0)c.ac=+cd.ac;c.thp=Math.max(0,+cd.hpt||0);c.insp=!!cd.insp;c.insp2=!!cd.insp2;c.conds=Array.isArray(cd.conds)?cd.conds.slice(0,12):[];c.lvl=+cd.lvl||c.lvl;c.owner=cd.owner;c.cid=FB.cid;
   hpDead(c);if(was>0&&c.hp===0)toast(c.name+" è a 0 PF: fuori combattimento");return true}
-function campWatchCards(){if(FB.unsub){try{FB.unsub()}catch(e){}FB.unsub=null}FB.cards=[];if(!FB.cid||!FB.user)return;const{f,db}=FB.fb,cid=FB.cid;
+function campWatchCards(){if(FB.unsub){try{FB.unsub()}catch(e){}FB.unsub=null}if(FB.sunsub){try{FB.sunsub()}catch(e){}FB.sunsub=null}FB.cards=[];FB.stats={};if(!FB.cid||!FB.user)return;const{f,db}=FB.fb,cid=FB.cid;
+  FB.sunsub=f.onSnapshot(f.collection(db,"campaigns",cid,"stats"),snap=>{if(FB.cid!==cid)return;FB.stats={};snap.forEach(d=>FB.stats[d.id]=d.data());let ch=false;for(const cd of FB.cards)if(campApplyCard(cd))ch=true;if(ch)roomRedraw();campRedraw()},e=>{FB.stats={}});
   FB.unsub=f.onSnapshot(f.collection(db,"campaigns",cid,"cards"),snap=>{if(FB.cid!==cid)return;FB.cards=[];snap.forEach(d=>FB.cards.push(Object.assign({id:d.id},d.data())));
     let ch=false;for(const cd of FB.cards)if(campApplyCard(cd))ch=true;if(ch)roomRedraw();campRedraw()},e=>{toast("Campagna non leggibile: "+fbErr(e),4000);FB.cards=[];campRedraw()})}
 async function campLoadList(){const{f,db}=FB.fb;FB.camps=[];try{const p=await f.getDoc(f.doc(db,"users",FB.user.uid));const d=p.exists()?p.data():{};if(d.name)FB.name=d.name;
@@ -1343,7 +1345,7 @@ function openCamp(){
       sel.value=FB.cid;sel.addEventListener("change",()=>{FB.cid=sel.value;lsSet("tavolo-camp",FB.cid);campWatchCards();draw()});
       const list=FB.cid?(FB.cards.length?FB.cards.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(cd=>{const inl=ini.list.some(x=>x.lid===cd.id);
         return h("div",{style:"display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:6px"},cd.img?h("img",{src:cd.img,alt:"",style:"width:40px;height:40px;border-radius:50%;object-fit:cover"}):"",
-          h("span",{style:"flex:1"},h("b",{},cd.name||"Eroe")," · "+(cd.ownerName||"")+" · liv. "+(cd.lvl||1)+" · PF "+cd.hpc+"/"+cd.hp+(cd.ac?" · CA "+cd.ac:"")),
+          (()=>{const st=FB.stats[cd.id]||{};return h("span",{style:"flex:1"},h("b",{},cd.name||"Eroe")," · "+(cd.ownerName||"")+" · liv. "+(cd.lvl||1)+(st.hp?" · PF "+st.hpc+"/"+st.hp:"")+(st.ac?" · CA "+st.ac:""))})(),
           h("span",{class:"help"},(inl?"al tavolo":"non ancora al tavolo")+(cd.linked?"":" · scheda privata")))}):[h("div",{class:"vide"},"Nessun eroe in questa campagna: i giocatori lo scelgono dal Diario.")]):[];
       body=[h("div",{class:"help"},"Account: ",h("b",{},FB.name)),sel,...list,
         FB.cid&&FB.cards.length?btn("user","Porta gli eroi in iniziativa",()=>campBring().then(draw),{class:"btn gold"}):"",
