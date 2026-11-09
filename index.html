@@ -1116,7 +1116,7 @@ function campaignView(){
         h("div",{class:"ci"},h("b",{},(c.insp?"★ ":"")+(c.name||"Senza nome")),h("small",{},[c.race,c.cls,c.arch,"liv. "+(c.lvl||1)].filter(Boolean).join(" · ")),
           h("small",{},"PF "+c.hpc+" / "+c.hp+(c.hpt?" (+"+c.hpt+" temp.)":"")+(c.hpc<=0&&c.hp?" · a terra":"")),h("div",{class:"hpb"},h("i",{style:"width:"+(r*100)+"%;background:"+hpColor(r)})),
           c.conds&&c.conds.length?h("div",{class:"cchips"},...c.conds.map(t=>h("span",{},t))):"",
-          h("small",{},own?"Il tuo eroe · tocca per aprire":isM?(c.linked?"Collegato al Tavolo · tocca per la scheda":"Non ancora collegato al Tavolo: scheda privata"):(c.linked?"Collegato al Tavolo":"")))];
+          h("small",{},own?"Il tuo eroe · "+(c.linked?"il master può aprire la scheda":"scheda privata")+" · tocca per aprire":isM?(c.linked?"Tocca per aprire la scheda":"Scheda privata: il giocatore non l’ha ancora resa visibile"):""))];
       g.append(can?h("button",{class:"ccard"+(own?" own":""),onclick:()=>{if(own){sel=c.id;ctab=0;render();scrollTo(0,0)}else openMasterSheet(c)}},...body):h("div",{class:"ccard"},...body))}
   }else out.push(h("div",{class:"empty"},"Non sei ancora in nessuna campagna. Se sei il master creane una e dai il codice ai giocatori; se sei un giocatore, inserisci il codice che ti dà il master."));
   out.push(h("details",{open:!CLOUD.camps.length,style:"margin-top:12px"},h("summary",{},"Nuova campagna o codice"),
@@ -1129,8 +1129,10 @@ function campPicker(){if(!data.pg.length)return"";
   if(!CLOUD.camps.length)return h("div",{class:"empty",style:"border-style:solid;color:var(--ink)"},h("b",{},"In quale campagna gioca ogni eroe?"),h("p",{class:"status",style:"margin:4px 0 0"},"Prima entra in una campagna dalla scheda «Campagne» (con il codice del master), poi qui scegli quale eroe ci porti."));
   return h("div",{class:"empty",style:"border-style:solid;color:var(--ink)"},h("b",{},"In quale campagna gioca ogni eroe?"),h("p",{class:"status",style:"margin:4px 0 8px"},"Ogni eroe può stare in una sola campagna. Gli eroi senza campagna restano solo tuoi."),
     ...data.pg.map(o=>{const sl=h("select",{"aria-label":"Campagna di "+(o.name||"eroe")},h("option",{value:"",textContent:"Nessuna (solo mio)"}),...CLOUD.camps.map(c=>h("option",{value:c,textContent:cname(c)})));
-      sl.value=heroCamp(o);sl.addEventListener("change",()=>{if(o.tavLinked&&heroCamp(o)&&!confirm((o.name||"L’eroe")+" cambia campagna: il master attuale non potrà più aprirne la scheda. Procedo?")){sl.value=heroCamp(o);return}o.camp=sl.value;o.tavLinked=false;put("pg",o);render()});
-      return h("label",{style:"display:grid;grid-template-columns:1fr 1.3fr;gap:8px;align-items:center;margin-top:4px"},h("span",{},o.name||"Senza nome"),sl)}))}
+      sl.value=heroCamp(o);sl.addEventListener("change",()=>{if(o.tavLinked&&heroCamp(o)&&!confirm((o.name||"L’eroe")+" cambia campagna: il master attuale non potrà più aprirne la scheda. Procedo?")){sl.value=heroCamp(o);return}const was=heroCamp(o);o.camp=sl.value;o.tavLinked=!!sl.value;put("pg",o);render()});
+      const vis=h("input",{type:"checkbox",checked:!!(o.tavLinked&&heroCamp(o)),disabled:!heroCamp(o)});vis.addEventListener("change",()=>{o.tavLinked=vis.checked;put("pg",o);render()});
+      return h("div",{style:"margin-top:8px;padding-top:6px;border-top:1px solid var(--line)"},h("label",{style:"display:grid;grid-template-columns:1fr 1.3fr;gap:8px;align-items:center"},h("span",{},o.name||"Senza nome"),sl),
+        heroCamp(o)?h("label",{style:"display:flex;gap:8px;align-items:center;font-size:.9rem;margin-top:4px"},vis,"Il master può aprire la scheda completa"):"")}))}
 function importBanner(){if(!CLOUD.user)return"";const fk="dnd-imp-"+CLOUD.user.uid;let loc=[];try{if(localStorage.getItem(fk))return"";loc=JSON.parse(localStorage.getItem("dnd-pg")||"[]")}catch(e){}
   const nuovi=loc.filter(x=>x&&x.id&&!data.pg.some(y=>y.id===x.id));if(!nuovi.length)return"";
   return h("div",{class:"empty",style:"border-style:solid;border-color:var(--brass);color:var(--ink)"},h("b",{},"Su questo telefono hai "+nuovi.length+(nuovi.length===1?" eroe salvato":" eroi salvati")+" senza account: "),nuovi.map(x=>x.name||"Senza nome").join(", "),
