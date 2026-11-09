@@ -947,7 +947,7 @@ if(VISTA){
 
 /* ===================== Account, sezione personale e campagne (Firebase) ===================== */
 var CLOUD={cfg:{apiKey:"AIzaSyA6lEC272cvlH1uenlFE7jyAVlrsFfCq70",authDomain:"diario-dnd.firebaseapp.com",projectId:"diario-dnd",storageBucket:"diario-dnd.firebasestorage.app",messagingSenderId:"436731541748",appId:"1:436731541748:web:c6a2c969dea1cb296546a1"},
-  url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,ready:false,err:"",user:null,name:"",camps:[],campInfo:{},cur:"",cards:[],unsubs:[],campUnsubs:{},cardUnsub:null,timers:{},lastCard:{},htab:"mine",first:true};
+  url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,ready:false,err:"",user:null,name:"",camps:[],campInfo:{},cur:"",cards:[],unsubs:[],campUnsubs:{},cardUnsub:null,memUnsub:null,members:[],timers:{},lastCard:{},htab:"mine",first:true};
 const cloudMode=()=>{try{return localStorage.getItem("dnd-mode")||""}catch(e){return""}};
 const cloudSetMode=v=>{try{v?localStorage.setItem("dnd-mode",v):localStorage.removeItem("dnd-mode")}catch(e){}};
 const cloudSlug=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
@@ -994,13 +994,14 @@ async function cloudDelete(id,camp){const{f,db}=CLOUD.fb||{};if(!f||!CLOUD.user)
 {const _p=put;put=function(c,o){_p(c,o);if(c==="pg"&&CLOUD.user&&!VISTA)cloudQueue(o)}}
 {const _r=remove;remove=function(c,id){const o=c==="pg"?data.pg.find(x=>x.id===id):null,camp=o&&o.camp;_r(c,id);if(c==="pg"&&CLOUD.user&&!VISTA)cloudDelete(id,camp)}}
 function cloudRedraw(){if(VISTA)return;if(sel)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&document.getElementById("app").contains(a))return;const y=scrollY;render();scrollTo(0,y)}
-function cloudStop(){CLOUD.unsubs.forEach(u=>{try{u()}catch(e){}});CLOUD.unsubs=[];for(const k in CLOUD.campUnsubs){try{CLOUD.campUnsubs[k]()}catch(e){}}CLOUD.campUnsubs={};if(CLOUD.cardUnsub){try{CLOUD.cardUnsub()}catch(e){}}CLOUD.cardUnsub=null;CLOUD.cards=[];CLOUD.camps=[];CLOUD.campInfo={};CLOUD.cur="";CLOUD.lastCard={}}
+function cloudStop(){CLOUD.unsubs.forEach(u=>{try{u()}catch(e){}});CLOUD.unsubs=[];for(const k in CLOUD.campUnsubs){try{CLOUD.campUnsubs[k]()}catch(e){}}CLOUD.campUnsubs={};if(CLOUD.cardUnsub){try{CLOUD.cardUnsub()}catch(e){}}if(CLOUD.memUnsub){try{CLOUD.memUnsub()}catch(e){}}CLOUD.cardUnsub=CLOUD.memUnsub=null;CLOUD.members=[];CLOUD.cards=[];CLOUD.camps=[];CLOUD.campInfo={};CLOUD.cur="";CLOUD.lastCard={}}
 /* campagne seguite: info (nome, master, codice) sempre aggiornate */
 function campWatch(){const{f,db}=CLOUD.fb;
   for(const k in CLOUD.campUnsubs)if(!CLOUD.camps.includes(k)){try{CLOUD.campUnsubs[k]()}catch(e){}delete CLOUD.campUnsubs[k];delete CLOUD.campInfo[k]}
   for(const c of CLOUD.camps)if(!CLOUD.campUnsubs[c])CLOUD.campUnsubs[c]=f.onSnapshot(f.doc(db,"campaigns",c),d=>{CLOUD.campInfo[c]=d.exists()?d.data():{gone:true};cloudRedraw()},()=>{CLOUD.campInfo[c]={gone:true};cloudRedraw()});
   if(CLOUD.cur&&!CLOUD.camps.includes(CLOUD.cur))CLOUD.cur="";if(!CLOUD.cur&&CLOUD.camps.length)campOpen(CLOUD.camps[0])}
-function campOpen(cid){const{f,db}=CLOUD.fb;if(CLOUD.cardUnsub){try{CLOUD.cardUnsub()}catch(e){}}CLOUD.cardUnsub=null;CLOUD.cur=cid;CLOUD.cards=[];if(!cid)return;
+function campOpen(cid){const{f,db}=CLOUD.fb;if(CLOUD.cardUnsub){try{CLOUD.cardUnsub()}catch(e){}}if(CLOUD.memUnsub){try{CLOUD.memUnsub()}catch(e){}}CLOUD.cardUnsub=CLOUD.memUnsub=null;CLOUD.cur=cid;CLOUD.cards=[];CLOUD.members=[];if(!cid)return;
+  CLOUD.memUnsub=f.onSnapshot(f.collection(db,"campaigns",cid,"members"),snap=>{if(CLOUD.cur!==cid)return;CLOUD.members=[];snap.forEach(d=>CLOUD.members.push(Object.assign({uid:d.id},d.data())));if(CLOUD.htab==="camp")cloudRedraw()},()=>{CLOUD.members=[]});
   CLOUD.cardUnsub=f.onSnapshot(f.collection(db,"campaigns",cid,"cards"),snap=>{if(CLOUD.cur!==cid)return;CLOUD.cards=[];snap.forEach(d=>CLOUD.cards.push(Object.assign({id:d.id},d.data())));if(CLOUD.htab==="camp")cloudRedraw()},e=>{CLOUD.cards=[];cloudRedraw()})}
 async function profSave(extra){const{f,db}=CLOUD.fb;await f.setDoc(f.doc(db,"users",CLOUD.user.uid),Object.assign({name:CLOUD.name,camps:CLOUD.camps},extra||{}),{merge:true})}
 function cloudStart(){const{f,db}=CLOUD.fb,uid=CLOUD.user.uid;cloudStop();CLOUD.first=true;
@@ -1030,6 +1031,23 @@ async function campJoin(raw){const{f,db}=CLOUD.fb;const code=campCodeNorm(raw);i
   const d=await f.getDoc(f.doc(db,"campaigns",code));if(!d.exists())throw{code:"codice-inesistente"};
   await f.setDoc(f.doc(db,"campaigns",code,"members",CLOUD.user.uid),{name:CLOUD.name,since:Date.now()});
   CLOUD.camps=CLOUD.camps.concat(code);await profSave();campWatch();campOpen(code);return code}
+const campLink=cid=>{const u=new URL(location.href);u.search="";u.hash="";u.searchParams.set("campagna",campCodeFmt(cid));return u.href};
+async function campInvite(cid){const name=(CLOUD.campInfo[cid]||{}).name||"la campagna",url=campLink(cid),txt="Unisciti a «"+name+"» nel Diario dell’avventuriero: apri il link, entra con il tuo account e scegli quale eroe portare.";
+  try{if(navigator.share){await navigator.share({title:name,text:txt,url});return}}catch(e){if(e&&e.name==="AbortError")return}
+  try{await navigator.clipboard.writeText(txt+"\n"+url);alert("Link d’invito copiato: incollalo in WhatsApp o dove vuoi.")}catch(e){prompt("Copia questo link d’invito:",url)}}
+async function campMakeMaster(cid,m){const{f,db}=CLOUD.fb;await f.setDoc(f.doc(db,"campaigns",cid),{master:m.uid,masterName:m.name||""},{merge:true})}
+/* link d'invito: ?campagna=CODICE */
+{const q=new URLSearchParams(location.search).get("campagna");if(q&&!VISTA){try{localStorage.setItem("dnd-join",campCodeNorm(q))}catch(e){}const u=new URL(location.href);u.searchParams.delete("campagna");history.replaceState(null,"",u.href)}}
+const joinPending=()=>{try{return localStorage.getItem("dnd-join")||""}catch(e){return""}};
+const joinClear=()=>{try{localStorage.removeItem("dnd-join")}catch(e){}};
+function joinBanner(){const code=joinPending();if(!code||!CLOUD.user)return"";
+  if(CLOUD.camps.includes(code)){joinClear();return""}
+  const info=h("span",{},"Hai ricevuto un invito alla campagna "+campCodeFmt(code)+".");
+  if(CLOUD.fb&&!joinBanner.asked){joinBanner.asked=true;CLOUD.fb.f.getDoc(CLOUD.fb.f.doc(CLOUD.fb.db,"campaigns",code)).then(d=>{joinBanner.cn=d.exists()?d.data().name+" (master: "+(d.data().masterName||"—")+")":"";joinBanner.miss=!d.exists();render()}).catch(()=>{})}
+  if(joinBanner.miss)return h("div",{class:"empty"},"Il link d’invito non corrisponde a nessuna campagna (forse è stata eliminata).",h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"Ok",onclick:()=>{joinClear();render()}})));
+  if(joinBanner.cn)info.textContent="Sei stato invitato a «"+joinBanner.cn+"».";
+  return h("div",{class:"empty",style:"border-style:solid;border-color:var(--brass);color:var(--ink)"},h("b",{},info),
+    h("div",{class:"bar",style:"margin-top:8px"},h("button",{class:"btn",textContent:"Entra nella campagna",onclick:async()=>{try{await campJoin(code);joinClear();CLOUD.htab="camp";render()}catch(e){alert(cloudErr(e))}}}),h("button",{class:"btn ghost",textContent:"Non ora",onclick:()=>{joinClear();render()}})))}
 async function campLeave(cid){const{f,db}=CLOUD.fb;
   for(const o of data.pg)if(o.camp===cid){o.camp="";o.tavLinked=false;put("pg",o)}
   try{await f.deleteDoc(f.doc(db,"campaigns",cid,"members",CLOUD.user.uid))}catch(e){}
@@ -1084,7 +1102,11 @@ function campaignView(){
   if(cur){
     const isM=info.master===CLOUD.user.uid;
     out.push(h("h2",{},cname(cur)),h("div",{class:"acct"},h("span",{class:"grow"},"Master: ",h("b",{},isM?"tu":(info.masterName||"—"))," · codice per entrare: ",h("b",{style:"letter-spacing:.08em"},campCodeFmt(cur))),
-      isM?"":confirmBtn("Esci dalla campagna",()=>campLeave(cur))));
+      isM?"":confirmBtn("Esci dalla campagna",()=>campLeave(cur))),
+      h("div",{class:"bar"},h("button",{class:"btn",textContent:"Invita con un link",onclick:()=>campInvite(cur)})),
+      CLOUD.members.length?h("details",{},h("summary",{},"Partecipanti ("+CLOUD.members.length+")"),h("div",{class:"list",style:"margin-top:6px"},...CLOUD.members.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(m=>h("div",{class:"acct"},h("span",{class:"grow"},m.name||"—",m.uid===info.master?h("b",{}," · master"):""),
+        isM&&m.uid!==CLOUD.user.uid?confirmBtn("Rendi master",async()=>{try{await campMakeMaster(cur,m);say(m.name+" ora è il master")}catch(e){alert("Non riesco: "+cloudErr(e))}},"btn ghost"):""))),
+        isM?h("p",{class:"status"},"Passando il ruolo, il nuovo master potrà aprire le schede degli eroi collegati al Tavolo; tu resti in campagna come giocatore."):""):"");
     const cards=CLOUD.cards.slice().sort((a,b)=>(a.ownerName||"").localeCompare(b.ownerName||"")||(a.name||"").localeCompare(b.name||""));
     if(!cards.length)out.push(h("div",{class:"empty"},"Ancora nessun eroe in questa campagna: ognuno lo sceglie dalla sezione «I miei eroi»."));
     let last=null,g=null;
@@ -1123,8 +1145,8 @@ function cloudHead(){const on=cloudMode()!=="local";document.documentElement.cla
   const acct=h("div",{class:"acct"},h("span",{class:"grow"},"Ciao, ",h("b",{},CLOUD.name||"avventuriero")),
     h("button",{class:"btn ghost",textContent:"Esci",onclick:async()=>{cloudFlush();try{await CLOUD.fb.u.signOut(CLOUD.fb.auth)}catch(e){}}}));
   const tabs=h("div",{class:"htabs",role:"tablist"},...[["mine","I miei eroi"],["camp","Campagne"]].map(([k,l])=>h("button",{class:"btn ghost",role:"tab","aria-current":String(CLOUD.htab===k),textContent:l,onclick:()=>{CLOUD.htab=k;render()}})));
-  if(CLOUD.htab==="camp")return h("div",{class:"list"},acct,tabs,...campaignView());
-  return h("div",{class:"list"},acct,tabs,importBanner(),campPicker(),_home())}}
+  if(CLOUD.htab==="camp")return h("div",{class:"list"},acct,tabs,joinBanner(),...campaignView());
+  return h("div",{class:"list"},acct,tabs,joinBanner(),importBanner(),campPicker(),_home())}}
 if(!VISTA&&cloudMode()!=="local")render();
 cloudBoot();
 </script>
