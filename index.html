@@ -96,8 +96,23 @@ main{padding-bottom:110px}
 .rbar{height:12px;border-radius:6px;background:var(--line);overflow:hidden}.rbar i{display:block;height:100%;background:var(--brass)}
 .fbtn{background:none;border:0;border-bottom:1px dashed var(--brass);padding:0;color:var(--ink);font:inherit;cursor:pointer}
 .chip.fbtn{border:1px solid var(--line);padding:3px 12px;border-radius:999px}
+.sheet,.note{grid-template-columns:minmax(0,1fr)}
+.insheet header{padding-top:10px;padding-bottom:2px;align-items:center}.insheet header h1{font-size:1.05rem;color:var(--mute);letter-spacing:.02em;line-height:44px}.insheet header .sub{display:none}
+.hbar{display:flex;gap:8px;align-items:center}.hbar h2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}
+.hact{margin-top:8px}.hact .btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px}.hact .btn .ic{margin:0}
+.rowc .danger{padding:8px 12px;font-size:.88rem;align-self:center}.item .th{display:grid;place-items:center;color:var(--brass)}.item .th .ic{width:60%;height:60%}
+.more{position:relative}.more>summary{list-style:none;display:grid;place-items:center;width:44px;height:40px;padding:0}.more>summary::-webkit-details-marker{display:none}.more .ic{width:22px;height:22px;fill:currentColor;stroke:none}
+.more .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;display:grid;gap:6px;min-width:180px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;box-shadow:0 10px 28px rgba(0,0,0,.18)}.more .menu .btn{text-align:left;justify-content:flex-start}
+.irow{grid-template-columns:minmax(0,1fr) 64px 76px 72px 40px!important}.irow label,.irow .it{display:block}.irow small{display:none}.irow .it b{white-space:nowrap}.ix{width:40px;height:40px;padding:0;font-size:1.3rem;line-height:1}
+@media(max-width:560px){.ihead{display:none!important}
+ .irow{grid-template-columns:repeat(3,minmax(0,1fr)) 40px!important;grid-template-areas:"n n n x" "q w t t";gap:6px 8px!important;padding:10px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--panel) 70%,var(--bg))}
+ .irow .in{grid-area:n}.irow .iq{grid-area:q}.irow .iw{grid-area:w}.irow .it{grid-area:t;align-self:end;text-align:right;padding-bottom:8px}.irow .ix{grid-area:x}
+ .irow small{display:block;font-size:.72rem;color:var(--mute);margin-bottom:2px}}.irow>*{min-width:0}.irow input{width:100%;min-width:0;box-sizing:border-box}
 .qbox{display:grid;gap:3px;justify-items:center}.qrow{display:flex;gap:4px;align-items:center}.qrow input{width:4.2em;text-align:center}.qrow .btn{padding:4px 8px;min-width:0}
 .cbl{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--ink)}.cbl input{width:auto}
+.coins{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.coin{display:grid!important;gap:3px;text-align:center;font-size:.78rem;color:var(--mute)}.coin b{display:block;font-size:.95rem;color:var(--ink)}.coin input{width:100%;min-width:0;text-align:center;padding-left:2px;padding-right:2px}
+.coin.c-mp b{color:#8e9aa6}.coin.c-mo b{color:#b8892c}.coin.c-me b{color:#9a8a4a}.coin.c-ma b{color:#8a8f96}.coin.c-mr b{color:#a0603a}
+@media (max-width:360px){.coins{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .chk{display:flex!important;align-items:flex-start;gap:10px;font-size:.92rem;line-height:1.35}.chk input[type=checkbox]{flex:none;width:20px!important;height:20px;margin:1px 0 0;padding:0}.chk span{flex:1;min-width:0;overflow-wrap:anywhere}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal[hidden]{display:none}
@@ -187,6 +202,8 @@ const VISTA=new URLSearchParams(location.search).get("vista"),VISTA_DA=new URLSe
 const h=(t,p={},...k)=>{const e=document.createElement(t);for(const[a,v]of Object.entries(p)){if(a.startsWith("on"))e.addEventListener(a.slice(2),v);else if(a==="kids")e.append(...v);else if(a in e)e[a]=v;else e.setAttribute(a,v)}e.append(...k);return e};
 
 const ICONS={
+helm:'<path d="M4.5 14a7.5 7.5 0 0 1 15 0v4.5h-15z"/><path d="M4.5 14h6.5v4.5"/><path d="M13.5 14h6"/><path d="M12 6.5V3.5"/><path d="M9.5 3.5h5"/>',
+more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
 sword:'<path d="M9.5 17.5L21 6V3h-3L6.5 14.5"/><path d="M11 19l-6-6"/><path d="M8 16l-4 4"/><path d="M5 21l-2-2"/>',
 shield:'<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M12 7v10M8.5 11h7"/>',
 armor:'<path d="M9 3.5c.8 1.3 1.8 1.9 3 1.9s2.2-.6 3-1.9l4.2 2v4.6l-2.4.9V20H7.2v-9L4.8 10.1V5.5z"/><path d="M12 5.4V20M7.2 14h9.6"/>',
@@ -266,7 +283,7 @@ function say(t){if(statusEl)statusEl.textContent=t}
 function later(c,o){say("Scrivo nel diario…");clearTimeout(timers[o.id]);timers[o.id]=setTimeout(()=>put(c,o),500)}
 
 const COND=[["Accecato","Non vedi e fallisci automaticamente le prove di caratteristica che richiedono la vista. I tiri per colpire contro di te hanno vantaggio, i tuoi tiri per colpire hanno svantaggio.","Malus"],["Affascinato","Non puoi attaccare né bersagliare con capacità o effetti magici dannosi chi ti ha affascinato. Chi ti ha affascinato ha vantaggio a qualsiasi prova di caratteristica per interagire socialmente con te.","Condizione"],["Afferrato","La tua velocità diventa 0 e non puoi beneficiare di bonus alla velocità. Termina se chi ti ha afferrato è incapacitato o se un effetto ti allontana dalla sua portata.","Malus"],["Assordato","Non senti e fallisci automaticamente le prove di caratteristica che richiedono l’udito.","Malus"],["Avvelenato","Svantaggio ai tiri per colpire e alle prove di caratteristica.","Malus"],["Incapacitato","Non puoi effettuare azioni né reazioni.","Malus"],["Invisibile","Sei impossibile da vedere senza magia o sensi speciali (agli effetti del nascondersi sei pesantemente oscurato). I tiri per colpire contro di te hanno svantaggio, i tuoi tiri per colpire hanno vantaggio.","Bonus"],["Paralizzato","Sei incapacitato, non puoi muoverti né parlare. Fallisci automaticamente i tiri salvezza su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio. Ogni attacco che ti colpisce da entro 1,5 m è un colpo critico.","Malus"],["Pietrificato","Sei trasformato in sostanza solida inanimata (peso ×10), non invecchi. Sei incapacitato, non puoi muoverti né parlare e non percepisci l’esterno. I tiri per colpire contro di te hanno vantaggio. Fallisci automaticamente i TS su Forza e Destrezza. Hai resistenza a tutti i danni e sei immune a veleni e malattie (sospesi, non curati).","Malus"],["Privo di sensi","Sei incapacitato, non puoi muoverti né parlare e non percepisci l’esterno. Lasci cadere ciò che impugni e cadi prono. Fallisci automaticamente i TS su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio. Ogni attacco che ti colpisce da entro 1,5 m è un colpo critico.","Malus"],["Prono","Puoi solo strisciare (finché non ti rialzi). Svantaggio ai tuoi tiri per colpire. I tiri per colpire contro di te hanno vantaggio se l’attaccante è entro 1,5 m, altrimenti svantaggio.","Malus"],["Spaventato","Svantaggio alle prove di caratteristica e ai tiri per colpire finché la fonte della paura è in linea di vista. Non puoi avvicinarti volontariamente alla fonte della paura.","Malus"],["Stordito","Sei incapacitato, non puoi muoverti e parli solo a fatica. Fallisci automaticamente i TS su Forza e Destrezza. I tiri per colpire contro di te hanno vantaggio.","Malus"],["Trattenuto","La tua velocità diventa 0 e non hai bonus alla velocità. I tiri per colpire contro di te hanno vantaggio, i tuoi tiri per colpire hanno svantaggio. Svantaggio ai TS su Destrezza.","Malus"],["Indebolimento livello 1","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 2","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 3","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 4","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 5","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. (5) Velocità ridotta a 0. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"],["Indebolimento livello 6","Effetti cumulativi: (1) Svantaggio alle prove di caratteristica. (2) Velocità dimezzata. (3) Svantaggio ai tiri per colpire e ai tiri salvezza. (4) Massimo dei punti ferita dimezzato. (5) Velocità ridotta a 0. (6) Morte. Un riposo lungo (con cibo e acqua) riduce di 1 il livello.","Malus"]];
-function newChar(){return{id:uid(),name:"Nuovo personaggio",player:"",race:"",sub:"",he:["",""],cls:"",bg:"",lvl:1,hp:10,ac:10,stats:{FOR:10,DES:10,COS:10,INT:10,SAG:10,CAR:10},skills:{},asi:{},used:{},inv:[],coins:0,align:"",arch:"",fs:["",""],res:{},diary:{},spellUrl:"",acb:0,eq:{armor:"",shield:"",w1:"",w2:""},backstory:"",hpc:10,hpt:0,insp:false,conds:[],dnote:"",traits:"",notes:"",links:[],imgs:[]}}
+function newChar(){return{id:uid(),name:"Nuovo personaggio",player:"",race:"",sub:"",he:["",""],cls:"",bg:"",lvl:1,hp:10,ac:10,stats:{FOR:10,DES:10,COS:10,INT:10,SAG:10,CAR:10},skills:{},asi:{},used:{},inv:[],coins:0,money:{mr:0,ma:0,me:0,mo:0,mp:0},align:"",arch:"",fs:["",""],res:{},diary:{},spellUrl:"",acb:0,eq:{armor:"",shield:"",w1:"",w2:""},backstory:"",hpc:10,hpt:0,insp:false,conds:[],dnote:"",traits:"",notes:"",links:[],imgs:[]}}
 function newNote(){return{id:uid(),title:"Nuova sessione",body:"",date:new Date().toLocaleDateString("it-IT"),imgs:[]}}
 
 function confirmBtn(label,fn,cls="btn ghost danger"){
@@ -349,7 +366,7 @@ async function buildPdf(o,d){
   const items=(o.inv||[]).filter(i=>i.n);
   add("Inventario e carico",13,true);
   for(const i of items)add("- "+i.q+" x "+i.n+" ("+fmt((+i.q||0)*(+i.w||0))+" kg)",10,false,0.5);
-  add("Monete: "+(o.coins||0),10,false,1);add(join(d.lim),10,false,3);
+  {const m=o.money||{mo:o.coins||0};add("Monete: "+[["mp","mp"],["mo","mo"],["me","me"],["ma","ma"],["mr","mr"]].filter(([k])=>+m[k]).map(([k,l])=>(+m[k])+" "+l).join(", ")||"nessuna",10,false,1)}add(join(d.lim),10,false,3);
   const cds=(o.conds||[]).filter(c=>c.t||c.b);
   if(cds.length){add("Condizioni, bonus e malus",13,true);for(const c of cds)add("- "+(c.k?c.k+": ":"")+(c.t||"")+(c.b?" - "+c.b:""),10,false,0.5);y+=2}
   if(o.dnote){add("Note libere del diario",13,true);add(o.dnote,10,false,3)}
@@ -378,7 +395,7 @@ const eqWeight=o=>{const e=o.eq||{};let t=(ITEMS[e.armor]||0)+(ITEMS[e.shield]||
   for(const k of["w1","w2"]){const n=e[k];if(!n)continue;t+=(ITEMS[n]||0)*(wThrow(n)?eqQty(o,k):1);const a=wAmmo(n);if(a)t+=a.w*eqAmmo(o,k)}return t};
 const eqLabel=(o,k)=>{const n=o.eq[k];if(!n)return"";if(wThrow(n)){const q=eqQty(o,k);return q===1?n:n+" ×"+q}const a=wAmmo(n);return a?n+" ("+eqAmmo(o,k)+" "+a.nm+")":n};
 function renderChar(o){
-  o.sub=o.sub||"";o.he=o.he||["",""];o.imgs=o.imgs||[];o.skills=o.skills||{};o.bg=o.bg||"";o.links=o.links||[];o.asi=o.asi||{};o.used=o.used||{};o.inv=o.inv||[];o.coins=+o.coins||0;o.eq=o.eq||{armor:"",shield:"",w1:"",w2:""};o.align=o.align||"";o.acb=+o.acb||0;o.arch=o.arch||"";o.fs=o.fs||["",""];o.res=o.res||{};o.diary=o.diary||{};if(o.arch==="Negromanzia")o.arch="Necromanzia";if(o.cls==="Ladro"&&o.arch==="Ladro")o.arch="Furfante";if(o.arch==="Negromanzia")o.arch="Necromanzia";
+  o.sub=o.sub||"";o.he=o.he||["",""];o.imgs=o.imgs||[];o.skills=o.skills||{};o.bg=o.bg||"";o.links=o.links||[];o.asi=o.asi||{};o.used=o.used||{};o.inv=o.inv||[];o.coins=+o.coins||0;if(!o.money||typeof o.money!=="object")o.money={mr:0,ma:0,me:0,mo:o.coins,mp:0};o.eq=o.eq||{armor:"",shield:"",w1:"",w2:""};o.align=o.align||"";o.acb=+o.acb||0;o.arch=o.arch||"";o.fs=o.fs||["",""];o.res=o.res||{};o.diary=o.diary||{};if(o.arch==="Negromanzia")o.arch="Necromanzia";if(o.cls==="Ladro"&&o.arch==="Ladro")o.arch="Furfante";if(o.arch==="Negromanzia")o.arch="Necromanzia";
   const ui={},sk={},chips=h("div",{class:"chips"});
   const calc=()=>{
     const b=bon(o),p=pb(o),cl=C[o.cls]||[],r=R[o.race]||{},sb=(r.s||{})[o.sub]||{};
@@ -460,16 +477,24 @@ function renderChar(o){
     if(v)li.push("Velocità attuale "+fmt(Math.max(0,v-dv))+" m");
     lim.replaceChildren(...li.map(t=>h("span",{class:"chip",textContent:t})));
   };
-  const drawInv=()=>rowsEl.replaceChildren(h("div",{class:"irow status"},h("span",{},"Oggetto"),h("span",{},"Q.tà"),h("span",{},"kg cad."),h("span",{},"Totale")),...o.inv.map((i,k)=>{
+  const drawInv=()=>rowsEl.replaceChildren(h("div",{class:"irow ihead status"},h("span",{},"Oggetto"),h("span",{},"Q.tà"),h("span",{},"kg cad."),h("span",{},"Totale"),h("span",{})),...o.inv.map((i,k)=>{
     const n=h("input",{value:i.n||"",placeholder:"Oggetto","aria-label":"Oggetto"});n.setAttribute("list","items");
     const q=h("input",{type:"number",value:i.q,min:0,"aria-label":"Quantità"}),w=h("input",{type:"number",value:i.w,step:"0.05",min:0,"aria-label":"Peso in kg"}),t=h("b",{});
     const upd=()=>{i.n=n.value;i.q=+q.value;i.w=+w.value;t.textContent=fmt(i.q*i.w)+" kg";later("pg",o);calc()};
     n.addEventListener("input",()=>{const k=itemKey(n.value);if(k){w.value=ITEMS[k];q.value=q.value||1}upd()});q.addEventListener("input",upd);w.addEventListener("input",upd);
     t.textContent=fmt((+i.q||0)*(+i.w||0))+" kg";
-    return h("div",{class:"irow"},n,q,w,t,h("button",{class:"btn ghost",textContent:"Rimuovi",onclick:()=>{o.inv.splice(k,1);drawInv();later("pg",o);calc()}}));
+    return h("div",{class:"irow"},h("div",{class:"in"},n),h("label",{class:"iq"},h("small",{},"Q.tà"),q),h("label",{class:"iw"},h("small",{},"kg cad."),w),h("div",{class:"it"},h("small",{},"Totale"),t),
+      h("button",{class:"btn ghost ix",type:"button","aria-label":"Rimuovi "+(i.n||"oggetto"),title:"Rimuovi",textContent:"×",onclick:()=>{o.inv.splice(k,1);drawInv();later("pg",o);calc()}}));
   }));
   drawInv();
-  invBox.append(bound("Monete (50 monete pesano 0,5 kg)",o,"coins","pg",{type:"number",after:calc}),rowsEl,h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"Aggiungi oggetto",onclick:()=>{o.inv.push({n:"",q:1,w:0});drawInv()}}),h("span",{class:"status"},"Scrivi il nome di un oggetto del manuale per inserirne il peso in automatico.")),h("h3",{},"Peso trasportato"),meter,verdict,lim,dl);
+  const COINS=[["mp","Platino"],["mo","Oro"],["me","Electrum"],["ma","Argento"],["mr","Rame"]],COINV={mr:.01,ma:.1,me:.5,mo:1,mp:10};
+  const coinInfo=h("p",{class:"status",style:"margin:4px 0 0"});
+  const coinUpd=()=>{const m=o.money;o.coins=COINS.reduce((a,[k])=>a+(+m[k]||0),0);const val=COINS.reduce((a,[k])=>a+(+m[k]||0)*COINV[k],0);
+    coinInfo.textContent="Valore totale: "+(Math.round(val*100)/100).toLocaleString("it-IT")+" mo · "+o.coins+" monete, "+fmt(o.coins/100)+" kg (50 monete pesano 0,5 kg)"};
+  const coinBox=h("div",{class:"coins"},...COINS.map(([k,l])=>{const inp=h("input",{type:"number",min:0,inputMode:"numeric",value:+o.money[k]||0,"aria-label":"Monete di "+l.toLowerCase()+" ("+k+")"});
+    inp.addEventListener("input",()=>{o.money[k]=Math.max(0,Math.floor(+inp.value||0));coinUpd();later("pg",o);calc()});return h("label",{class:"coin c-"+k},h("span",{},h("b",{},k)," "+l),inp)}));
+  coinUpd();
+  invBox.append(h("h3",{},"Monete"),coinBox,coinInfo,h("p",{class:"status",style:"margin:2px 0 10px"},"Cambio: 1 mp = 10 mo · 1 mo = 2 me = 10 ma = 100 mr"),rowsEl,h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"Aggiungi oggetto",onclick:()=>{o.inv.push({n:"",q:1,w:0});drawInv()}}),h("span",{class:"status"},"Scrivi il nome di un oggetto del manuale per inserirne il peso in automatico.")),h("h3",{},"Peso trasportato"),meter,verdict,lim,dl);
   const eqBox=h("div",{class:"eq"}),acEl=h("div",{class:"chips"}),atkEl=h("div",{class:"list"});
   const slotSel=(key,label,opts,icon)=>{
     const opt=x=>h("option",{value:x,textContent:x}),flat=typeof opts[0]==="string"?opts:opts.flatMap(g=>g[1]);
@@ -741,7 +766,7 @@ function home(){
     h("div",{class:"bar"},h("button",{class:"btn",textContent:"+ Nuovo eroe",onclick:()=>{const c=newChar();put("pg",c);sel=c.id;ctab=0;render()}}),h("button",{class:"btn ghost",textContent:"Importa da file",onclick:()=>importInp.click()}),h("button",{class:"btn ghost",textContent:"Backup della compagnia",onclick:()=>exportAll()})),
     ...(data.pg.length?data.pg.map(c=>h("div",{class:"rowc"},
       h("button",{class:"item",onclick:()=>{sel=c.id;ctab=0;render();scrollTo(0,0)}},
-        c.imgs&&c.imgs[0]?h("img",{class:"th",src:c.imgs[0].d,alt:""}):h("span",{class:"th"}),
+        c.ritr||(c.imgs&&c.imgs[0])?h("img",{class:"th",src:c.ritr||c.imgs[0].d,alt:""}):h("span",{class:"th"},ico("helm")),
         h("div",{},h("b",{},c.name||"Senza nome"),h("span",{},[c.race,c.cls,c.lvl?"livello "+c.lvl:""].filter(Boolean).join(", ")||"Un nuovo eroe in cerca di gloria"))),
       confirmBtn("Elimina",()=>{remove("pg",c.id);render()}))):[h("div",{class:"empty"},"Nessun eroe ancora: crea il primo e inizia la tua leggenda.")]));
 }
@@ -758,7 +783,11 @@ function render(){
   vitSync=()=>{vh.replaceChildren(ico("heart"),(o.hpc??o.hp)+" / "+o.hp+(o.hpt?" (+"+o.hpt+")":""));va.replaceChildren(ico("shield"),"CA "+curAC);vi.replaceChildren(ico("star"),o.insp?"Ispirazione":"");vi.style.color=o.insp?"var(--brass)":"";vi.querySelector("svg").style.fill=o.insp?"currentColor":"none";vi.setAttribute("aria-pressed",String(!!o.insp));vc.replaceChildren(...(o.conds||[]).filter(c=>c.t).map(c=>h("span",{class:"chip",textContent:c.t})))};
   const vit=h("div",{class:"vit"},h("div",{class:"r"},vh,va,vi),h("div",{class:"r"},...[[-5,"−5"],[-1,"−1"],[1,"+1"],[5,"+5"]].map(([n,t])=>h("button",{class:"btn ghost","aria-label":(n<0?"Danni ":"Cura ")+Math.abs(n),textContent:t,onclick:()=>hpAct(n)}))),vc);
   vitSync();
-  app.replaceChildren(h("div",{class:"bar"},h("button",{class:"btn ghost",textContent:"‹ Eroi",onclick:()=>{sel=null;render()}}),h("h2",{class:"grow"},o.name||"Senza nome"),h("button",{class:"btn ghost",textContent:"Scarica PDF",onclick:()=>act.pdf()}),h("button",{class:"btn ghost",textContent:"Salva file",onclick:()=>act.json()}),h("button",{class:"btn"+(combat?"":" ghost"),kids:combat?["Esci dal combattimento"]:[ico("sword"),"Combattimento"],onclick:()=>{combat=!combat;render();scrollTo(0,0)}}),tavBtn(o)),statusEl,vit,panel);
+  const more=h("details",{class:"more"},h("summary",{class:"btn ghost","aria-label":"Altre azioni"},ico("more")),
+    h("div",{class:"menu",role:"menu"},h("button",{class:"btn ghost",role:"menuitem",textContent:"Scarica PDF",onclick:()=>{more.open=false;act.pdf()}}),h("button",{class:"btn ghost",role:"menuitem",textContent:"Salva file",onclick:()=>{more.open=false;act.json()}})));
+  document.addEventListener("click",e=>{if(more.open&&!more.contains(e.target))more.open=false});
+  app.replaceChildren(h("div",{class:"hbar"},h("button",{class:"btn ghost",textContent:"‹ Eroi",onclick:()=>{sel=null;render();scrollTo(0,0)}}),h("h2",{class:"grow"},o.name||"Senza nome"),more),
+    h("div",{class:"bar hact"},h("button",{class:"btn"+(combat?"":" ghost"),kids:combat?["Esci dal combattimento"]:[ico("sword"),"Combattimento"],onclick:()=>{combat=!combat;render();scrollTo(0,0)}}),tavBtn(o)),statusEl,vit,panel);
 }
 loadLocal();render();
 /* ---- aspetto: modalità, tema, rifiniture ---- */
@@ -938,7 +967,7 @@ if(VISTA){
     bar.replaceChildren(h("span",{style:"flex:1"},nm?h("b",{},"Scheda di "+nm):"",nm?" · sola lettura · "+(VISTA_DA?(v.who?"di "+v.who+" · ":"")+"aggiornata in tempo reale":"completa delle "+fT(v.t))+(v.live&&!VISTA_DA?", PF e condizioni aggiornati alle "+fT(v.live):""):"In attesa della scheda…"),
       VISTA_DA?"":h("button",{class:"btn ghost",textContent:"Aggiorna scheda",onclick:()=>{try{localStorage.setItem("dnd-vista-req",JSON.stringify({id:VISTA,t:Date.now()}))}catch(e){}say("Richiesta mandata al giocatore…")}}))};
   const lock=()=>{document.querySelectorAll("#app input,#app textarea,#app select").forEach(e=>{if(!e.disabled)e.disabled=true});
-    document.querySelectorAll("#app button").forEach(b=>{const t=b.textContent.trim();if(/^(‹ Eroi|Salva file|Tavolo|Al Tavolo|[−+][0-9]+|Danni|Cura|PF al massimo|Usa|Recupera|Scegli|Aggiungi|Elimina|Rimuovi|Togli|Equipaggia|\+)/.test(t)||/(Riposo|Sali di livello|Elimina|Rimuovi)/.test(t)||/^(Danni|Cura)/.test(b.getAttribute("aria-label")||""))b.hidden=true;if(b.getAttribute("aria-label")==="Ispirazione")b.disabled=true});};
+    document.querySelectorAll("#app button").forEach(b=>{const t=b.textContent.trim();if(/^(‹ Eroi|Salva file|Tavolo|Al Tavolo|[−+][0-9]+|Danni|Cura|PF al massimo|Usa|Recupera|Scegli|Aggiungi|Elimina|Rimuovi|Togli|Equipaggia|\+)/.test(t)||/(Riposo|Sali di livello|Elimina|Rimuovi)/.test(t)||/^(Danni|Cura|Rimuovi)/.test(b.getAttribute("aria-label")||""))b.hidden=true;if(b.getAttribute("aria-label")==="Ispirazione")b.disabled=true});};
   new MutationObserver(lock).observe(document.getElementById("app"),{childList:true,subtree:true});
   window.vistaReload=()=>{const y=scrollY,tab=ctab,cb=combat;loadLocal();ctab=tab;combat=cb;render();scrollTo(0,y);drawBar()};
   window.vistaBar=drawBar;
@@ -972,9 +1001,9 @@ async function heroJSON(o){let js=JSON.stringify(o);if(js.length<900000)return j
   const c=JSON.parse(js);const refs=imgRefs(c);for(let i=refs.length-1;i>0&&JSON.stringify(c).length>=900000;i--){const[p,k]=refs[i];p[k]=""}
   say("Alcune immagini sono troppo pesanti per il cloud: restano solo su questo telefono");return JSON.stringify(c)}
 async function heroCard(o){
-  let img="";const s0=o.imgs&&o.imgs[0]&&o.imgs[0].d;if(s0)img=await shrinkImg(s0,160,.72);
+  let img="";const s0=o.ritr||(o.imgs&&o.imgs[0]&&o.imgs[0].d);if(s0)img=await shrinkImg(s0,160,.72);
   return{owner:CLOUD.user.uid,ownerName:CLOUD.name||"",name:String(o.name||"Senza nome").slice(0,80),race:o.race||"",cls:o.cls||"",arch:o.arch||"",lvl:+o.lvl||1,hp:+o.hp||0,hpc:+(o.hpc??o.hp)||0,hpt:+o.hpt||0,insp:!!o.insp,
-    conds:(o.conds||[]).filter(c=>c&&c.t).map(c=>String(c.t).slice(0,40)).slice(0,12),img,linked:!!o.tavLinked}}
+    conds:(o.conds||[]).filter(c=>c&&c.t).map(c=>String(c.t).slice(0,40)).slice(0,12),img,ac:+o.acv||0,linked:!!o.tavLinked}}
 const heroCamp=o=>o.camp&&CLOUD.camps.includes(o.camp)?o.camp:"";
 function cloudQueue(o){if(!CLOUD.user||!CLOUD.fb)return;clearTimeout(CLOUD.timers[o.id]);CLOUD.timers[o.id]=setTimeout(()=>{delete CLOUD.timers[o.id];cloudSave(o)},1500)}
 async function cloudSave(o){const{f,db}=CLOUD.fb||{};if(!f||!CLOUD.user)return;const uid=CLOUD.user.uid;
@@ -1152,6 +1181,8 @@ function cloudHead(){const on=cloudMode()!=="local";document.documentElement.cla
   return h("div",{class:"list"},acct,tabs,joinBanner(),importBanner(),campPicker(),_home())}}
 if(!VISTA&&cloudMode()!=="local")render();
 cloudBoot();
+{const _r=render;render=function(){_r();document.documentElement.classList.toggle("insheet",!!sel||!!VISTA)}}
+document.documentElement.classList.toggle("insheet",!!sel||!!VISTA);
 </script>
 </body>
 </html>

@@ -21,6 +21,7 @@ body.noini #view{right:0}
 #fog{position:absolute;left:0;top:0;pointer-events:none;opacity:.6}
 #pv{position:absolute;left:0;top:0;pointer-events:none;z-index:3}
 #live{position:absolute;left:0;top:0;border:0;pointer-events:none;display:none;background:#000}
+#vmap{position:absolute;left:0;top:0;pointer-events:none;display:none;object-fit:fill}
 body.present #pv{display:none}
 body.present #fog{opacity:1}
 #ring{position:fixed;border:2px solid var(--brass);border-radius:50%;pointer-events:none;display:none;transform:translate(-50%,-50%);box-shadow:0 0 0 1px rgba(0,0,0,.7);z-index:5}
@@ -222,7 +223,7 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
 </head>
 <body>
 <div id="view">
-  <div id="stage"><img id="map" alt=""><iframe id="live" title="Mappa animata" tabindex="-1"></iframe><div id="grid"></div><canvas id="fog"></canvas><canvas id="pv"></canvas><div id="ptr"><i></i></div></div>
+  <div id="stage"><img id="map" alt=""><video id="vmap" muted loop playsinline autoplay preload="auto" aria-hidden="true"></video><iframe id="live" title="Mappa animata" tabindex="-1"></iframe><div id="grid"></div><canvas id="fog"></canvas><canvas id="pv"></canvas><div id="ptr"><i></i></div></div>
   <div id="act" aria-live="polite"><div class="shade"></div><div class="cast"></div><div class="cap"><div class="who"></div><p></p></div></div>
   <div id="empty"><div class="card"><h1>Tavolo del Master</h1><p>Carica una o più mappe: copriranno tutto lo schermo. Poi aggiungi griglia e nebbia.</p><div><button class="btn gold big" id="e-load"></button></div><p class="help">Trascina qui le immagini, incollale con Ctrl+V o scegli più file insieme.</p></div></div>
 </div>
@@ -241,6 +242,7 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
     <label class="chk"><input id="a-hide" type="checkbox"><span>Nascosto ai giocatori</span></label>
     <button class="btn gold" type="submit" id="a-btn"></button>
   </form>
+  <div class="nav edit-only" style="grid-template-columns:1fr;padding-bottom:0"><button class="btn gold" id="campbtn"></button></div>
   <div class="nav edit-only" style="grid-template-columns:1fr;padding-bottom:0"><button class="btn ghost" id="impro"></button></div>
   <input type="file" id="impf" accept=".json,application/json" hidden>
   <div class="nav edit-only" style="grid-template-columns:1fr 1fr"><button class="btn ghost" id="newfight"></button><button class="btn ghost" id="hideini"></button></div>
@@ -251,7 +253,7 @@ kbd{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:
 <div id="sides" role="group" aria-label="Dove mostrare le iniziative"></div>
 <div id="stagebar" hidden></div>
 <div class="modal" id="modal" hidden></div>
-<input type="file" id="file" accept="image/*" multiple hidden>
+<input type="file" id="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden>
 <div id="drop"><div>Rilascia qui le mappe per caricarle</div></div>
 <script>
 "use strict";
@@ -370,17 +372,31 @@ async function normImage(file){
 async function thumb(blob){
   try{const {im,u}=await readBlob(blob),k=Math.min(1,240/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement("canvas");c.width=Math.max(1,Math.round(im.naturalWidth*k));c.height=Math.max(1,Math.round(im.naturalHeight*k));c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);return await new Promise(r=>c.toBlob(r,"image/jpeg",.75))}catch(e){return null}
 }
-const isImg=f=>/^image\//.test(f.type||"")||/\.(jpe?g|png|webp|gif|avif|bmp)$/i.test(f.name||"");
+const isVid=f=>/^video\//.test(f.type||"")||/\.(mp4|webm|mov|m4v)$/i.test(f.name||"");
+const isImg=f=>/^image\//.test(f.type||"")||/\.(jpe?g|png|webp|gif|avif|bmp)$/i.test(f.name||"")||isVid(f);
+/* mappe animate in video (es. dalla Fucina): il primo fotogramma fa da base per nebbia, griglia e miniatura */
+function vidPoster(file){return new Promise((res,rej)=>{const v=document.createElement("video"),u=URL.createObjectURL(file);v.muted=true;v.playsInline=true;v.preload="auto";v.src=u;
+  const fail=()=>{URL.revokeObjectURL(u);rej(new Error("video"))};v.onerror=fail;
+  v.onloadeddata=()=>{try{v.currentTime=0.001}catch(e){}};
+  v.onseeked=()=>{const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error("poster")),"image/jpeg",.9)};
+  setTimeout(()=>{if(!v.videoWidth)fail()},15000)})}
+const vmap=$("#vmap");
+function setVid(b){
+  if(vmap.dataset.u){URL.revokeObjectURL(vmap.dataset.u);delete vmap.dataset.u}
+  if(!b){vmap.pause();vmap.removeAttribute("src");vmap.load();vmap.style.display="none";return}
+  const u=URL.createObjectURL(b);vmap.dataset.u=u;vmap.src=u;vmap.style.width=iw+"px";vmap.style.height=ih+"px";vmap.style.display="block";mapEl.style.visibility="hidden";
+  const p=vmap.play();if(p&&p.catch)p.catch(()=>{addEventListener("pointerdown",()=>vmap.play().catch(()=>{}),{once:true})});
+}
 async function newScenes(files){
   if(PLAYER)return;
   files=[...files].filter(isImg);
-  if(!files.length){toast("Scegli un file immagine (JPG, PNG, WebP)",3000);return}
+  if(!files.length){toast("Scegli un’immagine (JPG, PNG, WebP) o un video (MP4, WebM)",3000);return}
   toast("Carico "+(files.length>1?files.length+" mappe…":"la mappa…"),8000);
   let first=null,n=0,bad=0;
   for(const f of files){
     try{
-      const img=await normImage(f),name=(f.name||"Mappa").replace(/\.[^.]+$/,"").slice(0,60)||"Mappa";
-      const o={id:uid(),name,img,th:await thumb(img),fog:null,grid:defGrid(),upd:Date.now()+n};
+      const vid=isVid(f)?f:null,img=vid?await vidPoster(f):await normImage(f),name=(f.name||"Mappa").replace(/\.[^.]+$/,"").slice(0,60)||"Mappa";
+      const o={id:uid(),name,img,th:await thumb(img),fog:null,grid:defGrid(),upd:Date.now()+n};if(vid)o.vid=vid;
       await dbPut(o);if(!first)first=o;n++;
     }catch(e){bad++}
   }
@@ -423,7 +439,7 @@ async function openScene(o){
   if(o.fog){try{const bm=await createImageBitmap(o.fog);bctx.drawImage(bm,0,0,fw,fh);loaded=true}catch(e){}}
   if(!loaded){bctx.fillStyle=FOG;bctx.fillRect(0,0,fw,fh)}
   strokes=[];renderFog();applyGrid();$("#empty").style.display="none";if(!o.th)thumb(o.img).then(t=>{if(t){o.th=t;dbPut(o).catch(()=>{})}});
-  setLive(o.live);
+  setLive(o.live);setVid(o.vid||null);
   manual=false;fit(fitMode);lsSet("tavolo-scene",sc.id);drawBars();syncAll();
 }
 function scheduleSave(){clearTimeout(saveT);saveT=setTimeout(saveNow,700)}
@@ -440,7 +456,7 @@ async function syncAll(){
   if(PLAYER)return;sendStage();
   if(!sc){send({t:"empty"});sendIni();return}
   const fb=await new Promise(r=>fogC.toBlob(r,"image/png"));
-  send({t:"scene",img:sc.img,fog:fb,grid:sc.grid,live:sc.live||null});sendIni();sendView();
+  send({t:"scene",img:sc.img,vid:sc.vid||null,fog:fb,grid:sc.grid,live:sc.live||null});sendIni();sendView();
 }
 async function syncFog(){if(PLAYER||!sc)return;const fb=await new Promise(r=>fogC.toBlob(r,"image/png"));send({t:"fog",b:fb})}
 function pFit(){
@@ -1089,7 +1105,7 @@ if(PLAYER){
     fctx.globalCompositeOperation="source-over";fctx.clearRect(0,0,fw,fh);
     let ok=false;if(m.fog){try{fctx.drawImage(await createImageBitmap(m.fog),0,0,fw,fh);ok=true}catch(e){}}
     if(!ok){fctx.fillStyle=FOG;fctx.fillRect(0,0,fw,fh)}
-    sc={grid:m.grid};applyGrid();setLive(m.live);$("#empty").style.display="none";fit();
+    sc={grid:m.grid};applyGrid();setLive(m.live);setVid(m.vid||null);$("#empty").style.display="none";fit();
   };
   let twT=0,actT=0;
   const act=$("#act"),cast=$("#act .cast"),cap=$("#act .cap"),who=$("#act .who"),pp2=$("#act .cap p");
@@ -1111,7 +1127,7 @@ if(PLAYER){
   const pHandle=async m=>{
     if(!m||!m.t)return;
     if(m.t==="scene"){got=true;await pScene(m)}
-    else if(m.t==="empty"){got=true;sc=null;iw=0;mapEl.removeAttribute("src");gridEl.style.display="none";fctx.clearRect(0,0,fogC.width,fogC.height);$("#empty").style.display="grid"}
+    else if(m.t==="empty"){got=true;sc=null;iw=0;mapEl.removeAttribute("src");setVid(null);gridEl.style.display="none";fctx.clearRect(0,0,fogC.width,fogC.height);$("#empty").style.display="grid"}
     else if(m.t==="stage"){stageOn(m)}
     else if(m.t==="stageline"){typeLine(m.who,m.text)}
     else if(!sc&&m.t!=="ini"&&m.t!=="view")return;
@@ -1210,7 +1226,7 @@ function sheetPart(d){if(typeof d.k!=="string"||!(d.n>0&&d.n<=30)||!(d.i>=0&&d.i
   sheetDecode(b.p.join(""),b.z).then(txt=>{const o=JSON.parse(txt);if(!o||o.id!==b.id)throw 0;sheetPut(b.id,{t:Date.now(),o});toast("Scheda di "+(o.name||"eroe")+" aggiornata",2000)}).catch(()=>toast("La scheda è arrivata incompleta: premi di nuovo “Scheda”",3500))}
 async function diarioUrl(){let u=localStorage.getItem("tavolo-diario-url");if(u)return u;
   for(const c of["index.html","../Diario-DnD/index.html","/Diario-DnD/index.html"]){try{const r=await fetch(c,{cache:"no-store"});if(r.ok&&(await r.text()).includes("dnd-vista")){localStorage.setItem("tavolo-diario-url",c);return c}}catch(e){}}return null}
-function openSheet(c){const id=c.lid;if(!id)return;const on=!!roomSeen[id],have=sheetGet(id);
+function openSheet(c){const id=c.lid;if(!id)return;if(window.campSheet&&campSheet(c))return;const on=!!roomSeen[id],have=sheetGet(id);
   if(!on&&!have){toast(c.name+" non è collegato al Tavolo e non ho ancora la sua scheda",3500);return}
   const w=window.open("","scheda-"+id);
   diarioUrl().then(u=>{if(!u){if(w)w.close();toast("Non trovo il Diario (index.html) accanto al Tavolo su GitHub",4500);return}
@@ -1271,6 +1287,77 @@ function openRoom(){
 }
 window.openRoom=openRoom;window.tavRow=tavRow;
 startRoom();
+
+/* ---------- campagna online (stesso archivio del Diario): eroi, ritratti e schede ---------- */
+const FB={cfg:{apiKey:"AIzaSyA6lEC272cvlH1uenlFE7jyAVlrsFfCq70",authDomain:"diario-dnd.firebaseapp.com",projectId:"diario-dnd",storageBucket:"diario-dnd.firebasestorage.app",messagingSenderId:"436731541748",appId:"1:436731541748:web:c6a2c969dea1cb296546a1"},
+  url:"https://www.gstatic.com/firebasejs/13.2.0/",fb:null,user:null,name:"",ready:false,err:"",camps:[],info:{},cid:lsGet("tavolo-camp")||"",cards:[],unsub:null,panel:null};
+const fbErr=e=>{const c=(e&&e.code)||"";return /invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)?"Nome utente o password sbagliati.":/too-many-requests/.test(c)?"Troppi tentativi: riprova tra qualche minuto.":/network|unavailable/.test(c)?"Nessuna connessione.":/permission/.test(c)?"Permesso negato (le regole di Firestore sono aggiornate?).":"Errore ("+(c||"sconosciuto")+")."};
+async function fbLoad(){if(FB.fb)return FB.fb;const[a,u,f]=await Promise.all([import(FB.url+"firebase-app.js"),import(FB.url+"firebase-auth.js"),import(FB.url+"firebase-firestore.js")]);
+  const app=a.initializeApp(FB.cfg);let db;try{db=f.initializeFirestore(app,{localCache:f.persistentLocalCache({tabManager:f.persistentMultipleTabManager()})})}catch(e){db=f.getFirestore(app)}
+  FB.fb={u,f,auth:u.getAuth(app),db};return FB.fb}
+const campRedraw=()=>{if(FB.panel)FB.panel()};
+function campApplyCard(cd){
+  let c=ini.list.find(x=>x.lid===cd.id);if(!c)return false;
+  const was=c.hp;c.hp=Math.max(0,+cd.hpc||0);if(+cd.hp>0)c.mx=+cd.hp;if(+cd.ac>0)c.ac=+cd.ac;c.thp=Math.max(0,+cd.hpt||0);c.insp=!!cd.insp;c.conds=Array.isArray(cd.conds)?cd.conds.slice(0,12):[];c.lvl=+cd.lvl||c.lvl;c.owner=cd.owner;c.cid=FB.cid;
+  hpDead(c);if(was>0&&c.hp===0)toast(c.name+" è a 0 PF: fuori combattimento");return true}
+function campWatchCards(){if(FB.unsub){try{FB.unsub()}catch(e){}FB.unsub=null}FB.cards=[];if(!FB.cid||!FB.user)return;const{f,db}=FB.fb,cid=FB.cid;
+  FB.unsub=f.onSnapshot(f.collection(db,"campaigns",cid,"cards"),snap=>{if(FB.cid!==cid)return;FB.cards=[];snap.forEach(d=>FB.cards.push(Object.assign({id:d.id},d.data())));
+    let ch=false;for(const cd of FB.cards)if(campApplyCard(cd))ch=true;if(ch)roomRedraw();campRedraw()},e=>{toast("Campagna non leggibile: "+fbErr(e),4000);FB.cards=[];campRedraw()})}
+async function campLoadList(){const{f,db}=FB.fb;FB.camps=[];try{const p=await f.getDoc(f.doc(db,"users",FB.user.uid));const d=p.exists()?p.data():{};if(d.name)FB.name=d.name;
+    for(const c of(Array.isArray(d.camps)?d.camps:[])){try{const x=await f.getDoc(f.doc(db,"campaigns",c));if(x.exists()){FB.info[c]=x.data();FB.camps.push(c)}}catch(e){}}}catch(e){FB.err=fbErr(e)}
+  if(FB.cid&&!(FB.info[FB.cid]&&FB.info[FB.cid].master===FB.user.uid)){FB.cid=""}
+  if(!FB.cid){const mine=FB.camps.filter(c=>FB.info[c].master===FB.user.uid);if(mine.length===1)FB.cid=mine[0]}
+  lsSet("tavolo-camp",FB.cid);campWatchCards();campRedraw()}
+async function campBoot(){try{await fbLoad()}catch(e){FB.err="Archivio online non raggiungibile (sei offline?).";FB.ready=true;campRedraw();return}
+  FB.fb.u.onAuthStateChanged(FB.fb.auth,u=>{FB.ready=true;FB.user=u;FB.err="";if(u){FB.name=(u.email||"").split("@")[0];campLoadList()}else{FB.camps=[];FB.cards=[];if(FB.unsub){try{FB.unsub()}catch(e){}}campRedraw()}})}
+async function campBring(){let n=0,nuovi=0;
+  for(const cd of FB.cards){let c=ini.list.find(x=>x.lid===cd.id);
+    if(!c){const nm=String(cd.name||"").trim().toLowerCase();c=ini.list.find(x=>!x.lid&&x.type==="pg"&&x.name.trim().toLowerCase()===nm);if(c)c.lid=cd.id}
+    if(!c){c={id:uid(),name:String(cd.name||"Eroe"),init:0,type:"pg",dead:false,hide:false,lid:cd.id};ini.list.push(c);nuovi++}
+    let src=cd.img||"";if(cd.linked){try{const{f,db}=FB.fb;const d=await f.getDoc(f.doc(db,"users",cd.owner,"heroes",cd.id));if(d.exists()){const o=JSON.parse(d.data().d);src=o.ritr||(o.imgs&&o.imgs[0]&&o.imgs[0].d)||src}}catch(e){}}
+    if(src){try{const img=await cropSq(src);let p=PORT.find(x=>x.id===c.pid)||PORT.find(x=>x.name.toLowerCase()===c.name.toLowerCase());if(p)p.img=img;else{p={id:uid(),name:c.name,img};PORT.push(p)}c.pid=p.id}catch(e){}}
+    campApplyCard(cd);n++}
+  savePort();saveIni();drawIni();if(n)logEv("Compagnia dalla campagna online: "+n+(n===1?" eroe":" eroi"),"scena");
+  toast(n?(n+(n===1?" eroe":" eroi")+" al tavolo"+(nuovi?": scrivi l’iniziativa dei nuovi":"")+". PF, CA e condizioni ora si aggiornano da soli."):"Nessun eroe in questa campagna",5000)}
+window.campSheet=c=>{if(!FB.user||!FB.cid)return false;const cd=FB.cards.find(x=>x.id===c.lid);if(!cd)return false;
+  if(!cd.linked){toast(c.name+": il giocatore non ha reso visibile la scheda al master",4000);return true}
+  const w=window.open("","scheda-"+cd.id);
+  diarioUrl().then(u=>{if(!u){if(w)w.close();toast("Non trovo il Diario (index.html) accanto al Tavolo",4500);return}const full=new URL(u,location.href);full.search="";full.searchParams.set("vista",cd.id);full.searchParams.set("da",cd.owner);full.searchParams.set("c",FB.cid);if(w)w.location.href=full.href;else toast("Il browser ha bloccato la finestra: consenti i popup per questo sito",4500)});
+  return true};
+function openCamp(){
+  const m=$("#modal");m.hidden=false;m.dataset.k="camp";if(!FB.fb&&!FB.booting){FB.booting=true;campBoot()}
+  const close=()=>{m.hidden=true;FB.panel=null;delete m.dataset.k};
+  const draw=()=>{
+    if(m.hidden||m.dataset.k!=="camp"||(m.firstChild&&!m.querySelector('[aria-label="Campagna online"]'))){FB.panel=null;return}
+    let body;
+    if(!FB.ready)body=[h("div",{class:"help"},"Mi collego all’archivio della campagna…")];
+    else if(!FB.user){
+      const u=h("input",{placeholder:"Nome utente","aria-label":"Nome utente",autocomplete:"username"}),p=h("input",{type:"password",placeholder:"Password","aria-label":"Password",autocomplete:"current-password"}),er=h("div",{class:"help",role:"alert"},FB.err||"");
+      const go=async()=>{const slug=String(u.value).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");if(slug.length<3||p.value.length<6){er.textContent="Scrivi nome utente e password del tuo account del Diario.";return}
+        er.textContent="Entro…";try{await FB.fb.u.signInWithEmailAndPassword(FB.fb.auth,slug+"@diario-dnd.app",p.value)}catch(e){er.textContent=fbErr(e)}};
+      p.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
+      body=[h("div",{class:"help"},"Entra con lo stesso account che usi nel Diario. Vedrai le campagne di cui sei il master."),u,p,er,btn(null,"Entra",go,{class:"btn gold"})];
+    }else{
+      const mine=FB.camps.filter(c=>FB.info[c].master===FB.user.uid);
+      const sel=h("select",{"aria-label":"Campagna"},h("option",{value:"",textContent:mine.length?"Scegli la campagna…":"Non sei master di nessuna campagna"}),...mine.map(c=>h("option",{value:c,textContent:FB.info[c].name||c})));
+      sel.value=FB.cid;sel.addEventListener("change",()=>{FB.cid=sel.value;lsSet("tavolo-camp",FB.cid);campWatchCards();draw()});
+      const list=FB.cid?(FB.cards.length?FB.cards.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(cd=>{const inl=ini.list.some(x=>x.lid===cd.id);
+        return h("div",{style:"display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:6px"},cd.img?h("img",{src:cd.img,alt:"",style:"width:40px;height:40px;border-radius:50%;object-fit:cover"}):"",
+          h("span",{style:"flex:1"},h("b",{},cd.name||"Eroe")," · "+(cd.ownerName||"")+" · liv. "+(cd.lvl||1)+" · PF "+cd.hpc+"/"+cd.hp+(cd.ac?" · CA "+cd.ac:"")),
+          h("span",{class:"help"},(inl?"al tavolo":"non ancora al tavolo")+(cd.linked?"":" · scheda privata")))}):[h("div",{class:"vide"},"Nessun eroe in questa campagna: i giocatori lo scelgono dal Diario.")]):[];
+      body=[h("div",{class:"help"},"Account: ",h("b",{},FB.name)),sel,...list,
+        FB.cid&&FB.cards.length?btn("user","Porta gli eroi in iniziativa",()=>campBring().then(draw),{class:"btn gold"}):"",
+        h("div",{class:"help",style:"margin-top:6px"},"Gli eroi al tavolo restano collegati: PF, CA, condizioni e Ispirazione si aggiornano da soli quando i giocatori li cambiano nel Diario. Con “Scheda” sotto ogni eroe apri la sua scheda completa. Per mandare danni, cure e condizioni ai telefoni serve la Stanza."),
+        h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},btn(null,"Aggiorna l’elenco",()=>campLoadList()),btn(null,"Esci dall’account",async()=>{try{await FB.fb.u.signOut(FB.fb.auth)}catch(e){}}))];
+    }
+    m.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Campagna online"},h("div",{style:"display:flex;gap:8px;align-items:center"},h("h2",{style:"flex:1"},"Campagna online"),btn(null,"Chiudi",close)),...body));
+  };
+  FB.panel=draw;draw();
+}
+window.openCamp=openCamp;
+$("#campbtn").append(ico("user"),"Eroi dalla campagna online");$("#campbtn").addEventListener("click",openCamp);
+if(FB.cid){FB.booting=true;campBoot()}
+
 if(BC)BC.onmessage=ev=>{const d=ev.data;if(!d)return;if(d.t==="hello")syncAll();else if(d.t==="cron"&&d.x){logEv(d.x,"nota");try{BC.postMessage({t:"cron-ok",id:d.id})}catch(e){}}};
 startCron();
 if(lsGet("tavolo-noini"))document.body.classList.add("noini");
