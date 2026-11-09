@@ -98,6 +98,7 @@ main{padding-bottom:110px}
 .chip.fbtn{border:1px solid var(--line);padding:3px 12px;border-radius:999px}
 .qbox{display:grid;gap:3px;justify-items:center}.qrow{display:flex;gap:4px;align-items:center}.qrow input{width:4.2em;text-align:center}.qrow .btn{padding:4px 8px;min-width:0}
 .cbl{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--ink)}.cbl input{width:auto}
+.chk{display:flex!important;align-items:flex-start;gap:10px;font-size:.92rem;line-height:1.35}.chk input[type=checkbox]{flex:none;width:20px!important;height:20px;margin:1px 0 0;padding:0}.chk span{flex:1;min-width:0;overflow-wrap:anywhere}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal[hidden]{display:none}
 .acct{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.9rem}.acct b{color:var(--brass)}.acct .grow{flex:1}
@@ -589,7 +590,7 @@ function renderChar(o){
       restApply("B","Riposo breve: "+(n?"spesi "+n+" Dadi Vita, recuperati "+t+" PF. ":"")+"Dadi Vita rimasti: "+(I.L-o.hdu)+" / "+I.L+". Ripristinate le risorse del riposo breve.")}});
     extra.addEventListener("input",upd);
     const ten=h("input",{type:"checkbox",checked:!!o.tenace});ten.addEventListener("change",()=>{o.tenace=ten.checked;later("pg",o);upd()});
-    const n0lab=h("label",{style:"display:flex;gap:8px;align-items:center"},ten,"Talento Tenace: ogni dado ti fa recuperare almeno "+Math.max(2,2*I.mod)+" PF");
+    const n0lab=h("label",{class:"cbl chk"},ten,h("span",{},"Talento Tenace: ogni dado ti fa recuperare almeno "+Math.max(2,2*I.mod)+" PF"));
     modal.replaceChildren(h("div",{class:"mbox",role:"dialog","aria-label":"Riposo breve"},head,hdLine,
       h("p",{class:"status"},"Alla fine del riposo breve (almeno 1 ora) puoi spendere Dadi Vita uno alla volta: tira il dado vero, scrivi il risultato e decidi se spenderne un altro. Per ogni dado recuperi il risultato + il modificatore di Costituzione (minimo 0). PF attuali: "+(o.hpc??o.hp)+" / "+o.hp+"."),
       I.left?h("div",{class:"bar"},h("span",{},"Dadi da spendere"),minus,cnt,plus):h("p",{class:"status"},"Non hai Dadi Vita disponibili: li recuperi con un riposo lungo."),
@@ -1132,7 +1133,7 @@ function campPicker(){if(!data.pg.length)return"";
       sl.value=heroCamp(o);sl.addEventListener("change",()=>{if(o.tavLinked&&heroCamp(o)&&!confirm((o.name||"L’eroe")+" cambia campagna: il master attuale non potrà più aprirne la scheda. Procedo?")){sl.value=heroCamp(o);return}const was=heroCamp(o);o.camp=sl.value;o.tavLinked=!!sl.value;put("pg",o);render()});
       const vis=h("input",{type:"checkbox",checked:!!(o.tavLinked&&heroCamp(o)),disabled:!heroCamp(o)});vis.addEventListener("change",()=>{o.tavLinked=vis.checked;put("pg",o);render()});
       return h("div",{style:"margin-top:8px;padding-top:6px;border-top:1px solid var(--line)"},h("label",{style:"display:grid;grid-template-columns:1fr 1.3fr;gap:8px;align-items:center"},h("span",{},o.name||"Senza nome"),sl),
-        heroCamp(o)?h("label",{style:"display:flex;gap:8px;align-items:center;font-size:.9rem;margin-top:4px"},vis,"Il master può aprire la scheda completa"):"")}))}
+        heroCamp(o)?h("label",{class:"cbl chk",style:"margin-top:6px"},vis,h("span",{},"Il master può aprire la scheda completa")):"")}))}
 function importBanner(){if(!CLOUD.user)return"";const fk="dnd-imp-"+CLOUD.user.uid;let loc=[];try{if(localStorage.getItem(fk))return"";loc=JSON.parse(localStorage.getItem("dnd-pg")||"[]")}catch(e){}
   const nuovi=loc.filter(x=>x&&x.id&&!data.pg.some(y=>y.id===x.id));if(!nuovi.length)return"";
   return h("div",{class:"empty",style:"border-style:solid;border-color:var(--brass);color:var(--ink)"},h("b",{},"Su questo telefono hai "+nuovi.length+(nuovi.length===1?" eroe salvato":" eroi salvati")+" senza account: "),nuovi.map(x=>x.name||"Senza nome").join(", "),
